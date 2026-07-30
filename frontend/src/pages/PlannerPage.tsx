@@ -357,7 +357,6 @@ export default function PlannerPage() {
       badge={<b className={`provider-pill provider-${provider}`}>{provider}</b>}
       className="planner-flow-page"
       eyebrow="Study planner"
-      searchPlaceholder="Search tasks, exams, subjects..."
       subtitle="Turn weak topics, exam dates, and daily limits into a calm schedule you can actually follow."
       title="Design today's study flow"
     >
