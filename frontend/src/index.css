@@ -810,6 +810,49 @@ h3 {
   padding: 0 46px;
 }
 
+.flow-time {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+
+  color: var(--text-primary);
+}
+
+.flow-time-clock {
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+
+.flow-time-date {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .flow-time {
+    gap: 8px;
+  }
+
+  .flow-time-clock {
+    font-size: 1.8rem;
+  }
+
+  .flow-time-date {
+    font-size: 0.85rem;
+  }
+}
+
 .flow-search,
 .search-box {
   display: flex;
@@ -847,17 +890,29 @@ h3 {
 .flow-user {
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: var(--text);
-  font-weight: 850;
+  gap: 12px;
+  font-weight: 800;
 }
 
 .flow-user b {
-  display: inline-block;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--gradient-brand);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 768px) {
+  .flow-user-name {
+    display: none;
+  }
+
+  .flow-user {
+    gap: 0;
+  }
 }
 
 .page-title {
@@ -4562,7 +4617,6 @@ video {
   }
 
   .flow-user {
-    width: 100%;
     justify-content: space-between;
   }
 
