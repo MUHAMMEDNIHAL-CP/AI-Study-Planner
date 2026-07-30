@@ -4,7 +4,7 @@ AI-powered Study Planner + Focus Coach for students.
 
 - Frontend: React (Vite) + Tailwind + Router + Axios + Framer Motion
 - Backend: Django + DRF + PostgreSQL + JWT (SimpleJWT)
-- AI: OpenAI or Gemini
+- AI: Gemini via Google AI Studio, with deterministic fallback responses when no key is configured
 - Deploy: Frontend on Vercel, Backend on Render
 
 ## Local Setup
@@ -21,6 +21,17 @@ python manage.py runserver
 ```
 
 The backend runs at `http://localhost:8000`.
+
+Create `backend/.env` for Gemini AI:
+
+```env
+GEMINI_API_KEY=your_google_ai_studio_key
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODELS=gemini-3.5-flash,gemini-3.1-flash-lite
+FRONTEND_URL=http://localhost:5173
+```
+
+Do not commit `backend/.env`. It is ignored by Git.
 
 ### Frontend
 
@@ -48,7 +59,7 @@ VITE_API_URL=http://localhost:8000
 - `POST /api/quiz/generate/`, `POST /api/quiz/<id>/submit/`
 - `POST /api/burnout/analyze/`, `GET /api/burnout/reports/`
 
-AI responses are deterministic mock responses by default, so the app works without provider keys.
+AI responses use Gemini when `GEMINI_API_KEY` is set in `backend/.env`. Without a key, the app uses deterministic fallback responses so development still works.
 
 ## Deployment Notes
 

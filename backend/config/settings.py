@@ -18,6 +18,20 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def load_local_env(path):
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.lstrip("\ufeff").split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_local_env(BASE_DIR / ".env")
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -27,8 +41,11 @@ SECRET_KEY = 'django-insecure-bz-snt6(1y7e2r=i_q!4m-9b2^7c7!gkfrf_!u_irqv(^x1vim
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "192.168.1.8",
+]
 
 # Application definition
 
@@ -132,8 +149,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 # CORS
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://192.168.1.8:5173",
+]
 
 # DRF / JWT
 REST_FRAMEWORK = {

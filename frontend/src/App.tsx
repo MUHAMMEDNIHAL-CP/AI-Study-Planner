@@ -1,21 +1,35 @@
 import { useEffect } from 'react'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, useLocation } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import Navigation from './components/Navigation'
+import { isAuthenticated } from './lib/auth'
+import { applyTheme, getTheme } from './lib/theme'
 import AppRoutes from './routes'
+
+function AppFrame() {
+  const location = useLocation()
+  const authed = isAuthenticated()
+
+  return (
+    <>
+      <Navigation />
+      <main className={authed ? 'app-main app-main-with-sidebar' : 'app-main app-main-public'} key={location.pathname}>
+        <AppRoutes />
+      </main>
+      <ToastContainer position="top-right" theme="dark" />
+    </>
+  )
+}
 
 export default function App() {
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') ?? 'dark'
-    document.documentElement.dataset.theme = savedTheme
+    applyTheme(getTheme())
   }, [])
 
   return (
     <BrowserRouter>
-      <Navigation />
-      <AppRoutes />
-      <ToastContainer position="top-right" theme="dark" />
+      <AppFrame />
     </BrowserRouter>
   )
 }

@@ -9,6 +9,8 @@ import QuizCenterPage from './pages/QuizCenterPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
+import FocusModePage from './pages/FocusModePage'
+import BurnoutInsightsPage from './pages/BurnoutInsightsPage'
 import RequireAuth from './routes/RequireAuth'
 
 export default function AppRoutes() {
@@ -24,6 +26,8 @@ export default function AppRoutes() {
         <Route path="/ai-tutor" element={<AiTutorPage />} />
         <Route path="/quiz" element={<QuizCenterPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/focus" element={<FocusModePage />} />
+        <Route path="/burnout" element={<BurnoutInsightsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

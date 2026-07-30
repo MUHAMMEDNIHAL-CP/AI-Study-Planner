@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { IconOrbit } from '../components/icons'
 import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,69 +36,56 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-page">
-      <form
-        onSubmit={onSubmit}
-        className="auth-card glass"
-      >
-        <h2 className="auth-title">Create account</h2>
-        <p className="auth-subtitle">
-          Start planning your focus with AI.
-        </p>
-
-        {error ? (
-          <div className="auth-alert">
-            {error}
+    <main className="premium-auth-page">
+      <div className="auth-shell">
+        <section className="auth-hero">
+          <span className="auth-logo"><IconOrbit size={24} /></span>
+          <h1>FocusFlow AI</h1>
+          <p>Your study orbit — plan, focus, recall, recover.</p>
+          <div className="auth-benefits">
+            <span>Personal planner</span>
+            <span>AI tutor</span>
+            <span>Quiz practice</span>
           </div>
-        ) : null}
+        </section>
 
-        <div className="field-group">
-        <label className="field-label">Username</label>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="field-input"
-          required
-        />
-        </div>
+        <form className="premium-auth-card" onSubmit={onSubmit}>
+          <div className="auth-card-head">
+            <span>Create workspace</span>
+            <h2>Start your study flow</h2>
+            <p>Your planner, AI tutor, focus timer, and analytics will live here.</p>
+          </div>
+          {error ? <div className="auth-alert">{error}</div> : null}
 
-        <div className="field-group">
-        <label className="field-label">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="field-input"
-          required
-        />
-        </div>
+          <label className="premium-field">
+            <span>Full Name</span>
+            <div className="input-shell"><b>ID</b><input autoComplete="name" placeholder="Name" value={username} onChange={(e) => setUsername(e.target.value)} required /></div>
+          </label>
+          <label className="premium-field">
+            <span>Email Address</span>
+            <div className="input-shell"><b>@</b><input autoComplete="email" placeholder="name@university.edu" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+          </label>
+          <label className="premium-field">
+            <span>Password</span>
+            <div className="input-shell">
+              <b>KEY</b>
+              <input autoComplete="new-password" minLength={8} placeholder="At least 8 characters" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? 'Hide' : 'Show'}</button>
+            </div>
+          </label>
 
-        <div className="field-group">
-        <label className="field-label">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="field-input"
-          required
-        />
-        </div>
+          <button className="gradient-action" disabled={loading} type="submit">
+            {loading ? 'Creating...' : 'Create Account'}
+          </button>
+          <p className="auth-switch">Already in the flow? <Link to="/login">Sign in</Link></p>
+        </form>
+      </div>
 
-        <button
-          disabled={loading}
-          type="submit"
-          className="primary-button auth-submit"
-        >
-          {loading ? 'Creating...' : 'Register'}
-        </button>
-
-        <div className="auth-switch">
-          Have an account?{' '}
-          <Link className="text-link" to="/login">
-            Login
-          </Link>
-        </div>
-      </form>
-    </div>
+      <footer className="auth-footer">
+        <span>Privacy Policy</span>
+        <span>Terms of Service</span>
+        <small>(c) 2024 FocusFlow AI. Engineered for Flow.</small>
+      </footer>
+    </main>
   )
 }

@@ -6,6 +6,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ai.gemini import generate_json
 from ai.models import AIHistory
 from productivity.models import ProductivityLog
 
@@ -135,5 +136,95 @@ class GeneratePlanView(APIView):
             ],
             "focus_tip": "Use 50/10 focus cycles and finish each session by writing one next action.",
         }
-        AIHistory.objects.create(user=request.user, feature="planner", prompt=str(request.data), response=response)
+        gemini_response = generate_json(
+            "You are FocusFlow AI, a study planner for students. Return strict JSON with keys: "
+            "goal string, exam_date string, daily_hours number, plan array, revision_schedule array, focus_tip string. "
+            "Each plan item must contain time, subject, duration_minutes, task. "
+            "Build a practical hourly active-recall timetable with spaced revision and breaks. "
+            f"Subjects: {subjects}. Weak topics: {weak_topics}. Daily hours: {daily_hours}. "
+            f"Exam date: {exam_date}. Goal: {goal}."
+        )
+        if isinstance(gemini_response, dict) and isinstance(gemini_response.get("plan"), list):
+            response = {**gemini_response, "provider": "gemini"}
+
+        AIHistory.objects.create(
+            user=request.user,
+            feature="planner",
+            prompt=str(request.data),
+            response=response,
+            provider=response["provider"],
+        )
+        return Response(response, status=status.HTTP_201_CREATED)
+
+
+class AdjustTimetableView(APIView):
+    def post(self, request):
+        fatigue = int(request.data.get("fatigue") or 5)
+        productivity = int(request.data.get("productivity") or 5)
+        screen_time = float(request.data.get("screen_time") or 4)
+        missed_tasks = int(request.data.get("missed_tasks") or 0)
+        timetable = request.data.get("timetable") or []
+        gemini_payload = {
+            "fatigue": fatigue,
+            "productivity": productivity,
+            "screen_time": screen_time,
+            "missed_tasks": missed_tasks,
+            "timetable": timetable,
+        }
+
+        energy_score = max(5, min(100, 100 - fatigue * 7 - screen_time * 3 - missed_tasks * 8 + productivity * 4))
+        should_recover = energy_score < 55 or fatigue >= 7 or missed_tasks >= 3
+        adjusted = []
+        replaced_count = 0
+
+        for index, slot in enumerate(timetable):
+            updated = dict(slot)
+            is_heavy = updated.get("type") in ["revision", "retrieval"] and int(updated.get("duration", 0) or 0) >= 45
+            if should_recover and is_heavy and replaced_count < 2 and index % 2 == 0:
+                updated.update(
+                    {
+                        "subject": "Mental Recharge" if replaced_count == 0 else "Active Recovery Walk",
+                        "topic": "Breathing, hydration, and a short reset before returning to recall",
+                        "duration": 25,
+                        "type": "wellness",
+                        "completed": False,
+                    }
+                )
+                replaced_count += 1
+            adjusted.append(updated)
+
+        coaching = (
+            "Your current load looks intense, so I softened the next hard blocks and protected momentum with recovery. "
+            "This is not a step backward; it is how you keep the brain available for tomorrow."
+            if should_recover
+            else "Your energy is stable. Keep the timetable, but finish each block with two minutes of active recall."
+        )
+        gemini_response = generate_json(
+            "You are an empathetic academic focus coach. Return strict JSON with keys: "
+            "energy_score number, diagnosis string, adjusted_timetable array, changes_made number. "
+            "Rewrite only the next exhausting study blocks into wellness slots when fatigue is high. "
+            f"Student data: {gemini_payload}"
+        )
+
+        response = gemini_response or {
+            "energy_score": round(energy_score),
+            "diagnosis": coaching,
+            "adjusted_timetable": adjusted,
+            "changes_made": replaced_count,
+        }
+        if not isinstance(response, dict) or not isinstance(response.get("adjusted_timetable"), list):
+            response = {
+                "energy_score": round(energy_score),
+                "diagnosis": coaching,
+                "adjusted_timetable": adjusted,
+                "changes_made": replaced_count,
+            }
+        response["provider"] = "gemini" if response is gemini_response else "mock"
+        AIHistory.objects.create(
+            user=request.user,
+            feature="burnout",
+            prompt=str(request.data),
+            response=response,
+            provider=response["provider"],
+        )
         return Response(response, status=status.HTTP_201_CREATED)

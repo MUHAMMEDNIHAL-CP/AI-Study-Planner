@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root,
+[data-theme='dark'] {
+  --bg: #060912;
+  --bg-soft: #0c1220;
+  --bg-elevated: #111827;
+  --panel: rgba(17, 24, 39, 0.88);
+  --panel-2: rgba(22, 30, 48, 0.92);
+  --line: rgba(148, 163, 184, 0.14);
+  --line-strong: rgba(255, 107, 74, 0.42);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --muted-2: #cbd5e1;
+  --accent: #ff6b4a;
+  --accent-soft: #ffb199;
+  --mint: #2dd4bf;
+  --mint-soft: #99f6e4;
+  --violet: #a78bfa;
+  --violet-soft: #ddd6fe;
+  --blue: #38bdf8;
+  --green: #4ade80;
+  --amber: #fbbf24;
+  --danger: #fb7185;
+  --rose: #fb7185;
+  --purple: var(--violet);
+  --cyan: var(--mint);
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 24px 64px rgba(0, 0, 0, 0.38);
+  --shadow-glow: 0 0 48px rgba(255, 107, 74, 0.12);
+  --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --sidebar-width: 272px;
+  --gradient-brand: linear-gradient(135deg, var(--accent) 0%, #f97316 48%, var(--mint) 100%);
+  --gradient-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.05), transparent 38%),
+    linear-gradient(160deg, rgba(17, 24, 39, 0.96), rgba(8, 12, 22, 0.98));
+  --gradient-page: radial-gradient(circle at 12% 0%, rgba(255, 107, 74, 0.14), transparent 34%),
+    radial-gradient(circle at 92% 8%, rgba(45, 212, 191, 0.1), transparent 28%),
+    linear-gradient(180deg, #060912 0%, #0a101c 100%);
+}
+
+[data-theme='light'] {
+  --bg: #f6f8fc;
+  --bg-soft: #eef2f8;
+  --bg-elevated: #ffffff;
+  --panel: rgba(255, 255, 255, 0.94);
+  --panel-2: rgba(248, 250, 252, 0.98);
+  --line: rgba(15, 23, 42, 0.1);
+  --line-strong: rgba(255, 107, 74, 0.35);
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted-2: #475569;
+  --shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 40px rgba(255, 107, 74, 0.08);
+  --gradient-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.98));
+  --gradient-page: radial-gradient(circle at 12% 0%, rgba(255, 107, 74, 0.08), transparent 34%),
+    radial-gradient(circle at 92% 8%, rgba(45, 212, 191, 0.06), transparent 28%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef2f8 100%);
+}

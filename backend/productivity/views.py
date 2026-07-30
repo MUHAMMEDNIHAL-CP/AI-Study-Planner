@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.db.models import Avg, Sum
 from django.utils import timezone
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,6 +18,16 @@ class ProductivityLogListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        date = request.data.get("date")
+        instance = ProductivityLog.objects.filter(user=request.user, date=date).first() if date else None
+        if instance:
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return super().create(request, *args, **kwargs)
 
 
 class ProductivityLogDetailView(generics.RetrieveUpdateDestroyAPIView):

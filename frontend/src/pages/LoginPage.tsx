@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { IconOrbit } from '../components/icons'
 import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -22,7 +24,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { data } = await api.post<TokenResponse>('/auth/login/', { username, password })
+      const credential = username.trim()
+      const payload = credential.includes('@') ? { email: credential, password } : { username: credential, password }
+      const { data } = await api.post<TokenResponse>('/auth/login/', payload)
       setAuthTokens(data.access, data.refresh)
       toast.success('Logged in')
       navigate('/dashboard')
@@ -34,56 +38,62 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-page">
-      <form
-        onSubmit={onSubmit}
-        className="auth-card glass"
-      >
-        <h2 className="auth-title">Login</h2>
-        <p className="auth-subtitle">Welcome back. Focus starts here.</p>
-
-        {error ? (
-          <div className="auth-alert">
-            {error}
+    <main className="premium-auth-page">
+      <div className="auth-shell">
+        <section className="auth-hero">
+          <span className="auth-logo"><IconOrbit size={24} /></span>
+          <h1>FocusFlow AI</h1>
+          <p>Your study orbit — plan, focus, recall, recover.</p>
+          <div className="auth-benefits">
+            <span>AI study plans</span>
+            <span>Focus coach</span>
+            <span>Burnout insights</span>
           </div>
-        ) : null}
+        </section>
 
-        <div className="field-group">
-        <label className="field-label">Username</label>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="field-input"
-          required
-        />
-        </div>
+        <form className="premium-auth-card" onSubmit={onSubmit}>
+          <div className="auth-card-head">
+            <span>Welcome back</span>
+            <h2>Sign in to your flow</h2>
+            <p>Use your username or email to continue your study workspace.</p>
+          </div>
+          {error ? <div className="auth-alert">{error}</div> : null}
 
-        <div className="field-group">
-        <label className="field-label">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="field-input"
-          required
-        />
-        </div>
+          <label className="premium-field">
+            <span>Email or Username</span>
+            <div className="input-shell">
+              <b>@</b>
+              <input autoComplete="username" placeholder="name@university.edu" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            </div>
+          </label>
 
-        <button
-          disabled={loading}
-          type="submit"
-          className="primary-button auth-submit"
-        >
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
+          <label className="premium-field">
+            <span><em>Password</em><button type="button" onClick={() => toast.info('Password reset is coming soon.')}>Forgot?</button></span>
+            <div className="input-shell">
+              <b>KEY</b>
+              <input autoComplete="current-password" placeholder="Enter password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? 'Hide' : 'Show'}</button>
+            </div>
+          </label>
 
-        <div className="auth-switch">
-          No account?{' '}
-          <Link className="text-link" to="/register">
-            Register
-          </Link>
-        </div>
-      </form>
-    </div>
+          <button className="gradient-action" disabled={loading} type="submit">
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+
+          <div className="auth-divider"><span>Or continue with</span></div>
+          <div className="oauth-row">
+            <button type="button" onClick={() => toast.info('Google sign in is not connected yet.')}>Google</button>
+            <button type="button" onClick={() => toast.info('Apple sign in is not connected yet.')}>Apple</button>
+          </div>
+          <p className="auth-switch">New to FocusFlow? <Link to="/register">Create an account</Link></p>
+        </form>
+      </div>
+
+      <footer className="auth-footer">
+        <span>Privacy Policy</span>
+        <span>Terms of Service</span>
+        <small>(c) 2024 FocusFlow AI. Engineered for Flow.</small>
+      </footer>
+    </main>
   )
 }

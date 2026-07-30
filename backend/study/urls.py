@@ -4,6 +4,7 @@ from .views import (
     DashboardView,
     ExamDetailView,
     ExamListCreateView,
+    AdjustTimetableView,
     GeneratePlanView,
     StudyTaskDetailView,
     StudyTaskListCreateView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path("tasks/", StudyTaskListCreateView.as_view(), name="study-tasks"),
     path("tasks/<int:pk>/", StudyTaskDetailView.as_view(), name="study-task-detail"),
     path("plan/generate/", GeneratePlanView.as_view(), name="generate-plan"),
+    path("plan/adjust/", AdjustTimetableView.as_view(), name="adjust-plan"),
 ]
