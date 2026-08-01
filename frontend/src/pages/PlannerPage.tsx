@@ -25,6 +25,7 @@ type PlanResponse = {
   plan: PlanBlock[]
   revision_schedule: string[]
 }
+type PlannerModal = 'subject' | 'exam' | 'task' | null
 
 function toLocalDateInput(date = new Date()) {
   const offset = date.getTimezoneOffset() * 60_000
@@ -121,6 +122,7 @@ export default function PlannerPage() {
   const [provider, setProvider] = useState('checking')
   const [loading, setLoading] = useState(true)
   const [planLoading, setPlanLoading] = useState(false)
+  const [activeModal, setActiveModal] = useState<PlannerModal>(null)
 
   const activeSubject = subjects.find((subject) => String(subject.id) === selectedSubjectId)
   const calendar = useMemo(() => monthCells(exams), [exams])
@@ -236,6 +238,7 @@ export default function PlannerPage() {
       setWeakTopics('')
       setSelectedSubjectId(String(data.id))
       toast.success('Subject added')
+      setActiveModal(null)
       await loadPlanner()
       scrollToWizard('wizard-exams')
     } catch (err) {
@@ -265,6 +268,7 @@ export default function PlannerPage() {
       })
       setExamTitle('')
       toast.success('Exam added')
+      setActiveModal(null)
       await loadPlanner()
       scrollToWizard('wizard-plan')
     } catch (err) {
@@ -285,6 +289,7 @@ export default function PlannerPage() {
       setTaskTitle('')
       setTaskPriority('medium')
       toast.success('Task added')
+      setActiveModal(null)
       await loadPlanner()
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -430,62 +435,41 @@ export default function PlannerPage() {
           </div>
 
           <div className="planner-builder-grid">
-            <form className="planner-mini-form" onSubmit={addSubject}>
-              <h3>Subject and weak topic</h3>
-              <label>
-                <span>Subject name</span>
-                <input placeholder="Organic Chemistry" value={subjectName} onChange={(event) => setSubjectName(event.target.value)} required />
-              </label>
-              <label>
-                <span>Weak topics</span>
-                <textarea placeholder="Alcohols, reaction mechanisms, equations" value={weakTopics} onChange={(event) => setWeakTopics(event.target.value)} />
-              </label>
-              <button type="submit">Add Subject</button>
-            </form>
+            <article className="planner-input-card">
+              <b><IconPlanner size={22} /></b>
+              <div>
+                <h3>Subject map</h3>
+                <p>Add the subject and weak topics the AI should prioritize.</p>
+              </div>
+              <footer>
+                <span>{subjects.length} saved</span>
+                <button onClick={() => setActiveModal('subject')} type="button">Add Subject</button>
+              </footer>
+            </article>
 
-            <form className="planner-mini-form" id="wizard-exams" onSubmit={addExam}>
-              <h3>Exam target</h3>
-              <label>
-                <span>Subject</span>
-                <select value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
-                  <option value="">No subject</option>
-                  {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Exam title</span>
-                <input placeholder="Midterm exam" value={examTitle} onChange={(event) => setExamTitle(event.target.value)} required />
-              </label>
-              <label>
-                <span>Exam date</span>
-                <input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
-              </label>
-              <button type="submit">Add Exam</button>
-            </form>
+            <article className="planner-input-card" id="wizard-exams">
+              <b><IconOrbit size={22} /></b>
+              <div>
+                <h3>Exam target</h3>
+                <p>Set your next deadline so the schedule has real urgency.</p>
+              </div>
+              <footer>
+                <span>{exams.length} tracked</span>
+                <button onClick={() => setActiveModal('exam')} type="button">Add Exam</button>
+              </footer>
+            </article>
 
-            <form className="planner-mini-form" onSubmit={addTask}>
-              <h3>Daily action</h3>
-              <label>
-                <span>Subject</span>
-                <select value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
-                  <option value="">No subject</option>
-                  {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Task</span>
-                <input placeholder="Solve 20 active recall questions" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} required />
-              </label>
-              <label>
-                <span>Priority</span>
-                <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)}>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                </select>
-              </label>
-              <button type="submit">Add Task</button>
-            </form>
+            <article className="planner-input-card">
+              <b><IconSpark size={22} /></b>
+              <div>
+                <h3>Daily action</h3>
+                <p>Create one concrete recall task with priority.</p>
+              </div>
+              <footer>
+                <span>{openTasks.length} open</span>
+                <button onClick={() => setActiveModal('task')} type="button">Add Task</button>
+              </footer>
+            </article>
           </div>
         </section>
 
@@ -693,6 +677,99 @@ export default function PlannerPage() {
           </div>
         ) : null}
       </form>
+
+      {activeModal ? (
+        <div className="planner-modal-backdrop" onMouseDown={() => setActiveModal(null)}>
+          <section
+            aria-labelledby="planner-modal-title"
+            aria-modal="true"
+            className="planner-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header>
+              <div>
+                <span className="eyebrow">Planner input</span>
+                <h2 id="planner-modal-title">
+                  {activeModal === 'subject' ? 'Add subject' : activeModal === 'exam' ? 'Add exam' : 'Add daily action'}
+                </h2>
+                <p>
+                  {activeModal === 'subject'
+                    ? 'Map what you study and the weak topics you want FocusFlow to attack.'
+                    : activeModal === 'exam'
+                      ? 'Attach a deadline to a subject so the AI can plan around urgency.'
+                      : 'Add a focused task and choose whether it is high, medium, or low priority.'}
+                </p>
+              </div>
+              <button className="planner-modal-close" onClick={() => setActiveModal(null)} type="button">Close</button>
+            </header>
+
+            {activeModal === 'subject' ? (
+              <form className="planner-modal-form" onSubmit={addSubject}>
+                <label>
+                  <span>Subject name</span>
+                  <input autoFocus placeholder="Organic Chemistry" value={subjectName} onChange={(event) => setSubjectName(event.target.value)} required />
+                </label>
+                <label>
+                  <span>Weak topics</span>
+                  <textarea placeholder="Alcohols, reaction mechanisms, equations" value={weakTopics} onChange={(event) => setWeakTopics(event.target.value)} />
+                </label>
+                <button type="submit">Save Subject</button>
+              </form>
+            ) : null}
+
+            {activeModal === 'exam' ? (
+              <form className="planner-modal-form" onSubmit={addExam}>
+                <label>
+                  <span>Subject</span>
+                  <select autoFocus value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
+                    <option value="">No subject</option>
+                    {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Exam title</span>
+                  <input placeholder="Midterm exam" value={examTitle} onChange={(event) => setExamTitle(event.target.value)} required />
+                </label>
+                <label>
+                  <span>Exam date</span>
+                  <input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
+                </label>
+                <button type="submit">Save Exam</button>
+              </form>
+            ) : null}
+
+            {activeModal === 'task' ? (
+              <form className="planner-modal-form" onSubmit={addTask}>
+                <label>
+                  <span>Subject</span>
+                  <select autoFocus value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
+                    <option value="">No subject</option>
+                    {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Task</span>
+                  <input placeholder="Solve 20 active recall questions" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} required />
+                </label>
+                <label>
+                  <span>Due date</span>
+                  <input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
+                </label>
+                <label>
+                  <span>Priority</span>
+                  <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)}>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="low">Low</option>
+                  </select>
+                </label>
+                <button type="submit">Save Task</button>
+              </form>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </PageShell>
   )
 }

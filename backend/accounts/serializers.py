@@ -22,25 +22,19 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required=False, allow_blank=True)
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        username = (attrs.get("username") or "").strip()
-        email = (attrs.get("email") or "").strip()
+        email = attrs.get("email", "").strip().lower()
         password = attrs.get("password")
 
-        if not username and not email:
-            raise serializers.ValidationError("Provide either username or email.")
+        request_user = User.objects.filter(email__iexact=email).first()
 
-        request_user = None
-        if username:
-            request_user = User.objects.filter(username=username).first()
-        else:
-            request_user = User.objects.filter(email=email).first()
+        if not request_user:
+            raise serializers.ValidationError("Invalid credentials.")
 
-        if not request_user or not request_user.check_password(password):
+        if not request_user.check_password(password):
             raise serializers.ValidationError("Invalid credentials.")
 
         attrs["user"] = request_user
