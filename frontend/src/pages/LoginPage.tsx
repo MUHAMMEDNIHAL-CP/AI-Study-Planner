@@ -12,7 +12,7 @@ type TokenResponse = {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [credential, setCredential] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const payload = { email: email.trim(), password }
+      const payload = { credential: credential.trim(), password }
       const { data } = await api.post<TokenResponse>('/auth/login/', payload)
       setAuthTokens(data.access, data.refresh)
       toast.success('Logged in')
@@ -54,15 +54,15 @@ export default function LoginPage() {
           <div className="auth-card-head">
             <span>Welcome back</span>
             <h2>Sign in to your flow</h2>
-            <p>Use your email to continue your study workspace.</p>
+            <p>Use your username or email to continue your study workspace.</p>
           </div>
           {error ? <div className="auth-alert">{error}</div> : null}
 
           <label className="premium-field">
-            <span>Email Address</span>
+            <span>Email or Username</span>
             <div className="input-shell">
               <b>@</b>
-              <input autoComplete="email" placeholder="name@university.edu" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input autoComplete="username" placeholder="name@university.edu or username" value={credential} onChange={(e) => setCredential(e.target.value)} required />
             </div>
           </label>
 

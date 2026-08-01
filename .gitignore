@@ -1,7 +1,44 @@
+# Environment / secrets
 backend/.env
+backend/.env.*
+!backend/.env.example
+*.pem
+
+# Logs
 backend/*.log
+backend/logs/
+backend/**/logs/
+*.log
+
+# Database
 backend/db.sqlite3
+
+# Python
 backend/**/__pycache__/
 backend/**/*.pyc
+backend/**/*.pyo
+backend/staticfiles/
+backend/.venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Coverage / testing
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Node / frontend
 frontend/node_modules/
 frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

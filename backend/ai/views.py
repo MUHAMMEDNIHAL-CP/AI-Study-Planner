@@ -1,10 +1,26 @@
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .gemini import generate_json, gemini_configured
+from .gemini import generate_json, gemini_configured, sanitize_prompt
 from .models import AIHistory
 from .serializers import AIHistorySerializer
+
+
+class AIThrottle(ScopedRateThrottle):
+    scope = "ai"
+
+
+def _clean_text(value, field, default="", max_chars=2000):
+    """Return a sanitized string or the default if invalid/empty."""
+    if value is None:
+        return default
+    text = str(value)
+    try:
+        return sanitize_prompt(text, max_chars=max_chars, default=default)
+    except ValueError:
+        return default
 
 
 def fallback_tutor_answer(mode, topic):
@@ -37,10 +53,20 @@ def fallback_tutor_answer(mode, topic):
 
 
 class TutorView(APIView):
+    throttle_classes = [AIThrottle]
+
     def post(self, request):
-        mode = request.data.get("mode", "explain")
-        prompt = request.data.get("prompt") or request.data.get("question") or ""
-        topic = request.data.get("topic") or "the topic"
+        mode = _clean_text(request.data.get("mode"), "mode", default="explain", max_chars=50)
+        if mode not in {"explain", "summary", "flashcards"}:
+            mode = "explain"
+
+        prompt = _clean_text(
+            request.data.get("prompt") or request.data.get("question"),
+            "prompt",
+            default="",
+            max_chars=8000,
+        )
+        topic = _clean_text(request.data.get("topic"), "topic", default="the topic", max_chars=500)
 
         fallback = fallback_tutor_answer(mode, topic)
         gemini_answer, gemini_error = generate_json(
@@ -68,11 +94,18 @@ class TutorView(APIView):
 
 
 class FocusCoachView(APIView):
+    throttle_classes = [AIThrottle]
+
     def post(self, request):
-        prompt = (request.data.get("prompt") or request.data.get("message") or "").strip()
+        prompt = _clean_text(
+            request.data.get("prompt") or request.data.get("message"),
+            "prompt",
+            default="I feel distracted and need help starting.",
+            max_chars=8000,
+        )
         context = request.data.get("context") or {}
-        fatigue = context.get("fatigue", "unknown")
-        productivity = context.get("productivity", "unknown")
+        fatigue = _clean_text(context.get("fatigue"), "fatigue", default="unknown", max_chars=100)
+        productivity = _clean_text(context.get("productivity"), "productivity", default="unknown", max_chars=100)
 
         if not prompt:
             prompt = "I feel distracted and need help starting."
@@ -112,9 +145,13 @@ class FocusCoachView(APIView):
 
 
 class ExplainTopicView(APIView):
+    throttle_classes = [AIThrottle]
+
     def post(self, request):
-        topic = (request.data.get("topic") or "").strip() or "this topic"
-        level = request.data.get("level") or "kid"
+        topic = _clean_text(request.data.get("topic"), "topic", default="this topic", max_chars=500) or "this topic"
+        level = _clean_text(request.data.get("level"), "level", default="kid", max_chars=20)
+        if level not in {"kid", "exam", "research"}:
+            level = "kid"
 
         if level == "exam":
             explanation = (
@@ -182,3 +219,4 @@ class AIStatusView(APIView):
                 "provider": "gemini" if gemini_configured() else "mock",
             }
         )
+

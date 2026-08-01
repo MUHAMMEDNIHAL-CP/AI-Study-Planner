@@ -4,6 +4,7 @@ from django.core.validators import validate_email
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -12,7 +13,11 @@ from .serializers import LoginSerializer, RegisterSerializer
 User = get_user_model()
 
 
-def _make_jwt_pair_for_user(user: User):
+class AuthThrottle(ScopedRateThrottle):
+    scope = "auth"
+
+
+def _make_jwt_pair_for_user(user) -> dict:
     refresh = RefreshToken.for_user(user)
     return {
         "access": str(refresh.access_token),
@@ -27,6 +32,7 @@ class RegisterView(generics.CreateAPIView):
     """
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [AuthThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -42,6 +48,7 @@ class LoginView(APIView):
     Returns: { access, refresh }
     """
     permission_classes = [AllowAny]
+    throttle_classes = [AuthThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -106,3 +113,4 @@ class MeView(APIView):
 
     def put(self, request):
         return self.patch(request)
+

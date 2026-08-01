@@ -32,20 +32,31 @@ def load_local_env(path):
 load_local_env(BASE_DIR / ".env")
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+def _env_bool(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bz-snt6(1y7e2r=i_q!4m-9b2^7c7!gkfrf_!u_irqv(^x1vim'
+# In production, always set SECRET_KEY via the environment (e.g. Render dashboard).
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "django-insecure-bz-snt6(1y7e2r=i_q!4m-9b2^7c7!gkfrf_!u_irqv(^x1vim",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Defaults to DEBUG=False in production. Set DEBUG=True in backend/.env for local dev.
+DEBUG = _env_bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "192.168.1.8",
-]
+# Comma-separated list in the environment (e.g. ALLOWED_HOSTS=localhost,127.0.0.1,api.example.com)
+_allowed_hosts_raw = os.getenv("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = (
+    [host.strip() for host in _allowed_hosts_raw.split(",") if host.strip()]
+    if _allowed_hosts_raw
+    else ["localhost", "127.0.0.1", "192.168.1.5", "192.168.1.8"]
+)
 
 # Application definition
 
@@ -74,6 +85,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -105,13 +117,31 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# Production: set DATABASE_URL (e.g. postgres://user:pass@host:5432/dbname) via dj-database-url.
+# Local dev falls back to SQLite.
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_db_url = os.getenv("DATABASE_URL", "")
+if _db_url:
+    try:
+        import dj_database_url  # type: ignore
+
+        DATABASES = {
+            "default": dj_database_url.config(default=_db_url, conn_max_age=600)
+        }
+    except ImportError:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
 
 # Password validation
@@ -148,11 +178,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
+STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://192.168.1.8:5173",
-]
+# In production, set CORS_ALLOWED_ORIGINS to your frontend origin(s), comma-separated.
+_cors_raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = (
+    [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
+    if _cors_raw
+    else [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://192.168.1.5:5173",
+        "http://192.168.1.8:5173",
+    ]
+)
+
+# Only allow credentials if we have explicit allowed origins (do not combine with "*").
+CORS_ALLOW_CREDENTIALS = bool(CORS_ALLOWED_ORIGINS)
 
 # DRF / JWT
 REST_FRAMEWORK = {
@@ -162,20 +206,107 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('THROTTLE_ANON_RATE', '100/hour'),
+        'user': os.getenv('THROTTLE_USER_RATE', '1000/day'),
+        'auth': os.getenv('THROTTLE_AUTH_RATE', '10/minute'),
+        'ai': os.getenv('THROTTLE_AI_RATE', '30/minute'),
+    },
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_ACCESS_MINUTES', '30'))),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_DAYS', '7'))),
+    'ROTATE_REFRESH_TOKENS': _env_bool('JWT_ROTATE_REFRESH', default=False),
+    'BLACKLIST_AFTER_ROTATION': _env_bool('JWT_BLACKLIST_AFTER_ROTATION', default=False),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    # Keep tokens reasonably short-lived and reject if used after expiry.
+    'UPDATE_LAST_LOGIN': False,
 }
 
-# Let clients read responses (for SPA)
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS
+# HTTPS / Security headers
+# Enforced automatically when DEBUG=False. Override via env if needed.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", default=True)
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    X_FRAME_OPTIONS = "DENY"
 
-STATIC_URL = 'static/'
+# CSRF: The API uses stateless JWT bearer tokens, so no CSRF token is required for API calls.
+# Django's CSRF middleware stays enabled for the admin site. For cookie-based auth in the future,
+# ensure the frontend sends the CSRF token (X-CSRFToken) and that CORS_ALLOWED_ORIGINS is exact.
+
+# Logging & Monitoring
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "focusflow.log",
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 3,
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console", "file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "focusflow": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+# Ensure the logs directory exists so RotatingFileHandler can write on startup.
+os.makedirs(BASE_DIR / "logs", exist_ok=True)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

@@ -1,8 +1,21 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from './auth'
+import { clearAuthTokens, getAccessToken, getRefreshToken, isAuthenticated, setAuthTokens } from './auth'
 
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
+function resolveApiBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_API_URL as string | undefined
+  if (fromEnv) {
+    // Normalize: trim trailing slashes; in production, prefer HTTPS.
+    let url = fromEnv.trim().replace(/\/+$/, '')
+    if (url.startsWith('http://') && window.location.protocol === 'https:') {
+      url = `https://${url.slice('http://'.length)}`
+    }
+    return url
+  }
+  // Local dev default. The dev server is HTTP, but production builds should set VITE_API_URL.
+  return 'http://localhost:8000'
+}
+
+export const API_BASE_URL = resolveApiBaseUrl()
 
 type RetryConfig = InternalAxiosRequestConfig & {
   _retry?: boolean
@@ -20,9 +33,12 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  // Do not attach tokens to refresh requests or when the token is expired.
+  const isRefresh = config.url?.includes('/auth/token/refresh/')
+  if (isRefresh) return config
+
+  if (getAccessToken() && isAuthenticated()) {
+    config.headers.Authorization = `Bearer ${getAccessToken()}`
   } else {
     delete config.headers.Authorization
   }

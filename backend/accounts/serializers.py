@@ -22,14 +22,20 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
+    credential = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        email = attrs.get("email", "").strip().lower()
+        credential = attrs.get("credential", "").strip()
         password = attrs.get("password")
 
-        request_user = User.objects.filter(email__iexact=email).first()
+        if not credential:
+            raise serializers.ValidationError({"credential": "Enter your username or email."})
+
+        # Accept either a username or an email address.
+        request_user = User.objects.filter(
+            username__iexact=credential
+        ).first() or User.objects.filter(email__iexact=credential).first()
 
         if not request_user:
             raise serializers.ValidationError("Invalid credentials.")
