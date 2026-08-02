@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import { applyTheme } from '../lib/theme'
 import { api, getErrorMessage } from '../lib/api'
+import AppHeader from '../components/AppHeader'
 
 type UserProfile = { id: number; username: string; email: string }
 
@@ -148,10 +149,9 @@ export default function SettingsPage() {
 
   return (
     <div className="flow-page settings-page">
-      <header className="flow-header">
+      <AppHeader>
         <label className="flow-search"><span>Search settings...</span></label>
-        <div className="flow-user"><span>{displayName}</span><b>{initials}</b></div>
-      </header>
+      </AppHeader>
 
       <section className="page-title">
         <h1>Settings</h1>

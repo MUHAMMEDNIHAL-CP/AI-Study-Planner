@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
-import { useUserProfile, initials } from '../hooks/useUserProfile'
+import AppHeader from '../components/AppHeader'
 
 type Question = { id: number; question: string; options: string[]; answer_index: number; explanation: string }
 type Quiz = {
@@ -26,9 +26,6 @@ type Subject = {
 }
 
 export default function QuizCenterPage() {
-  const profile = useUserProfile()
-  const displayName = profile?.username ?? 'Recall Lab'
-  const avatar = initials(displayName)
   const [topic, setTopic] = useState('Neural Networks')
   const [difficulty, setDifficulty] = useState('medium')
   const [quiz, setQuiz] = useState<Quiz | null>(null)
@@ -38,7 +35,6 @@ export default function QuizCenterPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
   const [loading, setLoading] = useState(false)
-  const [currentTime, setCurrentTime] = useState(() => new Date())
   const answeredCount = Object.keys(answers).length
   const liveScore = useMemo(
     () => quiz?.questions.filter((question) => answers[question.id] === question.answer_index).length ?? 0,
@@ -66,11 +62,6 @@ export default function QuizCenterPage() {
   }, [accuracy, answeredCount, quiz, result])
 
   useEffect(() => {
-    const timer = window.setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
     let active = true
 
     async function loadStatus() {
@@ -96,17 +87,6 @@ export default function QuizCenterPage() {
       active = false
     }
   }, [])
-
-  const formattedTime = new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(currentTime)
-
-  const formattedDate = new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  }).format(currentTime)
 
   async function generateQuiz(event?: React.FormEvent | React.MouseEvent) {
     event?.preventDefault()
@@ -164,16 +144,7 @@ export default function QuizCenterPage() {
 
   return (
     <div className="flow-page quiz-page">
-      <header className="flow-header">
-        <div className="flow-time">
-          <span className="flow-time-clock">{formattedTime}</span>
-          <span className="flow-time-date">{formattedDate}</span>
-        </div>
-        <div className="flow-user">
-          <span className="flow-user-name">{displayName}</span>
-          <b>{avatar}</b>
-        </div>
-      </header>
+      <AppHeader />
 
       <section className="page-title planner-title-row">
         <div>

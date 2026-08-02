@@ -1577,7 +1577,7 @@ h3 {
   margin-bottom: 0;
 }
 
-.tutor-top strong {
+.tutor-top-brand {
   background: linear-gradient(90deg, #d8c8ff, var(--cyan));
   -webkit-background-clip: text;
   background-clip: text;

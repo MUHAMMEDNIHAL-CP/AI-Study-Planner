@@ -27,6 +27,14 @@ type NavGroup = {
   items: NavItem[]
 }
 
+type StreakData = {
+  current_streak: number
+  longest_streak: number
+  total_study_days: number
+  studied_today: boolean
+  next_milestone: { target: number; progress: number; remaining: number } | null
+}
+
 const navGroups: NavGroup[] = [
   {
     title: 'Home',
@@ -57,14 +65,14 @@ export default function Navigation() {
   const location = useLocation()
   const navigate = useNavigate()
   const profile = useUserProfile()
-  const [streak, setStreak] = useState(0)
+  const [streakData, setStreakData] = useState<StreakData | null>(null)
   const authed = isAuthenticated()
 
   useEffect(() => {
     if (!authed) return
-    api.get<{ streak: number }>('/study/dashboard/')
-      .then(({ data }) => setStreak(data.streak))
-      .catch(() => setStreak(0))
+    api.get<StreakData>('/study/dashboard/')
+      .then(({ data }) => setStreakData(data))
+      .catch(() => setStreakData(null))
   }, [authed])
 
   function logout() {
@@ -76,6 +84,8 @@ export default function Navigation() {
 
   const name = profile?.username ?? 'Scholar'
   const avatar = initials(name)
+  const currentStreak = streakData?.current_streak ?? 0
+  const milestone = streakData?.next_milestone
 
   return (
     <aside className="sidebar orbit-sidebar">
@@ -109,11 +119,28 @@ export default function Navigation() {
 
       <div className="sidebar-bottom">
         <div className="streak-card visible">
-          <span>Study streak</span>
-          <strong>{streak} day{streak === 1 ? '' : 's'}</strong>
-          <div className="streak-bar">
-            <i style={{ width: `${Math.min(streak * 12, 100)}%` }} />
+          <div className="streak-head">
+            <span>🔥 Study streak</span>
+            {streakData?.studied_today ? <span className="streak-dot active" title="Studied today" /> : <span className="streak-dot" title="Not studied today yet" />}
           </div>
+          <strong>{currentStreak} day{currentStreak === 1 ? '' : 's'}</strong>
+          <div className="streak-sub">
+            <span>🏆 Longest: {streakData?.longest_streak ?? 0} days</span>
+            <span>📆 {streakData?.total_study_days ?? 0} total</span>
+          </div>
+          {milestone ? (
+            <div className="streak-milestone">
+              <span>Next milestone: {milestone.target} days</span>
+              <div className="streak-bar">
+                <i style={{ width: `${Math.min(milestone.progress, 100)}%` }} />
+              </div>
+              <small>{milestone.remaining} day{milestone.remaining === 1 ? '' : 's'} to go</small>
+            </div>
+          ) : currentStreak >= 365 ? (
+            <div className="streak-milestone">
+              <span>🌟 Year-long streak! Incredible!</span>
+            </div>
+          ) : null}
         </div>
 
         <Link className="sidebar-user visible" to="/profile">

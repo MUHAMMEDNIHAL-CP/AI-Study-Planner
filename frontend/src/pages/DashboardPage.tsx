@@ -34,8 +34,27 @@ type ApiTask = {
   status: 'todo' | 'doing' | 'done'
 }
 
+type HeatmapCell = {
+  date: string
+  studied: boolean
+  dow: number
+}
+
+type StreakMilestone = {
+  target: number
+  progress: number
+  remaining: number
+}
+
 type DashboardSummary = {
+  current_streak: number
+  longest_streak: number
+  total_study_days: number
+  last_study_date: string | null
+  studied_today: boolean
+  next_milestone: StreakMilestone | null
   streak: number
+  heatmap: HeatmapCell[]
   week_minutes: number
   completion_rate: number
   open_tasks: number
@@ -211,7 +230,7 @@ export default function DashboardPage() {
     ? 'Syncing your planner, exams, tasks, and focus logs.'
     : nextTask
       ? `Your next best move is "${nextTask.title}". Keep it small, focused, and finishable.`
-      : `You have ${subjects.length} subject${subjects.length === 1 ? '' : 's'} and a ${dashboard?.streak ?? 0}-day streak. Add one priority task to begin.`
+      : `You have ${subjects.length} subject${subjects.length === 1 ? '' : 's'} and a ${dashboard?.current_streak ?? 0}-day streak. Add one priority task to begin.`
 
   return (
     <PageShell
@@ -309,6 +328,52 @@ export default function DashboardPage() {
               <h2>Focus Snapshot</h2>
               <p>{averageFocus >= 70 ? 'You are in a good rhythm. Keep one quiz or recall block today.' : 'Start with a shorter focus session and log it afterward.'}</p>
             </div>
+          </section>
+
+          <section className="page-card dashboard-streak-card">
+            <div className="dashboard-card-head">
+              <div>
+                <span>🔥 Streak &amp; Consistency</span>
+                <h2>Your Study Orbit</h2>
+              </div>
+            </div>
+            <div className="streak-stats-row">
+              <div>
+                <strong>{dashboard?.current_streak ?? 0}</strong>
+                <span>Current streak</span>
+              </div>
+              <div>
+                <strong>{dashboard?.longest_streak ?? 0}</strong>
+                <span>Longest streak</span>
+              </div>
+              <div>
+                <strong>{dashboard?.total_study_days ?? 0}</strong>
+                <span>Total days</span>
+              </div>
+            </div>
+            {dashboard?.next_milestone ? (
+              <div className="streak-milestone-bar">
+                <span>Next milestone: {dashboard.next_milestone.target} days</span>
+                <div className="streak-bar">
+                  <i style={{ width: `${Math.min(dashboard.next_milestone.progress, 100)}%` }} />
+                </div>
+                <small>{dashboard.next_milestone.remaining} day{dashboard.next_milestone.remaining === 1 ? '' : 's'} to go</small>
+              </div>
+            ) : null}
+            {dashboard?.heatmap ? (
+              <div className="study-heatmap">
+                <span className="heatmap-label">Study activity</span>
+                <div className="heatmap-grid">
+                  {dashboard.heatmap.map((cell) => (
+                    <span
+                      key={cell.date}
+                      className={`heatmap-cell ${cell.studied ? 'heatmap-active' : 'heatmap-empty'}`}
+                      title={`${cell.date}${cell.studied ? ' — studied' : ' — no study'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="page-card dashboard-ai-card">

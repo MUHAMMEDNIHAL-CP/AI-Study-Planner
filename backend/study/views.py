@@ -12,6 +12,7 @@ from productivity.models import ProductivityLog
 
 from .models import Exam, StudyTask, Subject
 from .serializers import ExamSerializer, StudyTaskSerializer, SubjectSerializer
+from .streak import compute_streak_stats
 
 
 class OwnedQuerysetMixin:
@@ -65,17 +66,12 @@ class DashboardView(APIView):
         total_tasks = tasks.count()
         minutes = logs.aggregate(total=Sum("minutes_studied"))["total"] or 0
 
-        streak = 0
-        for offset in range(30):
-            day = today - timedelta(days=offset)
-            if logs.filter(date=day, minutes_studied__gt=0).exists():
-                streak += 1
-            else:
-                break
+        # Duolingo-style unlimited streak stats (current, longest, total days, heatmap...).
+        streak_stats = compute_streak_stats(request.user)
 
         return Response(
             {
-                "streak": streak,
+                **streak_stats,
                 "week_minutes": minutes,
                 "completion_rate": round((completed / total_tasks) * 100) if total_tasks else 0,
                 "open_tasks": total_tasks - completed,

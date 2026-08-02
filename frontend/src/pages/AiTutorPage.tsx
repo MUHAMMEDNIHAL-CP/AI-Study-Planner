@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
+import AppHeader from '../components/AppHeader'
 
 type TutorMode = 'explain' | 'summary' | 'flashcards'
 type ExplainLevel = 'kid' | 'exam' | 'research'
@@ -35,11 +36,6 @@ type AiHistory = {
   prompt: string
   response: Partial<TutorResponse & ExplainerResponse>
   created_at: string
-}
-
-type UserProfile = {
-  username: string
-  email: string
 }
 
 type SpeechResultEvent = {
@@ -110,13 +106,11 @@ export default function AiTutorPage() {
       text: 'Choose a mode, enter a topic, and ask what you want to understand. I will explain it in a study-friendly way.',
     },
   ])
-  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [provider, setProvider] = useState('checking')
   const [loading, setLoading] = useState(false)
   const [listening, setListening] = useState(false)
 
   const providerLabel = provider === 'gemini' ? 'Gemini live' : provider === 'mock' ? 'Fallback mode' : provider
-  const firstName = profile?.username?.split(/\s+/)[0] || 'Scholar'
   const activeText = responseText(answer, explainer)
   const latestFlashcards = useMemo(() => {
     const fromAnswer = answer?.flashcards
@@ -130,14 +124,12 @@ export default function AiTutorPage() {
 
     async function loadTutorData() {
       try {
-        const [statusRes, profileRes, historyRes] = await Promise.all([
+        const [statusRes, historyRes] = await Promise.all([
           api.get<{ provider: string; gemini_configured: boolean }>('/ai/status/'),
-          api.get<UserProfile>('/auth/me/'),
           api.get<AiHistory[]>('/ai/history/'),
         ])
         if (!active) return
         setProvider(statusRes.data.gemini_configured ? statusRes.data.provider : 'mock')
-        setProfile(profileRes.data)
         setHistory(historyRes.data.filter((item) => item.feature === 'tutor'))
       } catch (error) {
         if (!active) return
@@ -287,11 +279,10 @@ export default function AiTutorPage() {
 
   return (
     <div className="flow-page tutor-page">
-      <header className="flow-header tutor-top">
-        <strong>FocusFlow AI</strong>
+      <AppHeader className="tutor-top">
         <label className="flow-search"><span>Ask difficult concepts, summaries, and flashcards...</span></label>
-        <div className="flow-user"><span>{firstName}</span><b /></div>
-      </header>
+        <strong className="tutor-top-brand">FocusFlow AI</strong>
+      </AppHeader>
 
       <section className="tutor-hero">
         <div>
