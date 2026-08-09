@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useUserProfile, initials } from '../hooks/useUserProfile'
+import { IconSettings } from './icons'
 
 type PageShellProps = {
   eyebrow?: string
@@ -48,9 +49,12 @@ export default function PageShell({
         <div className="page-shell-time">
           <span className="page-shell-time-clock">{formattedTime}</span>
           <span className="page-shell-time-date">{formattedDate}</span>
-        </div>
+</div>
         <div className="page-shell-spacer" />
         <Link className="page-shell-user" to="/profile">
+          <Link className="page-shell-settings" to="/settings" title="Settings">
+            <IconSettings size={16} />
+          </Link>
           <span>{displayName}</span>
           <b>{avatar}</b>
         </Link>

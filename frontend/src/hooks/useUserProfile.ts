@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { isAuthenticated } from '../lib/auth'
 
 export type UserProfile = {
   id?: number
@@ -17,6 +18,7 @@ export function useUserProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
+    if (!isAuthenticated()) return
     let active = true
     api.get<UserProfile>('/auth/me/')
       .then(({ data }) => {

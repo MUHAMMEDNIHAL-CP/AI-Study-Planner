@@ -1,8 +1,8 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { clearAuthTokens, isAuthenticated } from '../lib/auth'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useUserProfile, initials } from '../hooks/useUserProfile'
+import { clearAuthTokens, isAuthenticated } from '../lib/auth'
+import { initials, useUserProfile } from '../hooks/useUserProfile'
 import {
   IconAnalytics,
   IconBurnout,
@@ -91,13 +91,13 @@ export default function Navigation() {
     <aside className="sidebar orbit-sidebar">
       <Link className="sidebar-brand" to="/dashboard">
         <span className="sidebar-mark"><IconOrbit size={22} /></span>
-        <span>
+        <span className="sidebar-brand-text">
           <strong>FocusFlow</strong>
           <small>Study Orbit</small>
         </span>
       </Link>
 
-      <nav className="sidebar-groups">
+      <nav className="sidebar-groups" aria-label="Main navigation">
         {navGroups.map((group) => (
           <div className="sidebar-group" key={group.title}>
             <span className="sidebar-group-title">{group.title}</span>
@@ -120,13 +120,13 @@ export default function Navigation() {
       <div className="sidebar-bottom">
         <div className="streak-card visible">
           <div className="streak-head">
-            <span>🔥 Study streak</span>
-            {streakData?.studied_today ? <span className="streak-dot active" title="Studied today" /> : <span className="streak-dot" title="Not studied today yet" />}
+            <span>Study streak</span>
+            <span className={streakData?.studied_today ? 'streak-dot active' : 'streak-dot'} title={streakData?.studied_today ? 'Studied today' : 'Not studied today yet'} />
           </div>
           <strong>{currentStreak} day{currentStreak === 1 ? '' : 's'}</strong>
           <div className="streak-sub">
-            <span>🏆 Longest: {streakData?.longest_streak ?? 0} days</span>
-            <span>📆 {streakData?.total_study_days ?? 0} total</span>
+            <span>Longest: {streakData?.longest_streak ?? 0} days</span>
+            <span>{streakData?.total_study_days ?? 0} total study days</span>
           </div>
           {milestone ? (
             <div className="streak-milestone">
@@ -138,17 +138,18 @@ export default function Navigation() {
             </div>
           ) : currentStreak >= 365 ? (
             <div className="streak-milestone">
-              <span>🌟 Year-long streak! Incredible!</span>
+              <span>Year-long streak. Incredible.</span>
             </div>
-          ) : null}
+) : null}
         </div>
 
         <Link className="sidebar-user visible" to="/profile">
           <span className="sidebar-avatar">{avatar}</span>
-          <span>
+          <span className="sidebar-user-main">
             <strong>{name}</strong>
             <small>{profile?.email ?? 'Student workspace'}</small>
           </span>
+          <IconSettings className="sidebar-user-settings" size={18} />
         </Link>
 
         <Link className="sidebar-settings" to="/settings">

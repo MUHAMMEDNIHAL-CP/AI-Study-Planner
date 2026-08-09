@@ -180,7 +180,7 @@ h3 {
   border: 0;
   background: transparent;
   color: var(--purple);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .gradient-action,
@@ -222,7 +222,7 @@ h3 {
   padding: 0 26px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .danger-button {
@@ -273,7 +273,7 @@ h3 {
   margin-top: 11px;
   color: var(--muted);
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -295,7 +295,7 @@ h3 {
   padding: 0 16px;
   color: #d9d7e6;
   font-size: 1.02rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .sidebar-link:hover {
@@ -345,7 +345,7 @@ h3 {
   background: transparent;
   color: var(--muted);
   text-align: left;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 /* Public auth */
@@ -470,7 +470,7 @@ h3 {
   gap: 12px;
   margin-top: 24px;
   color: #d8d3e8;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -576,7 +576,7 @@ h3 {
   background: rgba(31, 38, 62, 0.8);
   color: var(--text);
   font-size: 1.08rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .auth-switch {
@@ -632,7 +632,7 @@ h3 {
 .marketing-nav nav {
   display: flex;
   gap: 26px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .marketing-hero {
@@ -891,7 +891,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .flow-user b {
@@ -1730,7 +1730,7 @@ h3 {
   gap: 8px;
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .tutor-composer input,
@@ -2033,7 +2033,7 @@ h3 {
   gap: 10px;
   margin-top: 18px;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .quiz-topic-input input {
@@ -2632,7 +2632,7 @@ h3 {
   display: grid;
   gap: 8px;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .burnout-number-grid input {
@@ -2840,7 +2840,7 @@ h3 {
   display: grid;
   align-content: start;
   gap: 10px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .profile-edit-grid input:disabled,
@@ -3155,7 +3155,7 @@ h3 {
   display: grid;
   gap: 8px;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .analytics-log-form button {
@@ -3481,7 +3481,7 @@ h3 {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .section-heading h2 {
@@ -3724,7 +3724,7 @@ h3 {
   color: #d6c7ff;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 @keyframes focusBreath {
@@ -5331,7 +5331,7 @@ video {
   border-radius: 14px;
   background: linear-gradient(135deg, var(--planner-lavender), var(--planner-accent));
   color: #160636;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -5678,7 +5678,7 @@ video {
 
 .planner-plan-time span {
   color: var(--planner-accent);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .planner-plan-time b {
@@ -6370,7 +6370,7 @@ video {
   gap: 8px;
   color: var(--muted);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .planner-modal-form input,
@@ -6465,6 +6465,20 @@ video {
   font-size: 0.78rem;
 }
 
+.page-shell-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.page-shell-settings:hover {
+  color: var(--accent, var(--purple));
+  background: rgba(203, 182, 255, 0.12);
+}
+
 .page-shell-hero {
   display: flex;
   align-items: flex-end;
@@ -6495,7 +6509,7 @@ video {
 
 .sidebar-groups {
   display: grid;
-  gap: 20px;
+  gap: 5px;
   min-height: 0;
   overflow: auto;
 }

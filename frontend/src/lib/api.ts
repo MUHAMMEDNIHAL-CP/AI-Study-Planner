@@ -32,13 +32,29 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   // Do not attach tokens to refresh requests or when the token is expired.
   const isRefresh = config.url?.includes('/auth/token/refresh/')
   if (isRefresh) return config
 
-  if (getAccessToken() && isAuthenticated()) {
-    config.headers.Authorization = `Bearer ${getAccessToken()}`
+  let access = getAccessToken()
+  const refresh = getRefreshToken()
+
+  // If the access token is missing or expired but we have a refresh token,
+  // proactively refresh before sending the request.
+  if ((!access || !isAuthenticated()) && refresh) {
+    try {
+      const res = await axios.post<{ access: string }>(`${API_BASE_URL}/api/auth/token/refresh/`, { refresh })
+      setAuthTokens(res.data.access)
+      access = res.data.access
+    } catch {
+      clearAuthTokens()
+      window.location.assign('/login')
+    }
+  }
+
+  if (access && isAuthenticated()) {
+    config.headers.Authorization = `Bearer ${access}`
   } else {
     delete config.headers.Authorization
   }

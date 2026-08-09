@@ -55,7 +55,7 @@ _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = (
     [host.strip() for host in _allowed_hosts_raw.split(",") if host.strip()]
     if _allowed_hosts_raw
-    else ["localhost", "127.0.0.1", "192.168.1.5", "192.168.1.8"]
+else ["localhost", "127.0.0.1", "192.168.1.5", "192.168.1.6", "192.168.1.7", "192.168.1.8"]
 )
 
 # Application definition
@@ -188,9 +188,11 @@ CORS_ALLOWED_ORIGINS = (
     [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
     if _cors_raw
     else [
-        "http://localhost:5173",
+"http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://192.168.1.5:5173",
+        "http://192.168.1.6:5173",
+        "http://192.168.1.7:5173",
         "http://192.168.1.8:5173",
     ]
 )
@@ -211,11 +213,11 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
         'rest_framework.throttling.ScopedRateThrottle',
     ),
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': os.getenv('THROTTLE_ANON_RATE', '100/hour'),
-        'user': os.getenv('THROTTLE_USER_RATE', '1000/day'),
-        'auth': os.getenv('THROTTLE_AUTH_RATE', '10/minute'),
-        'ai': os.getenv('THROTTLE_AI_RATE', '30/minute'),
+'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('THROTTLE_ANON_RATE', '1000/hour'),
+        'user': os.getenv('THROTTLE_USER_RATE', '100000/day'),
+        'auth': os.getenv('THROTTLE_AUTH_RATE', '120/minute'),
+        'ai': os.getenv('THROTTLE_AI_RATE', '60/minute'),
     },
 }
 
