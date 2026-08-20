@@ -1,23 +1,47 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import SetupStepper from '../components/SetupStepper'
-import { IconFocus, IconOrbit, IconPlanner, IconSpark } from '../components/icons'
+import { IconPlanner, IconSpark } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 
-type Subject = { id: number; name: string; weekly_goal_hours: number; weak_topics: string }
-type Exam = { id: number; title: string; date: string; priority: string; subject_name?: string }
+type Subject = {
+  id: number
+  name: string
+  weekly_goal_hours: number
+  weak_topics: string
+  topics_completed: number
+  total_topics: number
+}
+
+type Exam = {
+  id: number
+  title: string
+  date: string
+  priority: string
+  subject_name?: string
+  subject?: number | null
+}
+
 type Task = {
   id: number
   title: string
+  description: string
   status: string
   duration_minutes: number
   subject_name?: string
+  subject?: number | null
   due_date?: string
+  scheduled_for?: string
   priority?: string
 }
-type PlanBlock = { time: string; subject: string; duration_minutes: number | string; task: string }
+
+type PlanBlock = {
+  time: string
+  subject: string
+  duration_minutes: number | string
+  task: string
+}
+
 type PlanResponse = {
   provider?: string
   goal: string
@@ -25,174 +49,222 @@ type PlanResponse = {
   plan: PlanBlock[]
   revision_schedule: string[]
 }
-type PlannerModal = 'subject' | 'exam' | 'task' | null
 
-function toLocalDateInput(date = new Date()) {
+type ViewMode = 'day' | 'week' | 'month'
+type ModalKind = 'session' | 'ai' | null
+
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 6)
+const DURATION_OPTIONS = [25, 35, 45, 50, 60, 90, 120]
+const SUBJECT_COLORS = [
+  '#6366f1', '#ec4899', '#f59e0b', '#10b981',
+  '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6',
+  '#f97316', '#06b6d4', '#a855f7', '#84cc16',
+]
+const PRIORITY_OPTIONS = ['high', 'medium', 'low'] as const
+
+function toLocalDateInput(date = new Date()): string {
   const offset = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offset).toISOString().slice(0, 10)
 }
 
-const today = toLocalDateInput()
+function daysUntil(dateString: string): number {
+  const target = new Date(`${dateString}T00:00:00`)
+  const now = new Date(`${toLocalDateInput()}T00:00:00`)
+  return Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 86_400_000))
+}
 
-function monthCells(exams: Exam[]) {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
+function shortDate(dateString?: string): string {
+  if (!dateString) return 'No date'
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function minutesLabel(minutes: number | string): string {
+  const n = Number(minutes)
+  if (!Number.isFinite(n)) return `${minutes} min`
+  if (n >= 60) {
+    const h = Math.floor(n / 60)
+    const m = n % 60
+    return m ? `${h}h ${m}m` : `${h}h`
+  }
+  return `${n} min`
+}
+
+function getHourFromScheduled(scheduledFor?: string): number | null {
+  if (!scheduledFor) return null
+  const date = new Date(scheduledFor)
+  if (isNaN(date.getTime())) return null
+  return date.getHours()
+}
+
+function getWeekDays(dateStr: string): { date: string; dayName: string; dayNum: number; isToday: boolean }[] {
+  const d = new Date(`${dateStr}T12:00:00`)
+  const dayOfWeek = d.getDay()
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const monday = new Date(d)
+  monday.setDate(d.getDate() + mondayOffset)
+  const today = toLocalDateInput()
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(monday)
+    day.setDate(monday.getDate() + i)
+    const date = toLocalDateInput(day)
+    return {
+      date,
+      dayName: day.toLocaleDateString(undefined, { weekday: 'short' }),
+      dayNum: day.getDate(),
+      isToday: date === today,
+    }
+  })
+}
+
+function getSubjectColor(subjectId: number | null | undefined, subjects: Subject[]): string {
+  if (subjectId == null) return SUBJECT_COLORS[0]
+  const index = subjects.findIndex((s) => s.id === subjectId)
+  return SUBJECT_COLORS[Math.max(0, index) % SUBJECT_COLORS.length]
+}
+
+function formatFullDate(dateStr: string): string {
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function navigateDate(dateStr: string, direction: -1 | 1, view: ViewMode): string {
+  const d = new Date(`${dateStr}T12:00:00`)
+  if (view === 'day') d.setDate(d.getDate() + direction)
+  else if (view === 'week') d.setDate(d.getDate() + direction * 7)
+  else d.setMonth(d.getMonth() + direction)
+  return toLocalDateInput(d)
+}
+
+function monthGrid(year: number, month: number) {
   const first = new Date(year, month, 1)
   const totalDays = new Date(year, month + 1, 0).getDate()
   const blanks = first.getDay()
-  const examDays = new Set(
-    exams
-      .map((exam) => new Date(exam.date))
-      .filter((date) => date.getFullYear() === year && date.getMonth() === month)
-      .map((date) => date.getDate()),
-  )
-
   return {
     label: first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-    cells: [...Array.from({ length: blanks }, () => null), ...Array.from({ length: totalDays }, (_, index) => index + 1)],
-    todayDate: now.getDate(),
-    examDays,
+    cells: [
+      ...Array.from({ length: blanks }, () => null),
+      ...Array.from({ length: totalDays }, (_, i) => {
+        const d = new Date(year, month, i + 1)
+        return toLocalDateInput(d)
+      }),
+    ],
   }
 }
 
-function scrollToWizard(id: string) {
-  const node = document.getElementById(id)
-  if (!node) return
-  node.classList.add('highlight')
-  node.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  window.setTimeout(() => node.classList.remove('highlight'), 1400)
-}
-
-function daysUntil(dateString: string) {
-  const target = new Date(`${dateString}T00:00:00`)
-  const start = new Date(`${today}T00:00:00`)
-  return Math.max(0, Math.ceil((target.getTime() - start.getTime()) / 86_400_000))
-}
-
-function shortDate(dateString?: string) {
-  if (!dateString) return 'No due date'
-  return new Date(`${dateString}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function minutesLabel(minutes: number | string) {
-  const numeric = Number(minutes)
-  if (!Number.isFinite(numeric)) return `${minutes} min`
-  if (numeric >= 60) return `${Math.floor(numeric / 60)}h ${numeric % 60 ? `${numeric % 60}m` : ''}`.trim()
-  return `${numeric} min`
-}
-
-function priorityTone(priority?: string) {
-  if (priority === 'high') return 'High'
-  if (priority === 'low') return 'Light'
-  return 'Medium'
-}
-
-function urgencyText(exam?: Exam) {
-  if (!exam) return 'Waiting for target'
-  const days = daysUntil(exam.date)
-  if (days <= 2) return 'Final push'
-  if (days <= 7) return 'High priority'
-  if (days <= 21) return 'Build momentum'
-  return 'Long range'
-}
-
-function urgencyClass(exam: Exam) {
-  const days = daysUntil(exam.date)
-  if (days <= 2) return 'critical'
-  if (days <= 7) return 'soon'
-  if (days <= 21) return 'steady'
-  return 'calm'
+function priorityColor(priority?: string): string {
+  if (priority === 'high') return '#ef4444'
+  if (priority === 'low') return '#3b82f6'
+  return '#f59e0b'
 }
 
 export default function PlannerPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [exams, setExams] = useState<Exam[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [subjectName, setSubjectName] = useState('')
-  const [weakTopics, setWeakTopics] = useState('')
-  const [examTitle, setExamTitle] = useState('')
-  const [examDate, setExamDate] = useState(today)
-  const [taskTitle, setTaskTitle] = useState('')
-  const [taskPriority, setTaskPriority] = useState('medium')
-  const [dailyHours, setDailyHours] = useState('3')
-  const [goal, setGoal] = useState('Deep work revision sprint')
-  const [selectedSubjectId, setSelectedSubjectId] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('day')
+  const [selectedDate, setSelectedDate] = useState(toLocalDateInput())
   const [plan, setPlan] = useState<PlanResponse | null>(null)
-  const [provider, setProvider] = useState('checking')
   const [loading, setLoading] = useState(true)
   const [planLoading, setPlanLoading] = useState(false)
-  const [activeModal, setActiveModal] = useState<PlannerModal>(null)
+  const [modal, setModal] = useState<ModalKind>(null)
 
-  const activeSubject = subjects.find((subject) => String(subject.id) === selectedSubjectId)
-  const calendar = useMemo(() => monthCells(exams), [exams])
-  const weakTopicText = subjects.map((subject) => subject.weak_topics).filter(Boolean).join(', ')
+  const [sessionSubject, setSessionSubject] = useState('')
+  const [sessionTopic, setSessionTopic] = useState('')
+  const [sessionDate, setSessionDate] = useState(toLocalDateInput())
+  const [sessionTime, setSessionTime] = useState('09:00')
+  const [sessionDuration, setSessionDuration] = useState(45)
+  const [sessionPriority, setSessionPriority] = useState<'high' | 'medium' | 'low'>('medium')
+  const [sessionNotes, setSessionNotes] = useState('')
+
+  const [aiExamDate, setAiExamDate] = useState(toLocalDateInput())
+  const [aiDailyHours, setAiDailyHours] = useState(4)
+  const [aiWeakSubject, setAiWeakSubject] = useState('')
+  const [aiStrongSubject, setAiStrongSubject] = useState('')
+
+  const today = toLocalDateInput()
+
   const upcomingExams = useMemo(
-    () => [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5),
-    [exams],
+    () =>
+      [...exams]
+        .filter((e) => new Date(e.date) >= new Date(today))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 5),
+    [exams, today],
   )
-  const openTasks = useMemo(() => tasks.filter((task) => task.status !== 'done'), [tasks])
-  const sortedTasks = useMemo(
-    () => [...tasks]
-      .sort((a, b) => {
-        const statusOrder = Number(a.status === 'done') - Number(b.status === 'done')
-        if (statusOrder !== 0) return statusOrder
-        return new Date(a.due_date || today).getTime() - new Date(b.due_date || today).getTime()
-      }),
-    [tasks],
-  )
-  const completedTasks = tasks.length - openTasks.length
-  const taskProgress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0
-  const totalStudyMinutes = tasks.reduce((sum, task) => sum + Number(task.duration_minutes || 0), 0)
-  const nextExam = upcomingExams[0]
-  const planBlocks = plan?.plan ?? []
-  const readiness = Math.round(
-    ((subjects.length ? 1 : 0) + (exams.length ? 1 : 0) + (tasks.length ? 1 : 0) + (plan ? 1 : 0)) * 25,
-  )
-  const nextPlannerAction = !subjects.length
-    ? { label: 'Add first subject', target: 'wizard-subjects' }
-    : !exams.length
-      ? { label: 'Add exam date', target: 'wizard-exams' }
-      : !plan
-        ? { label: 'Create timetable', target: 'wizard-plan' }
-        : { label: 'Review timetable', target: 'wizard-plan' }
-  const hourPresets = [
-    { label: 'Light', value: '1.5', detail: 'low stress' },
-    { label: 'Balanced', value: '3', detail: 'daily flow' },
-    { label: 'Sprint', value: '5', detail: 'exam mode' },
-  ]
 
-  const setupSteps = useMemo(() => {
-    const hasSubjects = subjects.length > 0
-    const hasExams = exams.length > 0
-    const hasPlan = Boolean(plan)
-    return [
-      {
-        id: 'wizard-subjects',
-        label: 'Step 1',
-        title: 'Subject map',
-        detail: hasSubjects ? `${subjects.length} subject${subjects.length === 1 ? '' : 's'} ready` : 'Add weak topics first',
-        done: hasSubjects,
-        active: !hasSubjects,
-      },
-      {
-        id: 'wizard-exams',
-        label: 'Step 2',
-        title: 'Exam target',
-        detail: hasExams ? `${exams.length} exam${exams.length === 1 ? '' : 's'} tracked` : 'Set your nearest deadline',
-        done: hasExams,
-        active: hasSubjects && !hasExams,
-      },
-      {
-        id: 'wizard-plan',
-        label: 'Step 3',
-        title: 'AI timetable',
-        detail: hasPlan ? 'Plan generated' : 'Create a daily flow',
-        done: hasPlan,
-        active: hasSubjects && hasExams && !hasPlan,
-      },
-    ]
-  }, [exams.length, plan, subjects.length])
+  const todayTasks = useMemo(
+    () =>
+      tasks.filter((t) => {
+        if (t.scheduled_for) {
+          return t.scheduled_for.slice(0, 10) === selectedDate
+        }
+        return t.due_date === selectedDate && t.status !== 'done'
+      }),
+    [tasks, selectedDate],
+  )
+
+  const weekTasks = useMemo(() => {
+    const days = getWeekDays(selectedDate)
+    const start = days[0].date
+    const end = days[6].date
+    return tasks.filter((t) => {
+      const ref = t.scheduled_for?.slice(0, 10) ?? t.due_date
+      return ref && ref >= start && ref <= end
+    })
+  }, [tasks, selectedDate])
+
+  const monthTasks = useMemo(() => {
+    const d = new Date(`${selectedDate}T12:00:00`)
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    return tasks.filter((t) => {
+      const ref = t.scheduled_for ?? t.due_date
+      if (!ref) return false
+      const rd = new Date(ref)
+      return rd.getFullYear() === year && rd.getMonth() === month
+    })
+  }, [tasks, selectedDate])
+
+  const completedCount = tasks.filter((t) => t.status === 'done').length
+  const completionRate = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0
+
+  const weekStart = getWeekDays(selectedDate)[0].date
+  const weekEnd = getWeekDays(selectedDate)[6].date
+  const weekSessions = tasks.filter(
+    (t) =>
+      t.scheduled_for &&
+      t.scheduled_for.slice(0, 10) >= weekStart &&
+      t.scheduled_for.slice(0, 10) <= weekEnd,
+  )
+  const weekHours = weekSessions.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
+
+  const dayTaskCount = todayTasks.length
+  const dayHours = todayTasks.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
+
+  const calendarInfo = useMemo(() => {
+    const d = new Date(`${selectedDate}T12:00:00`)
+    return monthGrid(d.getFullYear(), d.getMonth())
+  }, [selectedDate])
+
+  const monthTaskDates = useMemo(() => {
+    const set = new Set<string>()
+    monthTasks.forEach((t) => {
+      const ref = t.scheduled_for?.slice(0, 10) ?? t.due_date
+      if (ref) set.add(ref)
+    })
+    return set
+  }, [monthTasks])
+
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate])
+
+  const planBlocks = plan?.plan ?? []
 
   const loadPlanner = useCallback(async () => {
     const [subjectRes, examRes, taskRes] = await Promise.all([
@@ -203,106 +275,97 @@ export default function PlannerPage() {
     setSubjects(subjectRes.data)
     setExams(examRes.data)
     setTasks(taskRes.data)
-    setSelectedSubjectId((current) => current || (subjectRes.data[0] ? String(subjectRes.data[0].id) : ''))
   }, [])
 
   useEffect(() => {
     let active = true
-
-    async function loadInitialPlanner() {
+    async function init() {
       try {
-        const [statusRes] = await Promise.all([api.get<{ provider: string }>('/ai/status/'), loadPlanner()])
-        if (active) setProvider(statusRes.data.provider)
+        await loadPlanner()
       } catch (err) {
         if (active) toast.error(getErrorMessage(err))
       } finally {
         if (active) setLoading(false)
       }
     }
-
-    void loadInitialPlanner()
-    return () => {
-      active = false
-    }
+    void init()
+    return () => { active = false }
   }, [loadPlanner])
 
-  async function addSubject(event: FormEvent) {
-    event.preventDefault()
-    try {
-      const { data } = await api.post<Subject>('/study/subjects/', {
-        name: subjectName.trim(),
-        weak_topics: weakTopics.trim(),
-        weekly_goal_hours: 5,
-      })
-      setSubjectName('')
-      setWeakTopics('')
-      setSelectedSubjectId(String(data.id))
-      toast.success('Subject added')
-      setActiveModal(null)
-      await loadPlanner()
-      scrollToWizard('wizard-exams')
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
+  function resetSessionForm() {
+    setSessionSubject('')
+    setSessionTopic('')
+    setSessionDate(toLocalDateInput())
+    setSessionTime('09:00')
+    setSessionDuration(45)
+    setSessionPriority('medium')
+    setSessionNotes('')
   }
 
-  async function deleteSubject(subjectId: number) {
-    try {
-      await api.delete(`/study/subjects/${subjectId}/`)
-      if (selectedSubjectId === String(subjectId)) setSelectedSubjectId('')
-      toast.success('Subject removed')
-      await loadPlanner()
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
+  function resetAiForm() {
+    setAiExamDate(toLocalDateInput())
+    setAiDailyHours(4)
+    setAiWeakSubject('')
+    setAiStrongSubject('')
   }
 
-  async function addExam(event: FormEvent) {
-    event.preventDefault()
+  async function handleCreateSession(e: FormEvent) {
+    e.preventDefault()
     try {
-      await api.post('/study/exams/', {
-        title: examTitle.trim(),
-        date: examDate,
-        priority: 'high',
-        subject: selectedSubjectId ? Number(selectedSubjectId) : null,
-      })
-      setExamTitle('')
-      toast.success('Exam added')
-      setActiveModal(null)
-      await loadPlanner()
-      scrollToWizard('wizard-plan')
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
-  }
-
-  async function addTask(event: FormEvent) {
-    event.preventDefault()
-    try {
+      const subjectId = sessionSubject ? Number(sessionSubject) : null
+      const subjectObj = subjects.find((s) => s.id === subjectId)
+      const title = sessionTopic.trim() || (subjectObj ? `${subjectObj.name} session` : 'Study session')
+      const scheduledFor = `${sessionDate}T${sessionTime}:00`
       await api.post('/study/tasks/', {
-        title: taskTitle.trim(),
-        due_date: examDate,
-        duration_minutes: 45,
-        priority: taskPriority,
-        subject: selectedSubjectId ? Number(selectedSubjectId) : null,
+        title,
+        description: sessionNotes.trim(),
+        subject: subjectId,
+        due_date: sessionDate,
+        scheduled_for: scheduledFor,
+        duration_minutes: sessionDuration,
+        priority: sessionPriority,
+        status: 'todo',
       })
-      setTaskTitle('')
-      setTaskPriority('medium')
-      toast.success('Task added')
-      setActiveModal(null)
+      toast.success('Study session created')
+      setModal(null)
+      resetSessionForm()
       await loadPlanner()
     } catch (err) {
       toast.error(getErrorMessage(err))
     }
   }
 
-  async function deleteExam(examId: number) {
+  async function handleAiGenerate(e: FormEvent) {
+    e.preventDefault()
+    setPlanLoading(true)
     try {
-      await api.delete(`/study/exams/${examId}/`)
-      toast.success('Exam removed')
-      await loadPlanner()
+      const weakSubj = subjects.find((s) => s.id === Number(aiWeakSubject))
+      const strongSubj = subjects.find((s) => s.id === Number(aiStrongSubject))
+      const { data } = await api.post<PlanResponse>('/study/plan/generate/', {
+        subjects: subjects.map((s) => s.name),
+        weak_topics: weakSubj?.weak_topics || 'priority weak topics',
+        daily_hours: aiDailyHours,
+        exam_date: aiExamDate,
+        goal: `Focus on ${weakSubj?.name || 'weak areas'}, leverage ${strongSubj?.name || 'strong subjects'}`,
+      })
+      setPlan(data)
+      toast.success('AI plan generated')
+      setModal(null)
     } catch (err) {
       toast.error(getErrorMessage(err))
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  async function toggleTask(task: Task) {
+    const next = task.status === 'done' ? 'todo' : 'done'
+    setTasks((cur) => cur.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
+    try {
+      await api.patch(`/study/tasks/${task.id}/`, { status: next })
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+      await loadPlanner()
     }
   }
 
@@ -316,460 +379,302 @@ export default function PlannerPage() {
     }
   }
 
-  async function toggleTask(task: Task) {
-    const nextStatus = task.status === 'done' ? 'todo' : 'done'
-    setTasks((current) => current.map((item) => (item.id === task.id ? { ...item, status: nextStatus } : item)))
-    try {
-      await api.patch(`/study/tasks/${task.id}/`, { status: nextStatus })
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-      await loadPlanner()
-    }
-  }
-
-  async function generatePlan(event?: FormEvent | MouseEvent) {
-    event?.preventDefault()
-    setPlanLoading(true)
-    try {
-      const { data } = await api.post<PlanResponse>('/study/plan/generate/', {
-        subjects: subjects.length ? subjects.map((subject) => subject.name) : [activeSubject?.name ?? 'Core Study'],
-        weak_topics: weakTopicText || activeSubject?.weak_topics || 'priority weak topics',
-        daily_hours: dailyHours,
-        exam_date: nextExam?.date ?? examDate,
-        goal,
-      })
-      setPlan(data)
-      setProvider(data.provider ?? provider)
-      toast.success(`${data.provider === 'gemini' ? 'Gemini' : 'AI'} timetable generated`)
-      scrollToWizard('wizard-plan')
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    } finally {
-      setPlanLoading(false)
-    }
-  }
-
   if (loading) {
     return (
-      <PageShell eyebrow="Study planner" title="Loading your planner..." subtitle="Fetching subjects, exams, and tasks.">
-        <div className="page-card planner-skeleton">Loading planner workspace...</div>
+      <PageShell eyebrow="Study Planner" title="Plan Your Study" subtitle="Loading your planner...">
+        <div className="page-card" style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
+          Loading planner workspace...
+        </div>
       </PageShell>
     )
   }
 
   return (
     <PageShell
-      badge={<b className={`provider-pill provider-${provider}`}>{provider}</b>}
-      className="planner-flow-page"
-      eyebrow="Study planner"
-      subtitle="Turn weak topics, exam dates, and daily limits into a calm schedule you can actually follow."
-      title="Design today's study flow"
+      eyebrow="Study Planner"
+      title="Plan Your Study"
+      subtitle="Build your schedule."
     >
-      <SetupStepper onStepClick={scrollToWizard} steps={setupSteps} />
-
-      <section className="planner-command-center">
-        <div className="planner-hero-card">
-          <div>
-            <span className="eyebrow">Next deadline</span>
-            <h2>{nextExam ? nextExam.title : 'No exam added yet'}</h2>
-            <p>
-              {nextExam
-                ? `${nextExam.subject_name || 'General study'} is ${daysUntil(nextExam.date)} days away.`
-                : 'Add one exam target so FocusFlow can shape the timetable around a real date.'}
-            </p>
-            <div className="planner-hero-actions">
-              <button onClick={() => scrollToWizard(nextPlannerAction.target)} type="button">
-                <IconOrbit size={18} /> {nextPlannerAction.label}
-              </button>
-              <Link to="/focus"><IconFocus size={18} /> Start focus mode</Link>
-            </div>
-          </div>
-          <div className="planner-countdown-orb">
-            <strong>{nextExam ? daysUntil(nextExam.date) : '--'}</strong>
-            <span>days</span>
-          </div>
-        </div>
-
-        <div className="planner-side-summary">
-          <div className="planner-metric-strip">
-            <article>
-              <span>Subjects</span>
-              <strong>{subjects.length}</strong>
-            </article>
-            <article>
-              <span>Open Tasks</span>
-              <strong>{openTasks.length}</strong>
-            </article>
-            <article>
-              <span>Planned Load</span>
-              <strong>{minutesLabel(totalStudyMinutes)}</strong>
-            </article>
-            <article>
-              <span>Completion</span>
-              <strong>{taskProgress}%</strong>
-            </article>
-          </div>
-          <article className="planner-readiness-card">
-            <div>
-              <IconSpark size={20} />
-              <span>Planner readiness</span>
-            </div>
-            <strong>{readiness}%</strong>
-            <div className="planner-readiness-track"><i style={{ width: `${readiness}%` }} /></div>
-            <p>{plan ? 'Your plan is ready. Check off tasks as you study.' : 'Add subject, exam, and one task for the cleanest AI timetable.'}</p>
-          </article>
-        </div>
-      </section>
-
-      <div className="planner-workspace-grid">
-        <section className="page-card planner-builder-card" id="wizard-subjects">
-          <div className="planner-section-head">
-            <div>
-              <span className="eyebrow">Planner input</span>
-              <h2>Flow Builder</h2>
-              <p>Add the study ingredients once, then let AI arrange the day.</p>
-            </div>
-            <button className="gradient-action" disabled={planLoading} onClick={() => void generatePlan()} type="button">
-              <IconSpark size={18} /> {planLoading ? 'Generating...' : 'Generate AI Plan'}
-            </button>
-          </div>
-
-          <div className="planner-builder-grid">
-            <article className="planner-input-card">
-              <b><IconPlanner size={22} /></b>
-              <div>
-                <h3>Subject map</h3>
-                <p>Add the subject and weak topics the AI should prioritize.</p>
-              </div>
-              <footer>
-                <span>{subjects.length} saved</span>
-                <button onClick={() => setActiveModal('subject')} type="button">Add Subject</button>
-              </footer>
-            </article>
-
-            <article className="planner-input-card" id="wizard-exams">
-              <b><IconOrbit size={22} /></b>
-              <div>
-                <h3>Exam target</h3>
-                <p>Set your next deadline so the schedule has real urgency.</p>
-              </div>
-              <footer>
-                <span>{exams.length} tracked</span>
-                <button onClick={() => setActiveModal('exam')} type="button">Add Exam</button>
-              </footer>
-            </article>
-
-            <article className="planner-input-card">
-              <b><IconSpark size={22} /></b>
-              <div>
-                <h3>Daily action</h3>
-                <p>Create one concrete recall task with priority.</p>
-              </div>
-              <footer>
-                <span>{openTasks.length} open</span>
-                <button onClick={() => setActiveModal('task')} type="button">Add Task</button>
-              </footer>
-            </article>
-          </div>
-        </section>
-
-        <aside className="planner-side-rail">
-          <section className="page-card planner-calendar-card">
-            <div className="planner-section-head compact">
-              <div>
-                <span className="eyebrow">Calendar</span>
-                <h2>{calendar.label}</h2>
-              </div>
-              <b className="planner-urgency-pill">{urgencyText(nextExam)}</b>
-            </div>
-            <div className="calendar-week"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
-            <div className="calendar-grid planner-calendar-grid">
-              {calendar.cells.map((day, index) => (
-                <button
-                  className={day === calendar.todayDate ? 'calendar-active' : day && calendar.examDays.has(day) ? 'calendar-dot-day' : ''}
-                  disabled={!day}
-                  key={`${day ?? 'blank'}-${index}`}
-                  title={day && calendar.examDays.has(day) ? 'Exam day' : undefined}
-                  type="button"
-                >
-                  {day ?? ''}
-                </button>
-              ))}
-            </div>
-          </section>
-        </aside>
+      <div className="pl-actions">
+        <button className="pl-action-btn" onClick={() => { resetSessionForm(); setModal('session') }} type="button">
+          <IconPlanner size={16} /> + Create Session
+        </button>
+        <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
+          <IconSpark size={16} /> AI Generate
+        </button>
       </div>
 
-      <section className="planner-live-grid">
-        <div className="page-card planner-subject-deck">
-          <div className="planner-section-head compact">
-            <div>
-              <span className="eyebrow">Subject deck</span>
-              <h2>Weak topics to attack</h2>
-            </div>
-          </div>
-          <div className="planner-subject-list">
-            {subjects.length ? subjects.map((subject, index) => (
-              <article className={String(subject.id) === selectedSubjectId ? 'selected' : ''} key={subject.id}>
-                <button aria-label={`Select ${subject.name}`} onClick={() => setSelectedSubjectId(String(subject.id))} type="button">
-                  <b>{subject.name.slice(0, 2).toUpperCase()}</b>
-                  <span>
-                    <strong>{subject.name}</strong>
-                    <small>{subject.weak_topics || 'No weak topics yet'}</small>
-                  </span>
-                </button>
-                <div className="subject-progress"><i style={{ width: `${Math.min(48 + index * 11, 92)}%` }} /></div>
-                <footer>
-                  <span>{subject.weekly_goal_hours}h weekly goal</span>
-                  <div>
-                    <Link to="/quiz">Quiz</Link>
-                    <button className="subject-delete-button" onClick={() => void deleteSubject(subject.id)} type="button">Remove</button>
-                  </div>
-                </footer>
-              </article>
-            )) : (
-              <div className="planner-empty-state">Add your first subject to unlock the weak-topic deck.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="page-card planner-timeline-card">
-          <div className="planner-section-head compact">
-            <div>
-              <span className="eyebrow">Exam runway</span>
-              <h2>Countdown path</h2>
-            </div>
-          </div>
-          <div className="planner-exam-list">
-            {upcomingExams.length ? upcomingExams.map((exam, index) => (
-              <article className={`urgency-${urgencyClass(exam)}`} key={exam.id}>
-                <div className="planner-exam-marker">
-                  <span>{index + 1}</span>
-                </div>
-                <div>
-                  <div className="planner-exam-title-line">
-                    <strong>{exam.title}</strong>
-                    <b>{daysUntil(exam.date)}d</b>
-                  </div>
-                  <span>{exam.subject_name || 'General study'} - {shortDate(exam.date)}</span>
-                  <div className="planner-exam-meter">
-                    <i style={{ width: `${Math.max(8, Math.min(100, 100 - daysUntil(exam.date) * 3))}%` }} />
-                  </div>
-                </div>
-                <button className="planner-remove-button" onClick={() => void deleteExam(exam.id)} type="button">
-                  Remove
-                </button>
-              </article>
-            )) : <div className="planner-empty-state">No exam deadline yet. Add one above to activate countdown planning.</div>}
-          </div>
-        </div>
-
-        <div className="page-card planner-task-card">
-          <div className="planner-section-head compact">
-            <div>
-              <span className="eyebrow">Today queue</span>
-              <h2>Active recall board</h2>
-            </div>
-            <strong className="planner-progress-pill">{taskProgress}% done</strong>
-          </div>
-          <div className="planner-task-summary">
-            <span>{openTasks.length} open</span>
-            <span>{completedTasks} completed</span>
-          </div>
-          <div className="planner-task-list">
-            {sortedTasks.length ? sortedTasks.slice(0, 7).map((task) => (
-              <article className={task.status === 'done' ? 'done' : ''} key={task.id}>
-                <button
-                  aria-label={`${task.status === 'done' ? 'Reopen' : 'Complete'} ${task.title}`}
-                  className={task.status === 'done' ? 'planner-task-check checked' : 'planner-task-check'}
-                  onClick={() => void toggleTask(task)}
-                  type="button"
-                />
-                <div>
-                  <div className="planner-task-title-line">
-                    <strong>{task.title}</strong>
-                  </div>
-                  <span>{task.subject_name || 'Study'} - due {shortDate(task.due_date)}</span>
-                </div>
-                <div className="planner-task-actions">
-                  <em>{priorityTone(task.priority)}</em>
-                  <button className="planner-remove-button" onClick={() => void deleteTask(task.id)} type="button">
-                    Remove
-                  </button>
-                </div>
-              </article>
-            )) : <div className="planner-empty-state">Add one concrete task, then check it off as you study.</div>}
-          </div>
-        </div>
-      </section>
-
-      <form className="page-card planner-ai-board" id="wizard-plan" onSubmit={generatePlan}>
-        <div className="planner-section-head">
-          <div>
-            <span className="eyebrow">AI timetable</span>
-            <h2>Generated study flow</h2>
-            <p>Gemini creates focused blocks from your subjects, weak topics, daily hours, and nearest exam.</p>
-          </div>
-          <button className="gradient-action" disabled={planLoading} type="submit">
-            <IconPlanner size={18} /> {planLoading ? 'Generating...' : plan ? 'Regenerate' : 'Create Timetable'}
+      <div className="pl-view-toggle">
+        {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
+          <button
+            key={mode}
+            className={`pl-view-btn ${viewMode === mode ? 'pl-view-active' : ''}`}
+            onClick={() => setViewMode(mode)}
+            type="button"
+          >
+            {mode.charAt(0).toUpperCase() + mode.slice(1)}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="planner-ai-controls">
-          <label>
-            <span>Study goal</span>
-            <input placeholder="Study goal" value={goal} onChange={(event) => setGoal(event.target.value)} />
-          </label>
-          <label>
-            <span>Daily hours</span>
-            <input min="0.5" step="0.5" type="number" value={dailyHours} onChange={(event) => setDailyHours(event.target.value)} />
-          </label>
-          <div className="planner-hour-presets" aria-label="Study hour presets">
-            {hourPresets.map((preset) => (
-              <button
-                className={dailyHours === preset.value ? 'active' : ''}
-                key={preset.value}
-                onClick={() => setDailyHours(preset.value)}
-                type="button"
-              >
-                <strong>{preset.label}</strong>
-                <span>{preset.detail}</span>
-              </button>
+      <div className="cal-nav planner-cal-nav">
+        <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, -1, viewMode))} type="button">&#8249;</button>
+        <div className="cal-nav-center">
+          <span className="cal-nav-title">
+            {viewMode === 'day' && formatFullDate(selectedDate)}
+            {viewMode === 'week' && `${shortDate(weekStart)} – ${shortDate(weekEnd)}`}
+            {viewMode === 'month' && calendarInfo.label}
+          </span>
+          <button className="cal-today-btn" onClick={() => setSelectedDate(toLocalDateInput())} type="button">Today</button>
+        </div>
+        <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, 1, viewMode))} type="button">&#8250;</button>
+      </div>
+
+      {planBlocks.length > 0 && (
+        <div className="pl-card pl-plan-card">
+          <div className="pl-plan-header">
+            <IconSpark size={18} />
+            <span className="eyebrow">AI Generated Plan</span>
+          </div>
+          {plan && <p className="pl-plan-tip">{plan.focus_tip}</p>}
+          <div className="pl-plan-list">
+            {planBlocks.map((block, i) => (
+              <div key={`${block.time}-${i}`} className="pl-plan-block">
+                <span className="pl-plan-time">{block.time}</span>
+                <span className="pl-plan-subject">{block.subject}</span>
+                <span className="pl-plan-dur">{minutesLabel(block.duration_minutes)}</span>
+                <span className="pl-plan-task">{block.task}</span>
+              </div>
             ))}
           </div>
         </div>
+      )}
 
-        <div className="planner-plan-grid">
-          {(planBlocks.length ? planBlocks : openTasks.slice(0, 4).map((task, index) => ({
-            time: `Block ${index + 1}`,
-            subject: task.subject_name ?? 'Study',
-            duration_minutes: task.duration_minutes,
-            task: task.title,
-          }))).map((block, index) => (
-            <article className="planner-plan-card" key={`${block.time}-${block.task}-${index}`}>
-              <span className="planner-plan-index">{String(index + 1).padStart(2, '0')}</span>
-              <div className="planner-plan-time">
-                <span>{block.time}</span>
-                <b>{minutesLabel(block.duration_minutes)}</b>
-              </div>
-              <div>
-                <strong>{block.subject}</strong>
-                <p>{block.task}</p>
-              </div>
-            </article>
-          ))}
-          {!planBlocks.length && !openTasks.length ? (
-            <div className="planner-empty-state wide">Your generated timetable will appear here after steps 1 and 2.</div>
-          ) : null}
-        </div>
-
-        {plan ? (
-          <div className="planner-revision-map">
-            <div>
-              <h3>Revision Map</h3>
-              <strong>{plan.focus_tip}</strong>
+      {viewMode === 'day' && (
+        <div className="pl-day-layout">
+          <div className="pl-card pl-timeline">
+            <h3 className="pl-card-title">Daily Schedule</h3>
+            <div className="pl-timeline-grid">
+              {HOURS.map((hour) => {
+                const hourTasks = todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === hour)
+                const label = `${String(hour).padStart(2, '0')}:00`
+                return (
+                  <div key={hour} className="pl-timeline-row">
+                    <span className="pl-timeline-hour">{label}</span>
+                    <div className="pl-timeline-cell">
+                      {hourTasks.length === 0 ? (
+                        <div className="pl-timeline-empty" />
+                      ) : (
+                        hourTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="pl-timeline-task"
+                            style={{ borderLeftColor: getSubjectColor(task.subject, subjects) }}
+                          >
+                            <div className="pl-timeline-task-info">
+                              <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
+                              <span className="pl-timeline-task-title">{task.title}</span>
+                            </div>
+                            <span className="pl-timeline-task-dur" style={{ background: getSubjectColor(task.subject, subjects) + '22', color: getSubjectColor(task.subject, subjects) }}>
+                              {minutesLabel(task.duration_minutes)}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="planner-revision-list">
-              {plan.revision_schedule.map((item, index) => (
-                <p key={`${item}-${index}`}><b>{index + 1}</b>{item}</p>
-              ))}
+            <div className="pl-day-summary">
+              {dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''} planned · {dayHours.toFixed(1)} hours
             </div>
           </div>
-        ) : null}
-      </form>
 
-      {activeModal ? (
-        <div className="planner-modal-backdrop" onMouseDown={() => setActiveModal(null)}>
-          <section
-            aria-labelledby="planner-modal-title"
-            aria-modal="true"
-            className="planner-modal"
-            onMouseDown={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <header>
-              <div>
-                <span className="eyebrow">Planner input</span>
-                <h2 id="planner-modal-title">
-                  {activeModal === 'subject' ? 'Add subject' : activeModal === 'exam' ? 'Add exam' : 'Add daily action'}
-                </h2>
-                <p>
-                  {activeModal === 'subject'
-                    ? 'Map what you study and the weak topics you want FocusFlow to attack.'
-                    : activeModal === 'exam'
-                      ? 'Attach a deadline to a subject so the AI can plan around urgency.'
-                      : 'Add a focused task and choose whether it is high, medium, or low priority.'}
-                </p>
+          <div className="pl-sidebar">
+            <div className="pl-card pl-exam-card">
+              <h3 className="pl-card-title">Exam Countdown</h3>
+              {upcomingExams.length === 0 ? (
+                <p className="pl-empty-text">No upcoming exams.</p>
+              ) : (
+                <div className="pl-exam-list">
+                  {upcomingExams.map((exam) => {
+                    const days = daysUntil(exam.date)
+                    return (
+                      <div key={exam.id} className="pl-exam-item">
+                        <div className="pl-exam-info">
+                          <span className="pl-exam-name">{exam.title}</span>
+                          <span className="pl-exam-meta">{exam.subject_name || 'General'} · {shortDate(exam.date)}</span>
+                        </div>
+                        <span className={`pl-exam-badge ${days <= 3 ? 'pl-badge-urgent' : days <= 7 ? 'pl-badge-warn' : 'pl-badge-ok'}`}>
+                          {days}d
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="pl-card pl-stats-card">
+              <h3 className="pl-card-title">This Week</h3>
+              <div className="pl-stats-list">
+                {[
+                  { label: 'Sessions', value: weekSessions.length },
+                  { label: 'Total hours', value: `${weekHours.toFixed(1)}h` },
+                  { label: 'Completion', value: `${completionRate}%` },
+                ].map((stat) => (
+                  <div key={stat.label} className="pl-stat-row">
+                    <span className="pl-stat-label">{stat.label}</span>
+                    <span className="pl-stat-value">{stat.value}</span>
+                  </div>
+                ))}
               </div>
-              <button className="planner-modal-close" onClick={() => setActiveModal(null)} type="button">Close</button>
-            </header>
-
-            {activeModal === 'subject' ? (
-              <form className="planner-modal-form" onSubmit={addSubject}>
-                <label>
-                  <span>Subject name</span>
-                  <input autoFocus placeholder="Organic Chemistry" value={subjectName} onChange={(event) => setSubjectName(event.target.value)} required />
-                </label>
-                <label>
-                  <span>Weak topics</span>
-                  <textarea placeholder="Alcohols, reaction mechanisms, equations" value={weakTopics} onChange={(event) => setWeakTopics(event.target.value)} />
-                </label>
-                <button type="submit">Save Subject</button>
-              </form>
-            ) : null}
-
-            {activeModal === 'exam' ? (
-              <form className="planner-modal-form" onSubmit={addExam}>
-                <label>
-                  <span>Subject</span>
-                  <select autoFocus value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
-                    <option value="">No subject</option>
-                    {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Exam title</span>
-                  <input placeholder="Midterm exam" value={examTitle} onChange={(event) => setExamTitle(event.target.value)} required />
-                </label>
-                <label>
-                  <span>Exam date</span>
-                  <input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
-                </label>
-                <button type="submit">Save Exam</button>
-              </form>
-            ) : null}
-
-            {activeModal === 'task' ? (
-              <form className="planner-modal-form" onSubmit={addTask}>
-                <label>
-                  <span>Subject</span>
-                  <select autoFocus value={selectedSubjectId} onChange={(event) => setSelectedSubjectId(event.target.value)}>
-                    <option value="">No subject</option>
-                    {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Task</span>
-                  <input placeholder="Solve 20 active recall questions" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} required />
-                </label>
-                <label>
-                  <span>Due date</span>
-                  <input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
-                </label>
-                <label>
-                  <span>Priority</span>
-                  <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)}>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="low">Low</option>
-                  </select>
-                </label>
-                <button type="submit">Save Task</button>
-              </form>
-            ) : null}
-          </section>
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
+
+      {viewMode === 'week' && (
+        <div className="pl-card pl-week-wrap">
+          <div className="pl-week-grid">
+            {weekDays.map((day) => {
+              const dayTasks = weekTasks.filter((t) => {
+                const ref = t.scheduled_for?.slice(0, 10) ?? t.due_date
+                return ref === day.date
+              })
+              return (
+                <div key={day.date} className="pl-week-col">
+                  <div className={`pl-week-header ${day.isToday ? 'pl-week-today' : ''}`}>
+                    <span className="pl-week-dayname">{day.dayName}</span>
+                    <span className="pl-week-daynum">{day.dayNum}</span>
+                  </div>
+                  <div className="pl-week-tasks">
+                    {dayTasks.length === 0 ? (
+                      <div className="pl-week-empty" />
+                    ) : (
+                      dayTasks.map((task) => (
+                        <div key={task.id} className="pl-week-task" style={{ borderLeftColor: getSubjectColor(task.subject, subjects), background: getSubjectColor(task.subject, subjects) + '14' }}>
+                          <span className="pl-week-task-name">{task.subject_name || 'Study'}</span>
+                          <span className="pl-week-task-title">{task.title}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'month' && (
+        <div className="pl-card pl-month-wrap">
+          <div className="pl-month-header">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div key={d} className="pl-month-dow">{d}</div>
+            ))}
+          </div>
+          <div className="pl-month-grid">
+            {calendarInfo.cells.map((cell, i) => {
+              const hasSession = cell ? monthTaskDates.has(cell) : false
+              const isToday = cell === today
+              return (
+                <button
+                  key={i}
+                  disabled={!cell}
+                  className={`pl-month-cell ${isToday ? 'pl-month-today' : ''} ${!cell ? 'pl-month-blank' : ''}`}
+                  onClick={() => { if (cell) { setSelectedDate(cell); setViewMode('day') } }}
+                  type="button"
+                >
+                  <span>{cell ? cell.split('-')[2].replace(/^0/, '') : ''}</span>
+                  {hasSession && <span className="pl-month-dot" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {modal === 'session' && (
+        <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+          <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>New Study Session</h3>
+            <form onSubmit={handleCreateSession} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="cal-modal-field">
+                <label>Subject</label>
+                <select value={sessionSubject} onChange={(e) => setSessionSubject(e.target.value)}>
+                  <option value="">Select subject</option>
+                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="cal-modal-field">
+                <label>Topic</label>
+                <input placeholder="e.g. Review chapter 5 notes" value={sessionTopic} onChange={(e) => setSessionTopic(e.target.value)} />
+              </div>
+              <div className="cal-modal-row">
+                <div className="cal-modal-field"><label>Date</label><input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} /></div>
+                <div className="cal-modal-field"><label>Start Time</label><input type="time" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} /></div>
+              </div>
+              <div className="cal-modal-field">
+                <label>Duration</label>
+                <select value={sessionDuration} onChange={(e) => setSessionDuration(Number(e.target.value))}>
+                  {DURATION_OPTIONS.map((d) => <option key={d} value={d}>{minutesLabel(d)}</option>)}
+                </select>
+              </div>
+              <div className="cal-modal-field">
+                <label>Priority</label>
+                <div className="pl-priority-row">
+                  {PRIORITY_OPTIONS.map((p) => (
+                    <button key={p} type="button" onClick={() => setSessionPriority(p)}
+                      className={`pl-priority-btn ${sessionPriority === p ? 'pl-priority-active' : ''}`}
+                      style={sessionPriority === p ? { borderColor: priorityColor(p), background: priorityColor(p) + '18' } : {}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="cal-modal-field"><label>Notes</label><textarea placeholder="Optional notes..." value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} /></div>
+              <div className="cal-modal-actions">
+                <button type="button" className="cal-modal-cancel" onClick={() => setModal(null)}>Cancel</button>
+                <button type="submit" className="cal-modal-create">Create Session</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modal === 'ai' && (
+        <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+          <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Generate Study Plan</h3>
+            <form onSubmit={handleAiGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="cal-modal-field"><label>Exam Date</label><input type="date" value={aiExamDate} onChange={(e) => setAiExamDate(e.target.value)} /></div>
+              <div className="cal-modal-field"><label>Available Time per Day (hours)</label><input type="number" min={1} max={16} value={aiDailyHours} onChange={(e) => setAiDailyHours(Number(e.target.value))} /></div>
+              <div className="cal-modal-row">
+                <div className="cal-modal-field">
+                  <label>Weak Subject</label>
+                  <select value={aiWeakSubject} onChange={(e) => setAiWeakSubject(e.target.value)}>
+                    <option value="">Select subject</option>
+                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div className="cal-modal-field">
+                  <label>Strong Subject</label>
+                  <select value={aiStrongSubject} onChange={(e) => setAiStrongSubject(e.target.value)}>
+                    <option value="">Select subject</option>
+                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="cal-modal-actions">
+                <button type="button" className="cal-modal-cancel" onClick={() => setModal(null)}>Cancel</button>
+                <button type="submit" className="cal-modal-create" disabled={planLoading}>{planLoading ? 'Generating...' : 'Generate Plan'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageShell>
   )
 }

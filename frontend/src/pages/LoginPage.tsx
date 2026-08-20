@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className="auth-shell">
         <section className="auth-hero">
           <span className="auth-logo"><IconOrbit size={24} /></span>
-          <h1>FocusFlow AI</h1>
+          <h1>Flox AI</h1>
           <p>Your study orbit — plan, focus, recall, recover.</p>
           <div className="auth-benefits">
             <span>AI study plans</span>
@@ -84,14 +84,14 @@ export default function LoginPage() {
             <button type="button" onClick={() => toast.info('Google sign in is not connected yet.')}>Google</button>
             <button type="button" onClick={() => toast.info('Apple sign in is not connected yet.')}>Apple</button>
           </div>
-          <p className="auth-switch">New to FocusFlow? <Link to="/register">Create an account</Link></p>
+          <p className="auth-switch">New to Flox AI? <Link to="/register">Create an account</Link></p>
         </form>
       </div>
 
       <footer className="auth-footer">
         <span>Privacy Policy</span>
         <span>Terms of Service</span>
-        <small>(c) 2024 FocusFlow AI. Engineered for Flow.</small>
+        <small>(c) 2024 Flox AI. Engineered for Flow.</small>
       </footer>
     </main>
   )

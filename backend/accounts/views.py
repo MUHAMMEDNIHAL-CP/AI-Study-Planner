@@ -8,7 +8,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import LoginSerializer, RegisterSerializer
+from .models import Profile
+from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -65,15 +66,9 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        return Response(
-            {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-            },
-            status=status.HTTP_200_OK,
-        )
+        Profile.objects.get_or_create(user=request.user)
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request):
         user = request.user
@@ -102,14 +97,18 @@ class MeView(APIView):
         user.username = username
         user.email = email
         user.save(update_fields=["username", "email"])
-        return Response(
-            {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-            },
-            status=status.HTTP_200_OK,
-        )
+
+        profile_fields = ("bio", "college", "course", "semester", "study_goal", "daily_study_goal", "target_grade", "main_goal")
+        profile_data = {f: request.data.get(f) for f in profile_fields if f in request.data}
+        if profile_data:
+            profile, _ = Profile.objects.get_or_create(user=user)
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+
+        Profile.objects.get_or_create(user=user)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request):
         return self.patch(request)

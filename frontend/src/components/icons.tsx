@@ -129,3 +129,56 @@ export function IconLogout(props: IconProps) {
     </svg>
   )
 }
+
+export function IconNotes(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z" />
+      <path d="M14 2v6h6M8 13h8M8 17h5" />
+    </svg>
+  )
+}
+
+export function IconCalendar(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="3" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <rect x="7" y="13" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+      <rect x="14" y="13" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity={0.4} />
+    </svg>
+  )
+}
+
+export function IconSubject(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+      <path d="M8 7h6M8 11h4" />
+    </svg>
+  )
+}
+
+export function IconTask(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  )
+}
+
+export function IconProgress(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M12 20V10" />
+      <path d="M18 20V4" />
+      <path d="M6 20v-4" />
+    </svg>
+  )
+}

@@ -23,7 +23,7 @@ export default function PageShell({
   className = '',
 }: PageShellProps) {
   const profile = useUserProfile()
-  const displayName = profile?.username ?? 'FocusFlow'
+  const displayName = profile?.username ?? 'Flox AI'
   const avatar = initials(displayName)
   const [currentTime, setCurrentTime] = useState(() => new Date())
 

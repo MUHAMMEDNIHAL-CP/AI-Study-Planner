@@ -52,11 +52,12 @@ DEBUG = _env_bool("DEBUG", default=False)
 
 # Comma-separated list in the environment (e.g. ALLOWED_HOSTS=localhost,127.0.0.1,api.example.com)
 _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS", "")
-ALLOWED_HOSTS = (
-    [host.strip() for host in _allowed_hosts_raw.split(",") if host.strip()]
-    if _allowed_hosts_raw
-else ["localhost", "127.0.0.1", "192.168.1.5", "192.168.1.6", "192.168.1.7", "192.168.1.8"]
-)
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+elif _allowed_hosts_raw:
+    ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts_raw.split(",") if host.strip()]
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 # Application definition
 
@@ -80,6 +81,7 @@ INSTALLED_APPS = [
     'ai',
     'burnout',
     'quiz',
+    'notes',
 ]
 
 MIDDLEWARE = [
@@ -184,21 +186,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # CORS
 # In production, set CORS_ALLOWED_ORIGINS to your frontend origin(s), comma-separated.
 _cors_raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = (
-    [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
-    if _cors_raw
-    else [
-"http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://192.168.1.5:5173",
-        "http://192.168.1.6:5173",
-        "http://192.168.1.7:5173",
-        "http://192.168.1.8:5173",
-    ]
-)
 
-# Only allow credentials if we have explicit allowed origins (do not combine with "*").
-CORS_ALLOW_CREDENTIALS = bool(CORS_ALLOWED_ORIGINS)
+if DEBUG:
+    # Dev: allow any origin so phone/tablet on the same LAN can connect.
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    CORS_ALLOWED_ORIGINS = (
+        [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
+        if _cors_raw
+        else []
+    )
+    CORS_ALLOW_CREDENTIALS = bool(CORS_ALLOWED_ORIGINS)
 
 # DRF / JWT
 REST_FRAMEWORK = {
@@ -270,7 +269,7 @@ LOGGING = {
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "focusflow.log",
+            "filename": BASE_DIR / "logs" / "flox.log",
             "maxBytes": 5 * 1024 * 1024,  # 5 MB
             "backupCount": 3,
             "formatter": "verbose",
@@ -296,7 +295,7 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
-        "focusflow": {
+        "flox": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,

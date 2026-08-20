@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import generics, status
@@ -45,6 +46,99 @@ class ExamDetailView(OwnedQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ExamSerializer
 
 
+class ExamDetailEnrichedView(APIView):
+    def get(self, request, pk):
+        try:
+            exam = Exam.objects.select_related("subject").get(pk=pk, user=request.user)
+        except Exam.DoesNotExist:
+            return Response({"detail": "Exam not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        today = timezone.localdate()
+        days_left = max(0, (exam.date - today).days)
+
+        if exam.modules:
+            completed = sum(1 for m in exam.modules if m.get("completed"))
+            preparation_pct = round((completed / len(exam.modules)) * 100) if exam.modules else 0
+        elif exam.subject and exam.subject.total_topics > 0:
+            preparation_pct = round((exam.subject.topics_completed / exam.subject.total_topics) * 100)
+        else:
+            preparation_pct = 0
+
+        weak_areas = []
+        if exam.subject and exam.subject.weak_topics:
+            weak_areas = [t.strip() for t in exam.subject.weak_topics.split(",") if t.strip()]
+
+        upcoming_sessions = []
+        if exam.subject:
+            sessions = StudyTask.objects.filter(
+                user=request.user,
+                subject=exam.subject,
+                status="todo",
+                due_date__gte=today,
+            ).order_by("due_date")[:10]
+            upcoming_sessions = [
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "due_date": str(s.due_date) if s.due_date else None,
+                    "duration_minutes": s.duration_minutes,
+                    "priority": s.priority,
+                }
+                for s in sessions
+            ]
+
+        today_sessions = StudyTask.objects.filter(
+            user=request.user,
+            subject=exam.subject,
+            scheduled_for__date=today,
+        ) if exam.subject else StudyTask.objects.none()
+
+        tomorrow = today + timedelta(days=1)
+        tomorrow_sessions = StudyTask.objects.filter(
+            user=request.user,
+            subject=exam.subject,
+            scheduled_for__date=tomorrow,
+        ) if exam.subject else StudyTask.objects.none()
+
+        today_minutes = sum(s.duration_minutes for s in today_sessions)
+        tomorrow_minutes = sum(s.duration_minutes for s in tomorrow_sessions)
+
+        subject_info = None
+        if exam.subject:
+            s = exam.subject
+            subject_info = {
+                "id": s.id,
+                "name": s.name,
+                "color": s.color,
+                "topics_completed": s.topics_completed,
+                "total_topics": s.total_topics,
+                "weak_topics": s.weak_topics,
+                "subject_code": s.subject_code,
+            }
+
+        return Response({
+            "id": exam.id,
+            "title": exam.title,
+            "date": str(exam.date),
+            "priority": exam.priority,
+            "notes": exam.notes,
+            "subject": subject_info,
+            "modules": exam.modules or [],
+            "preparation_pct": preparation_pct,
+            "days_left": days_left,
+            "weak_areas": weak_areas,
+            "upcoming_sessions": upcoming_sessions,
+            "today_plan": {
+                "sessions": today_sessions.count(),
+                "minutes": today_minutes,
+            },
+            "tomorrow_plan": {
+                "sessions": tomorrow_sessions.count(),
+                "minutes": tomorrow_minutes,
+            },
+        })
+
+
 class StudyTaskListCreateView(OwnedQuerysetMixin, generics.ListCreateAPIView):
     queryset = StudyTask.objects.select_related("subject")
     serializer_class = StudyTaskSerializer
@@ -66,8 +160,32 @@ class DashboardView(APIView):
         total_tasks = tasks.count()
         minutes = logs.aggregate(total=Sum("minutes_studied"))["total"] or 0
 
-        # Duolingo-style unlimited streak stats (current, longest, total days, heatmap...).
         streak_stats = compute_streak_stats(request.user)
+
+        today_tasks = tasks.filter(
+            models.Q(due_date=today) | models.Q(scheduled_for__date=today)
+        ).select_related("subject")[:10]
+
+        subjects = Subject.objects.filter(user=request.user)
+        subjects_summary = [
+            {
+                "name": s.name,
+                "color": s.color,
+                "topics_completed": s.topics_completed,
+                "total_topics": s.total_topics,
+                "weekly_goal_hours": s.weekly_goal_hours,
+            }
+            for s in subjects
+        ]
+
+        total_study_hours = round(minutes / 60, 1)
+        total_completed_tasks = completed
+
+        from productivity.focus_models import FocusSession
+        total_focus_sessions = FocusSession.objects.filter(user=request.user).count()
+
+        today_log = ProductivityLog.objects.filter(user=request.user, date=today).first()
+        today_minutes = today_log.minutes_studied if today_log else 0
 
         return Response(
             {
@@ -85,6 +203,22 @@ class DashboardView(APIView):
                     }
                     for log in logs
                 ],
+                "today_tasks": [
+                    {
+                        "id": t.id,
+                        "title": t.title,
+                        "subject": t.subject.name if t.subject else None,
+                        "status": t.status,
+                        "priority": t.priority,
+                        "due_date": t.due_date,
+                    }
+                    for t in today_tasks
+                ],
+                "subjects_summary": subjects_summary,
+                "total_study_hours": total_study_hours,
+                "total_completed_tasks": total_completed_tasks,
+                "total_focus_sessions": total_focus_sessions,
+                "today_minutes": today_minutes,
             }
         )
 
@@ -133,7 +267,7 @@ class GeneratePlanView(APIView):
             "focus_tip": "Use 50/10 focus cycles and finish each session by writing one next action.",
         }
         gemini_response = generate_json(
-            "You are FocusFlow AI, a study planner for students. Return strict JSON with keys: "
+            "You are Flox AI, a study planner for students. Return strict JSON with keys: "
             "goal string, exam_date string, daily_hours number, plan array, revision_schedule array, focus_tip string. "
             "Each plan item must contain time, subject, duration_minutes, task. "
             "Build a practical hourly active-recall timetable with spaced revision and breaks. "

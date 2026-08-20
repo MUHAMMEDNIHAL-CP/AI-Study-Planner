@@ -2,7 +2,37 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .models import Profile
+
 User = get_user_model()
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ("bio", "college", "course", "semester", "study_goal", "daily_study_goal", "target_grade", "main_goal")
+
+
+class UserSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(required=False)
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "profile")
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop("profile", None)
+        instance.username = validated_data.get("username", instance.username)
+        instance.email = validated_data.get("email", instance.email)
+        instance.save(update_fields=["username", "email"])
+
+        if profile_data is not None:
+            profile, _ = Profile.objects.get_or_create(user=instance)
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+
+        return instance
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -18,6 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+        Profile.objects.create(user=user)
         return user
 
 

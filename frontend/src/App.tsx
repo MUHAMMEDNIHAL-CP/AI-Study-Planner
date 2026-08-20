@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import FloatingBot from './components/FloatingBot'
 import Navigation from './components/Navigation'
 import { isAuthenticated } from './lib/auth'
 import { applyTheme, getTheme } from './lib/theme'
@@ -17,6 +18,7 @@ function AppFrame() {
       <main className={authed ? 'app-main app-main-with-sidebar' : 'app-main app-main-public'} key={location.pathname}>
         <AppRoutes />
       </main>
+      {authed && <FloatingBot />}
       <ToastContainer position="top-right" theme="dark" />
     </>
   )

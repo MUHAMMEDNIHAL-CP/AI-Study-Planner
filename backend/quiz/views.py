@@ -38,7 +38,7 @@ def build_questions(topic, difficulty, count):
 
 def build_gemini_questions(topic, difficulty, count):
     response = generate_json(
-        "You are FocusFlow AI. Generate an educational active-recall multiple-choice quiz. "
+        "You are Flox AI. Generate an educational active-recall multiple-choice quiz. "
         "Return strict JSON with key questions. questions must be an array of objects with keys: "
         "id number, question string, options array of exactly 4 strings, answer_index number from 0 to 3, explanation string. "
         f"Topic: {topic}. Difficulty: {difficulty}. Count: {count}."

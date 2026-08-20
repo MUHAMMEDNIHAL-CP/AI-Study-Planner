@@ -3,14 +3,18 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
+import MySubjectsPage from './pages/MySubjectsPage'
 import PlannerPage from './pages/PlannerPage'
+import TasksPage from './pages/TasksPage'
+import ExamsPage from './pages/ExamsPage'
+import FocusModePage from './pages/FocusModePage'
+import ProgressPage from './pages/ProgressPage'
 import AiTutorPage from './pages/AiTutorPage'
+import NotesPage from './pages/NotesPage'
+import CalendarPage from './pages/CalendarPage'
 import QuizCenterPage from './pages/QuizCenterPage'
-import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
-import FocusModePage from './pages/FocusModePage'
-import BurnoutInsightsPage from './pages/BurnoutInsightsPage'
 import RequireAuth from './routes/RequireAuth'
 
 export default function AppRoutes() {
@@ -22,12 +26,16 @@ export default function AppRoutes() {
 
       <Route element={<RequireAuth />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/subjects" element={<MySubjectsPage />} />
         <Route path="/planner" element={<PlannerPage />} />
-        <Route path="/ai-tutor" element={<AiTutorPage />} />
-        <Route path="/quiz" element={<QuizCenterPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/exams" element={<ExamsPage />} />
         <Route path="/focus" element={<FocusModePage />} />
-        <Route path="/burnout" element={<BurnoutInsightsPage />} />
+        <Route path="/progress" element={<ProgressPage />} />
+        <Route path="/ai-tutor" element={<AiTutorPage />} />
+        <Route path="/notes" element={<NotesPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/quiz" element={<QuizCenterPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

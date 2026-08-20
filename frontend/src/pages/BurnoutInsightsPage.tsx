@@ -139,7 +139,7 @@ export default function BurnoutInsightsPage() {
               </div>
             </div>
             <div className="burnout-summary-text">
-              <h2>{adjustment?.provider === 'gemini' ? 'Gemini Recovery Coach' : 'Recovery Coach'}</h2>
+              <h2>Recovery Coach</h2>
               <p>{adjustment?.diagnosis ?? 'Run the scan to generate a practical recovery diagnosis and timetable adjustment.'}</p>
             </div>
           </section>

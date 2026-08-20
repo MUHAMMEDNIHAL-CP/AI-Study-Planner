@@ -26,3 +26,6 @@ class ProductivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.date}"
+
+
+from .focus_models import FocusSession

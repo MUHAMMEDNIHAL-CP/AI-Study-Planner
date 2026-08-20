@@ -1,436 +1,426 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
+import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
-import AppHeader from '../components/AppHeader'
+import { useUserProfile } from '../hooks/useUserProfile'
 
-type TutorMode = 'explain' | 'summary' | 'flashcards'
-type ExplainLevel = 'kid' | 'exam' | 'research'
+type AiMode = 'plan' | 'exam' | 'learn' | 'practice' | 'analyze' | 'chat'
 
-type TutorResponse = {
-  history_id?: number
-  title: string
-  provider?: string
-  ai_warning?: string
-  explanation?: string
-  summary?: string[]
-  flashcards?: { front: string; back: string }[]
-  next_steps?: string[]
-}
-
-type ExplainerResponse = {
-  history_id?: number
-  provider?: string
-  ai_warning?: string
-  topic?: string
-  level?: string
-  explanation: string
-  analogy: string
-  steps: string[]
-  check_question: string
-}
-
-type AiHistory = {
+type AiHistoryItem = {
   id: number
   feature: string
   provider: string
   prompt: string
-  response: Partial<TutorResponse & ExplainerResponse>
+  response: Record<string, unknown>
   created_at: string
 }
-
-type SpeechResultEvent = {
-  results: ArrayLike<ArrayLike<{ transcript: string }>>
-}
-
-type SpeechRecognitionLike = {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  start: () => void
-  onresult: ((event: SpeechResultEvent) => void) | null
-  onerror: (() => void) | null
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
 
 type ChatMessage = {
   id: string
   role: 'student' | 'coach'
   text: string
+  mode?: AiMode
 }
 
-const modeLabels: Record<TutorMode, string> = {
-  explain: 'Explain',
-  summary: 'Summary',
-  flashcards: 'Flashcards',
+type DashboardData = {
+  current_streak: number
+  longest_streak: number
+  today_minutes: number
+  completion_rate: number
+  open_tasks: number
+  subjects_summary: Array<{
+    name: string
+    color: string
+    topics_completed: number
+    total_topics: number
+  }>
+  upcoming_exams: Array<{
+    id: number
+    title: string
+    date: string
+    subject_name?: string
+  }>
+  total_completed_tasks: number
+  total_study_hours: number
+  total_focus_sessions: number
 }
 
-const levelLabels: Record<ExplainLevel, string> = {
-  kid: 'Kid Mode',
-  exam: 'Exam Mode',
-  research: 'Research',
+type ChatResponse = {
+  reply: string
+  suggestions?: string[]
+  action?: { label: string; route: string } | null
 }
 
-function responseText(answer: TutorResponse | null, explainer: ExplainerResponse | null) {
-  if (explainer) return explainer.explanation
-  if (answer?.explanation) return answer.explanation
-  if (answer?.summary?.length) return answer.summary.join(' ')
-  if (answer?.flashcards?.length) return answer.flashcards.map((card) => `${card.front}: ${card.back}`).join(' ')
-  return ''
+const AI_MODES: { key: AiMode; icon: string; label: string; desc: string }[] = [
+  { key: 'plan', icon: '📅', label: 'Plan My Day', desc: 'Create a study plan' },
+  { key: 'exam', icon: '🎓', label: 'Exam Prep', desc: 'Prepare for exams' },
+  { key: 'learn', icon: '🧠', label: 'Explain Topic', desc: 'Teach me a concept' },
+  { key: 'practice', icon: '📝', label: 'Quiz Me', desc: 'Test my knowledge' },
+  { key: 'analyze', icon: '📊', label: 'Analyze Me', desc: 'Review my progress' },
+  { key: 'chat', icon: '🚀', label: 'General Chat', desc: 'Ask anything' },
+]
+
+const MODE_SUGGESTIONS: Record<AiMode, string[]> = {
+  plan: ['Plan my study day', 'Optimize my schedule', 'What should I study now?'],
+  exam: ['Create an exam study plan', 'Am I ready for my exam?', 'What topics should I focus on?'],
+  learn: ['Explain constructors in C++', 'What is polymorphism?', 'Simplify integration for me'],
+  practice: ['Quiz me on C++', 'Give me 10 questions on Module 2', 'Test my knowledge'],
+  analyze: ['Analyze my study progress', 'Which subject needs attention?', 'Am I improving?'],
+  chat: ['I have 2 hours today. What should I study?', 'Why am I losing my streak?', 'Give me study tips'],
+}
+function groupHistoryByDate(items: AiHistoryItem[]) {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10)
+  const groups: { label: string; items: AiHistoryItem[] }[] = []
+  const byDate = new Map<string, AiHistoryItem[]>()
+  for (const item of items) {
+    const d = item.created_at.slice(0, 10)
+    if (!byDate.has(d)) byDate.set(d, [])
+    byDate.get(d)!.push(item)
+  }
+  if (byDate.has(today)) {
+    groups.push({ label: 'TODAY', items: byDate.get(today)! })
+    byDate.delete(today)
+  }
+  if (byDate.has(yesterday)) {
+    groups.push({ label: 'YESTERDAY', items: byDate.get(yesterday)! })
+    byDate.delete(yesterday)
+  }
+  const sorted = [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  for (const [date, dateItems] of sorted.slice(0, 5)) {
+    const label = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric',
+    }).toUpperCase()
+    groups.push({ label, items: dateItems })
+  }
+  return groups
 }
 
-function responseTitle(answer: TutorResponse | null, explainer: ExplainerResponse | null, topic: string) {
-  if (explainer) return `ELI5: ${explainer.topic || topic}`
-  if (answer?.title) return answer.title
-  return 'Your AI Tutor is ready'
+function daysUntil(date: string) {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return Math.max(0, Math.ceil((new Date(date + 'T00:00:00').getTime() - now.getTime()) / 86400000))
 }
 
-function formatHistoryDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(
-    new Date(value),
-  )
+function formatMinutes(m: number) {
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return h ? h + 'h ' + min + 'm' : min + 'm'
+}
+
+function getGreeting(mode: AiMode, name: string, nextExam: DashboardData['upcoming_exams'][0] | null, dashboard: DashboardData | null): string {
+  switch (mode) {
+    case 'plan':
+      return 'Hey ' + name + '! I can create a personalized study plan for today. I will check your schedule, upcoming exams, and weak areas. What time do you want to start studying?'
+    case 'exam':
+      if (nextExam) {
+        return 'Your next exam is ' + nextExam.title + ' in ' + daysUntil(nextExam.date) + ' days. Let me help you prepare. What topics do you want to focus on?'
+      }
+      return 'I do not see any upcoming exams. Would you like to add one, or should I help you plan ahead?'
+    case 'learn':
+      return 'I am ready to explain any topic! Tell me what you would like to learn, and I will break it down in a way that is easy to understand.'
+    case 'practice':
+      return 'Let us test your knowledge! Tell me the subject or topic and I will create a quiz for you.'
+    case 'analyze':
+      return buildAnalysis(dashboard)
+    default:
+      return 'How can I help you study today, ' + name + '?'
+  }
+}
+
+function buildAnalysis(dash: DashboardData | null): string {
+  if (!dash) return 'Loading your data. Give me a moment...'
+  const lines: string[] = []
+  lines.push('YOUR AI ANALYSIS')
+  lines.push('')
+  lines.push('Here is what I see in your progress:')
+  lines.push('Study time: ' + formatMinutes(dash.today_minutes) + ' today')
+  lines.push('Streak: ' + dash.current_streak + ' days (best: ' + dash.longest_streak + ')')
+  lines.push('Tasks completed: ' + dash.total_completed_tasks + ' (' + dash.completion_rate + '% completion)')
+  const subjects = dash.subjects_summary || []
+  if (subjects.length) {
+    const weakest = subjects
+      .filter((s) => s.total_topics > 0)
+      .sort((a, b) => (a.topics_completed / a.total_topics) - (b.topics_completed / b.total_topics))[0]
+    if (weakest) {
+      const pct = Math.round((weakest.topics_completed / weakest.total_topics) * 100)
+      lines.push('')
+      lines.push(weakest.name + ' needs attention at ' + pct + '% completion.')
+      lines.push('I recommend adding 2 ' + weakest.name + ' sessions this week.')
+    }
+  }
+  if (dash.current_streak > 0) {
+    lines.push('')
+    lines.push('You are on a ' + dash.current_streak + '-day streak. Keep it going!')
+  }
+  return lines.join('\n')
 }
 
 export default function AiTutorPage() {
-  const [mode, setMode] = useState<TutorMode>('explain')
-  const [level, setLevel] = useState<ExplainLevel>('kid')
-  const [topic, setTopic] = useState('Quantum Entanglement Basics')
-  const [prompt, setPrompt] = useState('')
-  const [answer, setAnswer] = useState<TutorResponse | null>(null)
-  const [explainer, setExplainer] = useState<ExplainerResponse | null>(null)
-  const [history, setHistory] = useState<AiHistory[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'coach',
-      text: 'Choose a mode, enter a topic, and ask what you want to understand. I will explain it in a study-friendly way.',
-    },
-  ])
-  const [provider, setProvider] = useState('checking')
-  const [loading, setLoading] = useState(false)
-  const [listening, setListening] = useState(false)
+  const profile = useUserProfile()
+  const userName = profile?.username?.split(/\s+/)[0] || 'there'
 
-  const providerLabel = provider === 'gemini' ? 'Gemini live' : provider === 'mock' ? 'Fallback mode' : provider
-  const activeText = responseText(answer, explainer)
-  const latestFlashcards = useMemo(() => {
-    const fromAnswer = answer?.flashcards
-    if (fromAnswer?.length) return fromAnswer
-    const fromHistory = history.find((item) => item.response.flashcards?.length)?.response.flashcards
-    return fromHistory?.length ? fromHistory : []
-  }, [answer, history])
+  const [history, setHistory] = useState<AiHistoryItem[]>([])
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [activeMode, setActiveMode] = useState<AiMode | null>(null)
+  const [showWelcome, setShowWelcome] = useState(true)
+  const [mobilePanel, setMobilePanel] = useState<'conversations' | 'chat' | 'context'>('chat')
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
+
+  useEffect(() => {
+    if (!showWelcome && inputRef.current) inputRef.current.focus()
+  }, [showWelcome])
 
   useEffect(() => {
     let active = true
-
-    async function loadTutorData() {
+    async function load() {
       try {
-        const [statusRes, historyRes] = await Promise.all([
-          api.get<{ provider: string; gemini_configured: boolean }>('/ai/status/'),
-          api.get<AiHistory[]>('/ai/history/'),
+        const [histRes, dashRes] = await Promise.all([
+          api.get<AiHistoryItem[]>('/ai/history/'),
+          api.get<DashboardData>('/study/dashboard/'),
         ])
         if (!active) return
-        setProvider(statusRes.data.gemini_configured ? statusRes.data.provider : 'mock')
-        setHistory(historyRes.data.filter((item) => item.feature === 'tutor'))
-      } catch (error) {
+        setHistory(histRes.data)
+        setDashboard(dashRes.data)
+      } catch {
         if (!active) return
-        setProvider('unknown')
-        toast.error(getErrorMessage(error))
       }
     }
-
-    void loadTutorData()
-    return () => {
-      active = false
-    }
+    void load()
+    return () => { active = false }
   }, [])
 
-  async function refreshHistory() {
-    try {
-      const { data } = await api.get<AiHistory[]>('/ai/history/')
-      setHistory(data.filter((item) => item.feature === 'tutor'))
-    } catch {
-      // History is helpful, but the active answer already rendered.
-    }
+  const historyGroups = useMemo(() => groupHistoryByDate(history), [history])
+
+  const weakSubject = useMemo(() => {
+    if (!dashboard?.subjects_summary?.length) return null
+    return dashboard.subjects_summary
+      .filter((s) => s.total_topics > 0)
+      .sort((a, b) => (a.topics_completed / a.total_topics) - (b.topics_completed / b.total_topics))[0] || null
+  }, [dashboard])
+
+  const nextExam = dashboard?.upcoming_exams?.[0] || null
+
+  const examPrepPct = useMemo(() => {
+    if (!nextExam || !dashboard?.subjects_summary) return 0
+    const subj = dashboard.subjects_summary.find((s) => s.name === nextExam.subject_name)
+    if (!subj || !subj.total_topics) return 0
+    return Math.round((subj.topics_completed / subj.total_topics) * 100)
+  }, [nextExam, dashboard])
+
+  function startMode(mode: AiMode) {
+    setActiveMode(mode)
+    setShowWelcome(false)
+    setMobilePanel('chat')
+    const greeting = getGreeting(mode, userName, nextExam, dashboard)
+    setMessages([{ id: 'welcome-' + Date.now(), role: 'coach', text: greeting, mode }])
   }
 
-  async function askTutor(event?: FormEvent) {
-    event?.preventDefault()
-    const cleanTopic = topic.trim()
-    const cleanPrompt = prompt.trim()
-    if (!cleanTopic) {
-      toast.info('Enter a topic first.')
-      return
-    }
+  function startNewChat() {
+    setMessages([])
+    setActiveMode(null)
+    setShowWelcome(true)
+    setInput('')
+    setMobilePanel('chat')
+  }
 
-    setLoading(true)
-    setMessages((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-student`,
-        role: 'student',
-        text: cleanPrompt || `${modeLabels[mode]} ${cleanTopic}`,
-      },
+  function loadHistoryItem(item: AiHistoryItem) {
+    setShowWelcome(false)
+    setActiveMode('chat')
+    setMobilePanel('chat')
+    const resp = item.response as Record<string, unknown> | undefined
+    const responseText = resp
+      ? (resp.reply as string) || (resp.explanation as string) || (resp.title as string) || item.prompt
+      : item.prompt
+    setMessages([
+      { id: 'hist-s-' + item.id, role: 'student', text: item.prompt },
+      { id: 'hist-c-' + item.id, role: 'coach', text: responseText || item.prompt },
     ])
+  }
 
+  async function sendMessage(text: string) {
+    const trimmed = text.trim()
+    if (!trimmed || loading) return
+    setMessages((prev) => [...prev, { id: 's-' + Date.now(), role: 'student', text: trimmed }])
+    setInput('')
+    setLoading(true)
     try {
-      const { data } = await api.post<TutorResponse>('/ai/tutor/', { mode, topic: cleanTopic, prompt: cleanPrompt })
-      setAnswer(data)
-      setExplainer(null)
-      setProvider(data.provider ?? 'gemini')
-      const text = responseText(data, null) || data.title
-      setMessages((current) => [...current, { id: `${Date.now()}-coach`, role: 'coach', text }])
-      speak(text)
-      setPrompt('')
-      void refreshHistory()
-      toast.success('Tutor response ready.')
-    } catch (error) {
-      toast.error(getErrorMessage(error))
+      const { data } = await api.post<ChatResponse>('/ai/chat/', {
+        message: trimmed,
+        context: { page: '/ai-tutor', mode: activeMode },
+      })
+      setMessages((prev) => [...prev, { id: 'c-' + Date.now(), role: 'coach', text: data.reply, mode: activeMode ?? undefined }])
+    } catch (err) {
+      setMessages((prev) => [...prev, { id: 'err-' + Date.now(), role: 'coach', text: 'I am having trouble connecting right now. Please try again.' }])
+      toast.error(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
   }
 
-  async function explainTopic() {
-    const cleanTopic = topic.trim()
-    if (!cleanTopic) {
-      toast.info('Enter a topic first.')
-      return
-    }
-
-    setLoading(true)
-    setMessages((current) => [
-      ...current,
-      { id: `${Date.now()}-student`, role: 'student', text: `${levelLabels[level]} explanation for ${cleanTopic}` },
-    ])
-
-    try {
-      const { data } = await api.post<ExplainerResponse>('/ai/explain/', { topic: cleanTopic, level })
-      setExplainer(data)
-      setAnswer(null)
-      setProvider(data.provider ?? 'gemini')
-      const text = `${data.explanation} Analogy: ${data.analogy}`
-      setMessages((current) => [...current, { id: `${Date.now()}-coach`, role: 'coach', text }])
-      speak(text)
-      void refreshHistory()
-      toast.success('Explanation generated.')
-    } catch (error) {
-      toast.error(getErrorMessage(error))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function speak(text = activeText) {
-    if (!text || !('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 0.94
-    utterance.pitch = 1
-    window.speechSynthesis.speak(utterance)
-  }
-
-  function stopSpeech() {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
-  }
-
-  async function copyAnswer() {
-    const text = activeText || 'No answer generated yet.'
-    await navigator.clipboard.writeText(text)
-    toast.success('Answer copied.')
-  }
-
-  function startDictation() {
-    const speechWindow = window as Window & {
-      SpeechRecognition?: SpeechRecognitionConstructor
-      webkitSpeechRecognition?: SpeechRecognitionConstructor
-    }
-    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-    if (!Recognition) {
-      toast.info('Speech recognition is not supported in this browser.')
-      return
-    }
-    const recognition = new Recognition()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript
-      if (transcript) setPrompt(transcript)
-      setListening(false)
-    }
-    recognition.onerror = () => {
-      setListening(false)
-      toast.error('Voice capture failed.')
-    }
-    setListening(true)
-    recognition.start()
-  }
-
-  function openHistoryItem(item: AiHistory) {
-    setTopic(item.response.topic || item.prompt || topic)
-    if (item.response.explanation && item.response.analogy) {
-      setExplainer(item.response as ExplainerResponse)
-      setAnswer(null)
-    } else {
-      setAnswer(item.response as TutorResponse)
-      setExplainer(null)
-    }
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void sendMessage(input)
   }
 
   return (
-    <div className="flow-page tutor-page">
-      <AppHeader className="tutor-top">
-        <label className="flow-search"><span>Ask difficult concepts, summaries, and flashcards...</span></label>
-        <strong className="tutor-top-brand">FocusFlow AI</strong>
-      </AppHeader>
-
-      <section className="tutor-hero">
-        <div>
-          <span className="eyebrow">AI Tutor workspace</span>
-          <h1>Study with a focused AI tutor.</h1>
-          <p>Ask questions, simplify hard topics, generate summaries, and turn answers into active-recall cards.</p>
+    <PageShell
+      className="ai-coach-page"
+      eyebrow="AI Coach"
+      title="AI Study Coach"
+      subtitle="Plan, learn, practice, and analyze with your AI coach."
+      actions={
+        <div className="ac-mobile-tabs">
+          <button className={mobilePanel === 'conversations' ? 'active' : ''} onClick={() => setMobilePanel('conversations')} type="button">Chats</button>
+          <button className={mobilePanel === 'chat' ? 'active' : ''} onClick={() => setMobilePanel('chat')} type="button">AI</button>
+          <button className={mobilePanel === 'context' ? 'active' : ''} onClick={() => setMobilePanel('context')} type="button">Context</button>
         </div>
-        <div className={`provider-card provider-card-${provider}`}>
-          <span>Provider</span>
-          <strong>{providerLabel}</strong>
-          <small>{provider === 'gemini' ? 'AI calls are connected.' : 'Fallback answers keep the page working.'}</small>
-        </div>
-      </section>
-
-      <div className="tutor-grid">
-        <main className="tutor-chat">
-          <form className="tutor-composer top-composer" onSubmit={askTutor}>
-            <label>
-              Topic
-              <input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Photosynthesis, limits, market failure..." />
-            </label>
-            <label>
-              Mode
-              <select value={mode} onChange={(event) => setMode(event.target.value as TutorMode)}>
-                {(Object.keys(modeLabels) as TutorMode[]).map((item) => <option value={item} key={item}>{modeLabels[item]}</option>)}
-              </select>
-            </label>
-            <label>
-              Level
-              <select value={level} onChange={(event) => setLevel(event.target.value as ExplainLevel)}>
-                {(Object.keys(levelLabels) as ExplainLevel[]).map((item) => <option value={item} key={item}>{levelLabels[item]}</option>)}
-              </select>
-            </label>
-            <button className="gradient-action" disabled={loading} type="submit">{loading ? 'Thinking...' : 'Ask Tutor'}</button>
-          </form>
-
-          <section className="tutor-answer-card">
-            <div className="tutor-answer-head">
-              <div>
-                <span className="eyebrow">{explainer ? levelLabels[level] : modeLabels[mode]}</span>
-                <h2>{responseTitle(answer, explainer, topic)}</h2>
-              </div>
-              <b className={`provider-pill provider-${provider}`}>{providerLabel}</b>
-            </div>
-
-            {answer?.ai_warning || explainer?.ai_warning ? (
-              <div className="dashboard-alert">{answer?.ai_warning ?? explainer?.ai_warning}</div>
-            ) : null}
-
-            <p>{activeText || 'Ask a question, request a summary, or press ELI5 to generate a focused tutor response.'}</p>
-
-            {answer?.summary?.length ? (
-              <ul className="answer-list">
-                {answer.summary.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            ) : null}
-
-            {answer?.next_steps?.length ? (
-              <div className="tutor-next-steps">
-                {answer.next_steps.map((item) => <span key={item}>{item}</span>)}
-              </div>
-            ) : null}
-
-            {explainer ? (
-              <div className="concept-grid">
-                <article><b>ANALOGY</b><strong>{explainer.analogy}</strong><span>{explainer.check_question}</span></article>
-                <article><b>RECALL PATH</b><strong>{explainer.steps.length} steps</strong><span>{explainer.steps.join(' -> ')}</span></article>
-              </div>
-            ) : null}
-
-            {latestFlashcards.length ? (
-              <div className="flashcard-grid">
-                {latestFlashcards.slice(0, 4).map((card) => (
-                  <article key={card.front}><b>{card.front}</b><span>{card.back}</span></article>
+      }
+    >
+      <div className="ac-layout">
+        {/* Left: Conversations */}
+        <aside className={'ac-sidebar ' + (mobilePanel === 'conversations' ? 'ac-mobile-show' : '')}>
+          <div className="ac-sidebar-header">
+            <span className="eyebrow">CONVERSATIONS</span>
+            <button className="ac-new-chat-btn" onClick={startNewChat} type="button">+ New Chat</button>
+          </div>
+          <div className="ac-sidebar-list">
+            {historyGroups.map((group) => (
+              <div className="ac-history-group" key={group.label}>
+                <span className="ac-history-date">{group.label}</span>
+                {group.items.map((item) => (
+                  <button className="ac-history-item" key={item.id} onClick={() => loadHistoryItem(item)} type="button">
+                    <span className="ac-history-title">{String((item.response as Record<string, unknown>)?.title || item.prompt || 'Chat')}</span>
+                    <span className="ac-history-time">{new Date(item.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                  </button>
                 ))}
               </div>
-            ) : null}
+            ))}
+            {!historyGroups.length && (
+              <p className="ac-empty-hint">No conversations yet.</p>
+            )}
+          </div>
+        </aside>
 
-            <div className="tutor-answer-actions">
-              <button className="ghost-button" disabled={!activeText} onClick={() => speak()} type="button">Read Aloud</button>
-              <button className="ghost-button" onClick={stopSpeech} type="button">Stop Voice</button>
-              <button className="ghost-button" disabled={!activeText} onClick={() => void copyAnswer()} type="button">Copy</button>
-              <button className="ghost-button" disabled={loading} onClick={explainTopic} type="button">ELI5</button>
-            </div>
-          </section>
-
-          <section className="tutor-conversation page-card">
-            <div className="section-heading">
-              <div>
-                <span>Conversation</span>
-                <h2>FocusFlow Coach</h2>
+        {/* Center: Chat */}
+        <main className={'ac-chat ' + (mobilePanel === 'chat' ? 'ac-mobile-show' : '')}>
+          {showWelcome ? (
+            <div className="ac-welcome">
+              <div className="ac-welcome-icon">{'✦'}</div>
+              <h2 className="ac-welcome-name">Hey {userName}!</h2>
+              <p className="ac-welcome-sub">I am your Flox AI Coach.</p>
+              <p className="ac-welcome-desc">I can help you plan, learn, revise, practice, and stay on track.</p>
+              <div className="ac-mode-grid">
+                {AI_MODES.map((mode) => (
+                  <button className="ac-mode-card" key={mode.key} onClick={() => startMode(mode.key)} type="button">
+                    <span className="ac-mode-icon">{mode.icon}</span>
+                    <strong>{mode.label}</strong>
+                    <span>{mode.desc}</span>
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="chat-window tutor-chat-window">
-              {messages.map((message) => (
-                <p className={`coach-message ${message.role}`} key={message.id}>{message.text}</p>
+          ) : (
+            <div className="ac-messages">
+              {messages.map((msg) => (
+                <div className={'ac-msg ' + msg.role} key={msg.id}>
+                  {msg.role === 'coach' && <span className="ac-msg-avatar">{'✦'}</span>}
+                  <div className="ac-msg-content">
+                    <p>{msg.text}</p>
+                  </div>
+                  {msg.role === 'student' && <span className="ac-msg-avatar user-avatar">{userName.charAt(0).toUpperCase()}</span>}
+                </div>
+              ))}
+              {loading && (
+                <div className="ac-msg coach">
+                  <span className="ac-msg-avatar">{'✦'}</span>
+                  <div className="ac-msg-content">
+                    <div className="ac-typing"><span /><span /><span /></div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+
+          {messages.length <= 2 && activeMode && !loading && (
+            <div className="ac-suggestions">
+              {MODE_SUGGESTIONS[activeMode].map((s) => (
+                <button className="ac-suggestion-chip" key={s} onClick={() => void sendMessage(s)} type="button">{s}</button>
               ))}
             </div>
-          </section>
+          )}
 
-          <form className="bottom-composer tutor-bottom-composer" onSubmit={askTutor}>
-            <button className="round-control" onClick={startDictation} type="button">{listening ? '...' : 'Mic'}</button>
-            <input
-              placeholder="Ask your tutor anything..."
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-            />
-            <button className="gradient-action" disabled={loading} type="submit">{loading ? 'Sending...' : 'Send'}</button>
+          <form className="ac-input-bar" onSubmit={handleSubmit}>
+            <input ref={inputRef} placeholder="Ask Flox AI..." value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} />
+            <button className="ac-send-btn" disabled={!input.trim() || loading} type="submit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
+              </svg>
+            </button>
           </form>
         </main>
-
-        <aside className="tutor-right">
-          <section className="page-card tutor-side-card tutor-voice-card">
-            <div className="panel-heading"><h3>Voice Coach</h3><span>{listening ? 'Live' : 'Ready'}</span></div>
-            <p>Dictate your question, then let FocusFlow read the answer aloud.</p>
-            <button className="gradient-action" type="button" onClick={startDictation}>{listening ? 'Listening...' : 'Start Mic'}</button>
-          </section>
-
-          <section className="page-card tutor-side-card">
-            <div className="panel-heading"><h3>Recent Tutor Work</h3><span>{history.length}</span></div>
-            <div className="tutor-history-list">
-              {history.slice(0, 5).map((item) => (
-                <button key={item.id} onClick={() => openHistoryItem(item)} type="button">
-                  <strong>{item.response.title || item.response.topic || item.prompt}</strong>
-                  <span>{formatHistoryDate(item.created_at)} - {item.provider}</span>
-                </button>
-              ))}
-              {!history.length ? <p className="empty-state">Your tutor history will appear after the first AI answer.</p> : null}
+        {/* Right: Study Context */}
+        <aside className={'ac-context ' + (mobilePanel === 'context' ? 'ac-mobile-show' : '')}>
+          <div className="ac-ctx-section">
+            <span className="eyebrow">TODAY</span>
+            <div className="ac-ctx-stat">
+              <span>Study time</span>
+              <strong>{formatMinutes(dashboard?.today_minutes ?? 0)}</strong>
             </div>
-          </section>
-
-          <section className="page-card tutor-side-card">
-            <div className="panel-heading"><h3>Flashcard Deck</h3><span>{latestFlashcards.length}</span></div>
-            <div className="tutor-deck-list">
-              {latestFlashcards.slice(0, 3).map((card) => (
-                <article key={card.front}><strong>{card.front}</strong><span>{card.back}</span></article>
-              ))}
-              {!latestFlashcards.length ? <p className="empty-state">Generate flashcards to build a quick recall deck.</p> : null}
+            <div className="ac-ctx-stat">
+              <span>Tasks</span>
+              <strong>{dashboard?.total_completed_tasks ?? 0} done</strong>
             </div>
-          </section>
+            <div className="ac-ctx-stat">
+              <span>{'\uD83D\uDD25'} Streak</span>
+              <strong>{dashboard?.current_streak ?? 0} days</strong>
+            </div>
+          </div>
 
-          <section className="page-card focus-goal tutor-goal-card">
-            <h3>Study Prompt Quality</h3>
-            <strong>{prompt.length || topic.length}</strong>
-            <span>characters of context</span>
-          </section>
+          {nextExam && (
+            <div className="ac-ctx-section">
+              <span className="eyebrow">NEXT EXAM</span>
+              <div className="ac-ctx-exam-name">{nextExam.title}</div>
+              <div className="ac-ctx-stat">
+                <span>{daysUntil(nextExam.date)} days left</span>
+              </div>
+              <div className="ac-ctx-bar-track">
+                <div className="ac-ctx-bar-fill" style={{ width: examPrepPct + '%' }} />
+              </div>
+              <div className="ac-ctx-bar-label">{examPrepPct}% prepared</div>
+            </div>
+          )}
+
+          {weakSubject && (
+            <div className="ac-ctx-section">
+              <span className="eyebrow">WEAK SUBJECT</span>
+              <div className="ac-ctx-weak-name">{weakSubject.name}</div>
+              <div className="ac-ctx-bar-track">
+                <div className="ac-ctx-bar-fill warning" style={{ width: (weakSubject.total_topics ? Math.round((weakSubject.topics_completed / weakSubject.total_topics) * 100) : 0) + '%' }} />
+              </div>
+              <div className="ac-ctx-bar-label">{weakSubject.total_topics ? Math.round((weakSubject.topics_completed / weakSubject.total_topics) * 100) : 0}% complete</div>
+            </div>
+          )}
+
+          <div className="ac-ctx-section ac-ctx-suggestion">
+            <span className="eyebrow">AI SUGGESTION</span>
+            <p>{'\uD83D\uDCA1'} You should revise {weakSubject?.name || 'your weakest subject'} today.</p>
+          </div>
         </aside>
       </div>
-    </div>
+    </PageShell>
   )
 }

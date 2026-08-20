@@ -70,7 +70,7 @@ class TutorView(APIView):
 
         fallback = fallback_tutor_answer(mode, topic)
         gemini_answer, gemini_error = generate_json(
-            "You are FocusFlow AI, a precise and friendly study tutor. "
+            "You are Flox AI, a precise and friendly study tutor. "
             "Return strict JSON only. "
             "For mode explain use keys: title, explanation, next_steps array. "
             "For mode summary use keys: title, summary array. "
@@ -125,7 +125,7 @@ class FocusCoachView(APIView):
             "breathing_cue": "Breathe in for 4, hold for 2, breathe out for 6.",
         }
         gemini_response, gemini_error = generate_json(
-            "You are FocusFlow AI, an empathetic but practical student focus coach. "
+            "You are Flox AI, an empathetic but practical student focus coach. "
             "Return strict JSON with keys: reply string, action_steps array of 3 short steps, breathing_cue string. "
             f"Student message: {prompt}. Current context: fatigue={fatigue}, productivity={productivity}.",
             return_error=True,
@@ -186,7 +186,7 @@ class ExplainTopicView(APIView):
             "check_question": f"What is the most important cause-and-effect relationship in {topic}?",
         }
         gemini_response, gemini_error = generate_json(
-            "You are FocusFlow AI. Explain academic topics clearly for students. "
+            "You are Flox AI. Explain academic topics clearly for students. "
             "Return strict JSON with keys: topic, level, explanation, analogy, steps array, check_question. "
             f"Topic: {topic}. Level: {level}.",
             return_error=True,

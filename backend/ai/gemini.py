@@ -5,7 +5,7 @@ import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-logger = logging.getLogger("focusflow.ai.gemini")
+logger = logging.getLogger("flox.ai.gemini")
 
 # Hard cap on prompt length to prevent abuse / excessive API cost.
 MAX_PROMPT_CHARS = 8000

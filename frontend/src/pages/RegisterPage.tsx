@@ -40,7 +40,7 @@ export default function RegisterPage() {
       <div className="auth-shell">
         <section className="auth-hero">
           <span className="auth-logo"><IconOrbit size={24} /></span>
-          <h1>FocusFlow AI</h1>
+          <h1>Flox AI</h1>
           <p>Your study orbit — plan, focus, recall, recover.</p>
           <div className="auth-benefits">
             <span>Personal planner</span>
@@ -84,7 +84,7 @@ export default function RegisterPage() {
       <footer className="auth-footer">
         <span>Privacy Policy</span>
         <span>Terms of Service</span>
-        <small>(c) 2024 FocusFlow AI. Engineered for Flow.</small>
+        <small>(c) 2024 Flox AI. Engineered for Flow.</small>
       </footer>
     </main>
   )

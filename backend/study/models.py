@@ -8,6 +8,11 @@ class Subject(models.Model):
     color = models.CharField(max_length=20, default="#8b5cf6")
     weekly_goal_hours = models.PositiveIntegerField(default=5)
     weak_topics = models.TextField(blank=True)
+    subject_code = models.CharField(max_length=30, blank=True, default="")
+    teacher = models.CharField(max_length=120, blank=True, default="")
+    total_topics = models.PositiveIntegerField(default=0)
+    topics_completed = models.PositiveIntegerField(default=0)
+    target_grade = models.CharField(max_length=10, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -31,6 +36,7 @@ class Exam(models.Model):
     date = models.DateField()
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
     notes = models.TextField(blank=True)
+    modules = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

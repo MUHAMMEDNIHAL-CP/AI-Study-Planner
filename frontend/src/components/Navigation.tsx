@@ -4,15 +4,18 @@ import { api } from '../lib/api'
 import { clearAuthTokens, isAuthenticated } from '../lib/auth'
 import { initials, useUserProfile } from '../hooks/useUserProfile'
 import {
-  IconAnalytics,
-  IconBurnout,
+  IconCalendar,
   IconDashboard,
   IconFocus,
   IconLogout,
+  IconNotes,
   IconOrbit,
   IconPlanner,
+  IconProgress,
   IconQuiz,
   IconSettings,
+  IconSubject,
+  IconTask,
   IconTutor,
 } from './icons'
 
@@ -37,26 +40,32 @@ type StreakData = {
 
 const navGroups: NavGroup[] = [
   {
-    title: 'Home',
+    title: 'Overview',
     items: [{ label: 'Dashboard', to: '/dashboard', icon: IconDashboard }],
   },
   {
-    title: 'Plan',
-    items: [{ label: 'Study Planner', to: '/planner', icon: IconPlanner }],
-  },
-  {
-    title: 'Learn',
+    title: 'Study',
     items: [
-      { label: 'AI Tutor', to: '/ai-tutor', icon: IconTutor },
-      { label: 'Quiz Center', to: '/quiz', icon: IconQuiz },
+      { label: 'My Subjects', to: '/subjects', icon: IconSubject },
+      { label: 'Study Planner', to: '/planner', icon: IconPlanner },
+      { label: 'Tasks', to: '/tasks', icon: IconTask },
+      { label: 'Exams', to: '/exams', icon: IconPlanner },
+      { label: 'Focus Mode', to: '/focus', icon: IconFocus },
     ],
   },
   {
-    title: 'Wellness',
+    title: 'Progress',
     items: [
-      { label: 'Focus Mode', to: '/focus', icon: IconFocus },
-      { label: 'Analytics', to: '/analytics', icon: IconAnalytics },
-      { label: 'Burnout Check', to: '/burnout', icon: IconBurnout },
+      { label: 'Progress', to: '/progress', icon: IconProgress },
+      { label: 'AI Coach', to: '/ai-tutor', icon: IconTutor },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { label: 'Quiz', to: '/quiz', icon: IconQuiz },
+      { label: 'Notes', to: '/notes', icon: IconNotes },
+      { label: 'Calendar', to: '/calendar', icon: IconCalendar },
     ],
   },
 ]
@@ -92,8 +101,8 @@ export default function Navigation() {
       <Link className="sidebar-brand" to="/dashboard">
         <span className="sidebar-mark"><IconOrbit size={22} /></span>
         <span className="sidebar-brand-text">
-          <strong>FocusFlow</strong>
-          <small>Study Orbit</small>
+          <strong>Flox AI</strong>
+          <small>Study Planner</small>
         </span>
       </Link>
 
@@ -149,7 +158,6 @@ export default function Navigation() {
             <strong>{name}</strong>
             <small>{profile?.email ?? 'Student workspace'}</small>
           </span>
-          <IconSettings className="sidebar-user-settings" size={18} />
         </Link>
 
         <Link className="sidebar-settings" to="/settings">

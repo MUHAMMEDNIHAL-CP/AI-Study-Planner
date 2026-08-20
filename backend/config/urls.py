@@ -36,4 +36,5 @@ urlpatterns = [
     path('api/ai/', include('ai.urls')),
     path('api/burnout/', include('burnout.urls')),
     path('api/quiz/', include('quiz.urls')),
+    path('api/notes/', include('notes.urls')),
 ]

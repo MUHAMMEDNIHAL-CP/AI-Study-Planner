@@ -11,8 +11,8 @@ function resolveApiBaseUrl(): string {
     }
     return url
   }
-  // Local dev default. The dev server is HTTP, but production builds should set VITE_API_URL.
-  return 'http://localhost:8000'
+  // Local dev: use the same hostname the browser is on, so it works from any device on the LAN.
+  return `http://${window.location.hostname}:8000`
 }
 
 export const API_BASE_URL = resolveApiBaseUrl()

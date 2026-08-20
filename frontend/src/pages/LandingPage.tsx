@@ -21,7 +21,7 @@ export default function LandingPage() {
       <header className="landing-orbit-nav">
         <div className="landing-brand">
           <span className="landing-brand-mark"><IconOrbit size={20} /></span>
-          <strong>FocusFlow AI</strong>
+          <strong>Flox AI AI</strong>
         </div>
         <nav>
           <a href="#flow">How it works</a>
@@ -33,10 +33,10 @@ export default function LandingPage() {
 
       <section className="landing-hero-grid">
         <div className="landing-hero-copy">
-          <span className="eyebrow">Study Orbit</span>
+          <span className="eyebrow">AI Study Planner</span>
           <h1>One calm place for your entire <em>exam season</em></h1>
           <p>
-            FocusFlow turns messy study goals into a guided orbit — plan your week, focus deeply,
+            Flox AI turns messy study goals into a guided orbit — plan your week, focus deeply,
             practice with quizzes, and catch burnout before it hits.
           </p>
           <div className="landing-hero-actions">
@@ -62,7 +62,7 @@ export default function LandingPage() {
       <section className="landing-flow-section" id="flow">
         <span className="eyebrow">How it works</span>
         <h2>Your study loop, designed for real students</h2>
-        <p>Not another generic to-do app — FocusFlow follows the rhythm exams actually demand.</p>
+        <p>Not another generic to-do app — Flox AI follows the rhythm exams actually demand.</p>
         <div className="landing-flow-grid">
           {flowSteps.map(([title, text], index) => (
             <article className="landing-flow-card" key={title}>
@@ -89,7 +89,7 @@ export default function LandingPage() {
 
       <section className="landing-cta-band">
         <h2>Ready to enter your study orbit?</h2>
-        <p>Register once, add a subject, and let FocusFlow guide your next move.</p>
+        <p>Register once, add a subject, and let Flox AI guide your next move.</p>
         <Link className="gradient-action" to="/register">Get started — it&apos;s free</Link>
       </section>
     </main>

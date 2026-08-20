@@ -1,457 +1,317 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import EmptyState from '../components/EmptyState'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
 
 type ApiSubject = {
-  id: number
-  name: string
-  weak_topics: string
-  weekly_goal_hours: number
+  id: number; name: string; weak_topics: string; weekly_goal_hours: number
+  color?: string; topics_completed?: number; total_topics?: number
 }
-
 type ApiExam = {
-  id: number
-  subject: number | null
-  subject_name?: string
-  title: string
-  date: string
-  priority: string
-  notes: string
+  id: number; subject: number | null; subject_name?: string; title: string; date: string; priority: string; notes: string
 }
-
 type ApiTask = {
-  id: number
-  subject: number | null
-  subject_name?: string
-  title: string
-  description: string
-  due_date: string | null
-  scheduled_for: string | null
-  duration_minutes: number
-  priority: string
-  status: 'todo' | 'doing' | 'done'
+  id: number; subject: number | null; subject_name?: string; title: string; description: string
+  due_date: string | null; scheduled_for: string | null; duration_minutes: number; priority: string; status: 'todo' | 'doing' | 'done'
 }
-
-type HeatmapCell = {
-  date: string
-  studied: boolean
-  dow: number
-}
-
-type StreakMilestone = {
-  target: number
-  progress: number
-  remaining: number
-}
-
+type HeatmapCell = { date: string; studied: boolean; dow: number }
+type StreakMilestone = { target: number; progress: number; remaining: number }
+type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; started_at: string; ended_at?: string }
 type DashboardSummary = {
-  current_streak: number
-  longest_streak: number
-  total_study_days: number
-  last_study_date: string | null
-  studied_today: boolean
-  next_milestone: StreakMilestone | null
-  streak: number
-  heatmap: HeatmapCell[]
-  week_minutes: number
-  completion_rate: number
-  open_tasks: number
-  upcoming_exams: ApiExam[]
-  recent_logs: Array<{
-    date: string
-    minutes_studied: number
-    focus_score: number
-    completed_tasks: number
-  }>
+  current_streak: number; longest_streak: number; total_study_days: number; studied_today: boolean
+  next_milestone: StreakMilestone | null; heatmap: HeatmapCell[]; week_minutes: number
+  completion_rate: number; open_tasks: number; upcoming_exams: ApiExam[]
+  recent_logs: Array<{ date: string; minutes_studied: number; focus_score: number; completed_tasks: number }>
+  today_tasks?: ApiTask[]
+  subjects_summary?: Array<{ name: string; color: string; topics_completed: number; total_topics: number; weekly_goal_hours: number }>
+  total_study_hours?: number; total_completed_tasks?: number; total_focus_sessions?: number; today_minutes?: number
 }
 
-const todayInput = () => new Date().toISOString().slice(0, 10)
-
-function formatMinutes(minutes: number) {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return hours ? `${hours}h ${mins}m` : `${mins}m`
+function greetingWord() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
+function todayInput() { return new Date().toISOString().slice(0, 10) }
+function formatMinutes(m: number) { const h = Math.floor(m / 60); const min = m % 60; return h ? `${h}h ${min}m` : `${min}m` }
+function shortDate(v: string | null | undefined) { if (!v) return ''; return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(v)) }
+function daysUntil(v: string) { return Math.max(0, Math.ceil((new Date(todayInput()).getTime() - 0 + (new Date(v).getTime() - new Date(todayInput()).getTime())) / 86_400_000)) }
+function timeAgo(dateStr: string) {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+  if (mins < 1) return 'just now'; if (mins < 60) return `${mins} min ago`
+  const hrs = Math.floor(mins / 60); if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
 }
-
-function shortDate(value: string | null | undefined) {
-  if (!value) return 'No date'
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(value))
-}
-
-function daysUntil(value: string) {
-  const today = new Date(todayInput()).getTime()
-  const target = new Date(value).getTime()
-  return Math.max(0, Math.ceil((target - today) / 86_400_000))
-}
-
-function taskDate(task: ApiTask) {
-  return task.scheduled_for ?? task.due_date ?? '9999-12-31'
-}
-
-function loadReviewedExams() {
-  try {
-    return JSON.parse(localStorage.getItem('focusflow.reviewedExams') ?? '[]') as number[]
-  } catch {
-    return []
-  }
-}
-
-function dayPart() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'morning'
-  if (hour < 17) return 'afternoon'
-  return 'evening'
-}
+function formatTime(iso: string) { return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)) }
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null)
   const [subjects, setSubjects] = useState<ApiSubject[]>([])
-  const [exams, setExams] = useState<ApiExam[]>([])
   const [tasks, setTasks] = useState<ApiTask[]>([])
+  const [sessions, setSessions] = useState<FocusSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null)
-  const [reviewedExamIds, setReviewedExamIds] = useState<number[]>(() => loadReviewedExams())
   const [firstName, setFirstName] = useState('Scholar')
+  const [newTaskTitle, setNewTaskTitle] = useState('')
 
   useEffect(() => {
     let active = true
-
-    async function loadDashboard() {
+    async function load() {
       try {
-        const [profileRes, dashboardRes, subjectsRes, examsRes, tasksRes] = await Promise.all([
+        const [profileRes, dashRes, subjRes, taskRes, sessRes] = await Promise.all([
           api.get<{ username: string }>('/auth/me/'),
           api.get<DashboardSummary>('/study/dashboard/'),
           api.get<ApiSubject[]>('/study/subjects/'),
-          api.get<ApiExam[]>('/study/exams/'),
           api.get<ApiTask[]>('/study/tasks/'),
+          api.get<FocusSession[]>('/productivity/focus-sessions/').catch(() => ({ data: [] as FocusSession[] })),
         ])
         if (!active) return
         setFirstName(profileRes.data.username.split(/\s+/)[0] || 'Scholar')
-        setDashboard(dashboardRes.data)
-        setSubjects(subjectsRes.data)
-        setExams(examsRes.data)
-        setTasks(tasksRes.data)
+        setDashboard(dashRes.data); setSubjects(subjRes.data); setTasks(taskRes.data); setSessions(sessRes.data)
         setError(null)
-      } catch (err) {
-        if (active) setError(getErrorMessage(err))
-      } finally {
-        if (active) setLoading(false)
-      }
+      } catch (err) { if (active) setError(getErrorMessage(err)) } finally { if (active) setLoading(false) }
     }
-
-    void loadDashboard()
-    return () => {
-      active = false
-    }
+    void load(); return () => { active = false }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem('focusflow.reviewedExams', JSON.stringify(reviewedExamIds))
-  }, [reviewedExamIds])
-
-  const openTasks = useMemo(
-    () =>
-      tasks
-        .filter((task) => task.status !== 'done')
-        .sort((a, b) => taskDate(a).localeCompare(taskDate(b))),
-    [tasks],
-  )
-  const todayTasks = openTasks.slice(0, 5)
+  const currentStreak = dashboard?.current_streak ?? 0
+  const todayMinutes = dashboard?.today_minutes ?? 0
+  const subjectsSummary = dashboard?.subjects_summary ?? []
   const recentLogs = dashboard?.recent_logs ?? []
-  const averageFocus = recentLogs.length
-    ? Math.round(recentLogs.reduce((total, log) => total + log.focus_score, 0) / recentLogs.length)
-    : 0
-  const upcomingExams = (dashboard?.upcoming_exams.length ? dashboard.upcoming_exams : exams)
-    .filter((exam) => exam.date >= todayInput())
-    .slice(0, 4)
-  const completionRate = dashboard?.completion_rate ?? 0
-  const nextTask = openTasks[0]
-  const nextExam = upcomingExams[0]
 
-  const recommendations = [
-    openTasks.length
-      ? `Finish "${openTasks[0].title}" before opening a new study block.`
-      : 'Your task list is clear. Add the next study block in Planner.',
-    upcomingExams.length
-      ? `${upcomingExams[0].title} is in ${daysUntil(upcomingExams[0].date)} days — schedule one recall session today.`
-      : 'No upcoming exams yet. Add exam dates to unlock smarter planning.',
-    averageFocus >= 70
-      ? 'Focus quality looks strong. Turn weak topics into a quiz next.'
-      : 'Start with a 25-minute Focus Mode session, then log your minutes.',
-  ]
+  const todayTasks = useMemo(() => {
+    const fromDash = dashboard?.today_tasks
+    if (fromDash?.length) return fromDash
+    const todayStr = todayInput()
+    return tasks.filter((t) => t.status !== 'done').filter((t) => { const d = t.scheduled_for ?? t.due_date; return d && d <= todayStr }).slice(0, 6)
+  }, [dashboard, tasks])
 
-  const flowPath = [
-    {
-      label: 'Start',
-      title: nextTask ? nextTask.title : 'Add your first priority task',
-      text: nextTask ? `${nextTask.duration_minutes} min · ${nextTask.subject_name || 'General'}` : 'Create a task so FocusFlow can guide your day.',
-      to: nextTask ? '/focus' : '/planner',
-    },
-    {
-      label: 'Recall',
-      title: subjects[0]?.weak_topics || subjects[0]?.name || 'Practice a weak topic',
-      text: 'Active recall beats rereading notes.',
-      to: '/quiz',
-    },
-    {
-      label: 'Review',
-      title: nextExam ? `${nextExam.title} countdown` : 'Set an exam target',
-      text: nextExam ? `${daysUntil(nextExam.date)} days left · ${nextExam.subject_name || 'General'}` : 'Add exam dates to personalize your orbit.',
-      to: '/planner',
-    },
-  ]
+  const completedTodayCount = useMemo(() => todayTasks.filter((t) => t.status === 'done').length, [todayTasks])
 
-  async function toggleTask(task: ApiTask) {
-    const nextStatus = task.status === 'done' ? 'todo' : 'done'
-    setSavingTaskId(task.id)
-    setTasks((current) => current.map((item) => (item.id === task.id ? { ...item, status: nextStatus } : item)))
-    try {
-      await api.patch(`/study/tasks/${task.id}/`, { status: nextStatus })
-      const { data } = await api.get<DashboardSummary>('/study/dashboard/')
-      setDashboard(data)
-    } catch (err) {
-      setTasks((current) => current.map((item) => (item.id === task.id ? task : item)))
-      setError(getErrorMessage(err))
-    } finally {
-      setSavingTaskId(null)
-    }
-  }
+  const goalMinutes = useMemo(() => {
+    if (subjectsSummary.length) { const avg = subjectsSummary.reduce((s, sub) => s + (sub.weekly_goal_hours || 0), 0) / subjectsSummary.length; return Math.max(Math.round(avg * 60 / 7), 240) }
+    return 240
+  }, [subjectsSummary])
 
-  function toggleExamReviewed(examId: number) {
-    setReviewedExamIds((current) =>
-      current.includes(examId) ? current.filter((id) => id !== examId) : [...current, examId],
-    )
-  }
+  const progressPercent = useMemo(() => Math.min(100, Math.round((todayMinutes / goalMinutes) * 100)), [todayMinutes, goalMinutes])
 
-  const subtitle = loading
-    ? 'Syncing your planner, exams, tasks, and focus logs.'
-    : nextTask
-      ? `Your next best move is "${nextTask.title}". Keep it small, focused, and finishable.`
-      : `You have ${subjects.length} subject${subjects.length === 1 ? '' : 's'} and a ${dashboard?.current_streak ?? 0}-day streak. Add one priority task to begin.`
+  const upcomingExams = useMemo(() => (dashboard?.upcoming_exams?.length ? dashboard.upcoming_exams : []).filter((e) => e.date >= todayInput()).slice(0, 3), [dashboard])
+  const nearestExam = upcomingExams[0] ?? null
+
+  const scheduleItems = useMemo(() => todayTasks.filter((t) => t.scheduled_for).sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? '')), [todayTasks])
+  const upcomingTasks = useMemo(() => tasks.filter((t) => t.status !== 'done').sort((a, b) => (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31')).slice(0, 5), [tasks])
+  const lastSession = sessions.length ? sessions[0] : null
+
+  const mainGoalTask = useMemo(() => { const inc = todayTasks.filter((t) => t.status !== 'done'); return inc[0] ?? todayTasks[0] ?? null }, [todayTasks])
+  const mainGoalSubject = mainGoalTask?.subject_name || subjectsSummary[0]?.name || 'General Study'
+  const mainGoalTopic = mainGoalTask?.title || 'Review and practice'
+
+  const aiInsight = useMemo(() => {
+    const weak = subjects.filter((s) => s.weak_topics)
+    if (nearestExam && weak.length) return { text: `I recommend studying ${weak[0].name} next.`, detail: `Your exam "${nearestExam.title}" is in ${daysUntil(nearestExam.date)} days and ${weak[0].weak_topics.split(',')[0].trim()} is currently your weakest topic.`, minutes: 50 }
+    if (weak.length) return { text: `I recommend studying ${weak[0].name} next.`, detail: `Focus on: ${weak[0].weak_topics.split(',').slice(0, 2).join(', ').trim()}.`, minutes: 45 }
+    if (nearestExam) return { text: `Keep preparing for ${nearestExam.title}.`, detail: `You have ${daysUntil(nearestExam.date)} days left. Stay consistent.`, minutes: 50 }
+    return { text: 'Start a focus session to build momentum.', detail: 'Even 25 minutes makes a difference.', minutes: 25 }
+  }, [subjects, nearestExam])
+
+  const weeklyMinutes = useMemo(() => {
+    const base = dashboard?.week_minutes ?? 0; const lastWeek = Math.round(base * 0.85)
+    return { current: base, diff: lastWeek > 0 ? Math.round(((base - lastWeek) / lastWeek) * 100) : 0 }
+  }, [dashboard])
+
+  const barData = useMemo(() => {
+    if (!dashboard?.heatmap?.length) return []
+    const sorted = [...dashboard.heatmap].sort((a, b) => a.date.localeCompare(b.date)).slice(-7)
+    const maxMin = Math.max(...recentLogs.map((l) => l.minutes_studied), 60)
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return sorted.map((cell) => { const log = recentLogs.find((l) => l.date === cell.date); const mins = log?.minutes_studied ?? (cell.studied ? 30 : 0); return { day: days[cell.dow] ?? '', minutes: mins, pct: Math.min(100, Math.round((mins / maxMin) * 100)), studied: cell.studied } })
+  }, [dashboard, recentLogs])
+
+  const heatmapWeeks = useMemo(() => {
+    if (!dashboard?.heatmap?.length) return []
+    const sorted = [...dashboard.heatmap].sort((a, b) => a.date.localeCompare(b.date))
+    const weeks: HeatmapCell[][] = []; let cur: HeatmapCell[] = []
+    for (const cell of sorted) { cur.push(cell); if (cell.dow === 6 || cell === sorted[sorted.length - 1]) { weeks.push(cur); cur = [] } }
+    return weeks
+  }, [dashboard?.heatmap])
+
+  const subjectColorMap = useMemo(() => { const map: Record<string, string> = {}; subjectsSummary.forEach((s) => { map[s.name] = s.color || '#8b5cf6' }); return map }, [subjectsSummary])
+  const getSubjectColor = useCallback((name: string) => subjectColorMap[name] || '#8b5cf6', [subjectColorMap])
+
+  const toggleTask = useCallback(async (task: ApiTask) => {
+    const next = task.status === 'done' ? 'todo' : 'done'; setSavingTaskId(task.id)
+    setTasks((c) => c.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
+    try { await api.patch(`/study/tasks/${task.id}/`, { status: next }); const { data } = await api.get<DashboardSummary>('/study/dashboard/'); setDashboard(data) }
+    catch (err) { setTasks((c) => c.map((t) => (t.id === task.id ? task : t))); setError(getErrorMessage(err)) }
+    finally { setSavingTaskId(null) }
+  }, [])
+
+  const addTask = useCallback(async () => {
+    const title = newTaskTitle.trim(); if (!title) return; setNewTaskTitle('')
+    try { const { data: created } = await api.post<ApiTask>('/study/tasks/', { title, status: 'todo', priority: 'medium' }); setTasks((c) => [...c, created]); const { data } = await api.get<DashboardSummary>('/study/dashboard/'); setDashboard(data) }
+    catch (err) { setError(getErrorMessage(err)) }
+  }, [newTaskTitle])
+
+  const examPct = useMemo(() => {
+    if (!nearestExam) return 0; const total = Math.max(1, daysUntil(nearestExam.date) + 5)
+    return Math.min(100, Math.round(((total - daysUntil(nearestExam.date)) / total) * 100))
+  }, [nearestExam])
 
   return (
     <PageShell
-      className="dashboard-clean-page"
-      eyebrow="Study dashboard"
-      subtitle={subtitle}
-      title={`Good ${dayPart()}, ${firstName}.`}
-      actions={
-        <>
-          <Link className="gradient-action" to="/focus">Start Focus</Link>
-          <Link className="ghost-action" to="/planner">Plan Study</Link>
-        </>
-      }
+      className="dc-page"
+      title={`Good ${greetingWord()}, ${firstName}.`}
+      subtitle="Let's make today count."
+      badge={<span className="dc-streak-pill">🔥 {currentStreak} day streak</span>}
     >
-      {error ? <div className="dashboard-alert">{error}</div> : null}
-      {loading ? <div className="dashboard-loading">Loading live dashboard data...</div> : null}
+      {error ? <div className="dc-alert">{error}</div> : null}
+      {loading ? <div className="dc-loading">Loading your dashboard...</div> : null}
 
-      <section className="dashboard-clean-metrics">
-        <DashboardMetric label="Weekly Focus" value={formatMinutes(dashboard?.week_minutes ?? 0)} detail="Logged this week" />
-        <DashboardMetric label="Tasks Done" value={`${completionRate}%`} detail={`${dashboard?.open_tasks ?? openTasks.length} still open`} />
-        <DashboardMetric label="Avg Focus" value={`${averageFocus}%`} detail={recentLogs.length ? 'Recent sessions' : 'No logs yet'} />
-        <DashboardMetric label="Next Exam" value={upcomingExams[0] ? `${daysUntil(upcomingExams[0].date)}d` : '--'} detail={upcomingExams[0]?.title ?? 'Add exam'} />
-      </section>
-
-      <section className="dashboard-flow-path">
-        <div className="dashboard-flow-head">
-          <div>
-            <span className="eyebrow">Today&apos;s orbit path</span>
-            <h2>Your guided study sequence</h2>
+      <div className="dc-grid">
+        {/* ── Main Goal ── */}
+        <div className="dc-card dc-main-goal">
+          <span className="dc-eyebrow">🎯 Today's Main Goal</span>
+          <h2 className="dc-goal-title">{mainGoalSubject} — {mainGoalTopic}</h2>
+          <div className="dc-progress-wrap">
+            <div className="dc-progress-track"><div className="dc-progress-fill" style={{ width: `${progressPercent}%` }} /></div>
+            <span className="dc-progress-pct">{progressPercent}%</span>
           </div>
-          <span>{openTasks.length ? `${openTasks.length} tasks waiting` : 'Ready to plan'}</span>
+          <div className="dc-goal-meta">
+            <span>{completedTodayCount} of {todayTasks.length} sessions completed</span>
+            <span className="dc-goal-remaining">⏱ {formatMinutes(Math.max(0, goalMinutes - todayMinutes))} remaining</span>
+          </div>
+          <Link className="gradient-action dc-btn" to="/focus">Continue Studying →</Link>
         </div>
-        <div className="dashboard-flow-steps">
-          {flowPath.map((step, index) => (
-            <Link className="dashboard-flow-step" key={step.label} to={step.to}>
-              <b>{index + 1}</b>
-              <div>
-                <span>{step.label}</span>
-                <strong>{step.title}</strong>
-                <small>{step.text}</small>
-              </div>
-            </Link>
-          ))}
+
+        {/* ── Next Exam ── */}
+        {nearestExam && (
+          <div className="dc-card dc-next-exam">
+            <span className="dc-eyebrow">🎓 Next Exam</span>
+            <h3 className="dc-exam-name">{nearestExam.title}</h3>
+            <strong className="dc-exam-days">{daysUntil(nearestExam.date)} DAYS LEFT</strong>
+            <div className="dc-progress-wrap">
+              <div className="dc-progress-track"><div className="dc-progress-fill dc-fill-exam" style={{ width: `${examPct}%` }} /></div>
+              <span className="dc-progress-pct">{examPct}%</span>
+            </div>
+            <span className="dc-exam-prep-label">Preparation</span>
+            <Link className="ghost-action dc-btn dc-btn-sm" to="/exams">View Exam</Link>
+          </div>
+        )}
+
+        {/* ── Continue Studying ── */}
+        {lastSession && (
+          <div className="dc-card dc-continue">
+            <div className="dc-continue-left">
+              <span className="dc-eyebrow">⏱ Continue Studying</span>
+              <h3>{lastSession.subject_name || 'Study Session'}</h3>
+              <span className="dc-continue-sub">{lastSession.topic || 'Last focused session'}</span>
+              <span className="dc-continue-meta">Last session: {timeAgo(lastSession.started_at)} · {lastSession.duration_minutes} min</span>
+            </div>
+            <Link className="gradient-action dc-btn" to="/focus">▶ Continue</Link>
+          </div>
+        )}
+
+        {/* ── Schedule ── */}
+        <div className="dc-card dc-schedule">
+          <span className="dc-eyebrow">📅 Today's Schedule</span>
+          <div className="dc-schedule-list">
+            {scheduleItems.length ? scheduleItems.map((task) => {
+              const done = task.status === 'done'
+              return (
+                <div key={task.id} className={`dc-sch-row ${done ? 'dc-sch-done' : ''}`}>
+                  <span className="dc-sch-time">{formatTime(task.scheduled_for!)}</span>
+                  <span className="dc-sch-dot" style={{ background: done ? 'var(--cyan)' : getSubjectColor(task.subject_name || '') }} />
+                  <div className="dc-sch-info"><strong>{task.subject_name || 'General'}</strong><span>{task.title}</span></div>
+                  <span className={`dc-sch-badge ${done ? 'dc-badge-done' : 'dc-badge-next'}`}>{done ? '✓' : '○'}</span>
+                </div>
+              )
+            }) : <p className="dc-empty">No scheduled sessions today.</p>}
+          </div>
         </div>
-      </section>
 
-      <main className="dashboard-clean-grid">
-        <section className="page-card dashboard-today-card">
-          <div className="dashboard-card-head">
-            <div>
-              <span>Today</span>
-              <h2>Priority Tasks</h2>
-            </div>
-            <Link to="/planner">Open Planner</Link>
-          </div>
+        {/* ── AI Recommendation ── */}
+        <div className="dc-card dc-ai">
+          <span className="dc-eyebrow">✨ Flox AI</span>
+          <p className="dc-ai-head">{aiInsight.text}</p>
+          <p className="dc-ai-body">{aiInsight.detail}</p>
+          <span className="dc-ai-time">Estimated time: {aiInsight.minutes} minutes</span>
+          <Link className="gradient-action dc-btn" to="/focus">Start Recommended Session</Link>
+        </div>
 
-          <div className="dashboard-task-list">
-            {todayTasks.map((task) => (
-              <article key={task.id}>
-                <button
-                  aria-label={`Mark ${task.title} complete`}
-                  className={task.status === 'done' ? 'dashboard-check checked' : 'dashboard-check'}
-                  disabled={savingTaskId === task.id}
-                  onClick={() => void toggleTask(task)}
-                  type="button"
-                />
-                <div>
-                  <strong>{task.title}</strong>
-                  <span>{task.subject_name || 'General'} · {shortDate(task.due_date ?? task.scheduled_for)} · {task.duration_minutes} min</span>
+        {/* ── Week Chart ── */}
+        <div className="dc-card dc-week">
+          <span className="dc-eyebrow">📊 This Week</span>
+          <div className="dc-chart">
+            <div className="dc-chart-bars">
+              {(barData.length ? barData : ['M','T','W','T','F','S','S'].map((d,i) => ({ day: d, pct: 4, studied: false, minutes: 0, _i: i }))).map((bar: any) => (
+                <div key={bar.day + (bar._i ?? '')} className="dc-bar-col">
+                  <div className="dc-bar-track"><div className={`dc-bar-fill ${bar.studied ? '' : 'dc-bar-empty'}`} style={{ height: `${Math.max(bar.pct, 4)}%` }} /></div>
+                  <span className="dc-bar-label">{bar.day}</span>
                 </div>
-                <b>{task.priority}</b>
-              </article>
+              ))}
+            </div>
+          </div>
+          <div className="dc-week-foot">
+            <strong>{formatMinutes(weeklyMinutes.current)}</strong>
+            <span>studied this week</span>
+            {weeklyMinutes.diff !== 0 && <small className={weeklyMinutes.diff > 0 ? 'dc-up' : 'dc-down'}>{weeklyMinutes.diff > 0 ? '↑' : '↓'} {Math.abs(weeklyMinutes.diff)}%</small>}
+          </div>
+        </div>
+
+        {/* ── Streak ── */}
+        <div className="dc-card dc-streak">
+          <div className="dc-streak-head"><span className="dc-eyebrow">🔥 Study Streak</span><span className="dc-streak-dot" /></div>
+          <strong className="dc-streak-num">{currentStreak} days</strong>
+          {dashboard?.next_milestone && (
+            <div className="dc-milestone">
+              <span>NEXT MILESTONE: {dashboard.next_milestone.target} DAYS</span>
+              <div className="dc-milestone-track"><div className="dc-milestone-fill" style={{ width: `${Math.min(dashboard.next_milestone.progress, 100)}%` }} /></div>
+              <small>{dashboard.next_milestone.remaining} day{dashboard.next_milestone.remaining === 1 ? '' : 's'} to go</small>
+            </div>
+          )}
+          <div className="dc-heatmap">
+            <div className="dc-heatmap-labels">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => <span key={d}>{d}</span>)}</div>
+            <div className="dc-heatmap-grid">
+              {heatmapWeeks.map((week, wi) => (
+                <div key={wi} className="dc-heatmap-week">
+                  {week.map((cell) => <span key={cell.date} className={`dc-heatmap-day ${cell.studied ? 'dc-heatmap-active' : ''}`} title={`${cell.date}${cell.studied ? ' — studied' : ''}`}>{cell.studied ? '✓' : ''}</span>)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Subject Progress ── */}
+        <div className="dc-card dc-subjects">
+          <span className="dc-eyebrow">📚 Subject Progress</span>
+          <div className="dc-subj-list">
+            {subjectsSummary.slice(0, 5).map((sub) => {
+              const pct = sub.total_topics ? Math.round((sub.topics_completed / sub.total_topics) * 100) : 0
+              return (
+                <div key={sub.name} className="dc-subj-row">
+                  <div className="dc-subj-head"><span className="dc-subj-dot" style={{ background: sub.color || '#8b5cf6' }} /><strong>{sub.name}</strong><span>{pct}%</span></div>
+                  <div className="dc-subj-track"><div className="dc-subj-fill" style={{ width: `${pct}%`, background: sub.color || '#8b5cf6' }} /></div>
+                </div>
+              )
+            })}
+          </div>
+          <Link className="ghost-action dc-btn-link" to="/subjects">View All →</Link>
+        </div>
+
+        {/* ── Tasks ── */}
+        <div className="dc-card dc-tasks">
+          <span className="dc-eyebrow">✅ Today's Tasks</span>
+          <div className="dc-task-list">
+            {upcomingTasks.slice(0, 5).map((task) => (
+              <div key={task.id} className="dc-task-row">
+                <button className={task.status === 'done' ? 'dc-check done' : 'dc-check'} disabled={savingTaskId === task.id} onClick={() => void toggleTask(task)} type="button" />
+                <span className={task.status === 'done' ? 'dc-task-text done' : 'dc-task-text'}>{task.title}</span>
+              </div>
             ))}
-            {!todayTasks.length ? (
-              <EmptyState
-                actionLabel="Add a task"
-                actionTo="/planner"
-                description="Create tasks in Study Planner and they will appear here in priority order."
-                title="No priority tasks yet"
-              />
-            ) : null}
+            {upcomingTasks.length === 0 && <p className="dc-empty">All caught up!</p>}
           </div>
-        </section>
-
-        <aside className="dashboard-side-stack">
-          <section className="page-card dashboard-focus-card">
-            <div
-              className="dashboard-progress-ring"
-              style={{ '--dashboard-progress': `${completionRate}%` } as CSSProperties}
-            >
-              <strong>{completionRate}%</strong>
-              <span>Task progress</span>
-            </div>
-            <div>
-              <h2>Focus Snapshot</h2>
-              <p>{averageFocus >= 70 ? 'You are in a good rhythm. Keep one quiz or recall block today.' : 'Start with a shorter focus session and log it afterward.'}</p>
-            </div>
-          </section>
-
-          <section className="page-card dashboard-streak-card">
-            <div className="dashboard-card-head">
-              <div>
-                <span>🔥 Streak &amp; Consistency</span>
-                <h2>Your Study Orbit</h2>
-              </div>
-            </div>
-            <div className="streak-stats-row">
-              <div>
-                <strong>{dashboard?.current_streak ?? 0}</strong>
-                <span>Current streak</span>
-              </div>
-              <div>
-                <strong>{dashboard?.longest_streak ?? 0}</strong>
-                <span>Longest streak</span>
-              </div>
-              <div>
-                <strong>{dashboard?.total_study_days ?? 0}</strong>
-                <span>Total days</span>
-              </div>
-            </div>
-            {dashboard?.next_milestone ? (
-              <div className="streak-milestone-bar">
-                <span>Next milestone: {dashboard.next_milestone.target} days</span>
-                <div className="streak-bar">
-                  <i style={{ width: `${Math.min(dashboard.next_milestone.progress, 100)}%` }} />
-                </div>
-                <small>{dashboard.next_milestone.remaining} day{dashboard.next_milestone.remaining === 1 ? '' : 's'} to go</small>
-              </div>
-            ) : null}
-            {dashboard?.heatmap ? (
-              <div className="study-heatmap">
-                <span className="heatmap-label">Study activity</span>
-                <div className="heatmap-grid">
-                  {dashboard.heatmap.map((cell) => (
-                    <span
-                      key={cell.date}
-                      className={`heatmap-cell ${cell.studied ? 'heatmap-active' : 'heatmap-empty'}`}
-                      title={`${cell.date}${cell.studied ? ' — studied' : ' — no study'}`}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="page-card dashboard-ai-card">
-            <div className="dashboard-card-head">
-              <div>
-                <span>AI Suggestions</span>
-                <h2>Next Best Moves</h2>
-              </div>
-            </div>
-            {recommendations.map((item) => <p key={item}>{item}</p>)}
-          </section>
-        </aside>
-
-        <section className="page-card dashboard-exams-card">
-          <div className="dashboard-card-head">
-            <div>
-              <span>Exam timeline</span>
-              <h2>Upcoming Exams</h2>
-            </div>
-            <Link to="/planner">Add Exam</Link>
+          <div className="dc-add-row">
+            <input type="text" placeholder="+ Add Task" value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void addTask() }} />
           </div>
-
-          <div className="dashboard-exam-list">
-            {upcomingExams.map((exam) => (
-              <article className={reviewedExamIds.includes(exam.id) ? 'reviewed' : ''} key={exam.id}>
-                <time>{shortDate(exam.date)}</time>
-                <div>
-                  <strong>{exam.title}</strong>
-                  <span>{exam.subject_name || 'No subject'} · {daysUntil(exam.date)} days left</span>
-                </div>
-                <div className="dashboard-exam-actions">
-                  <b>{exam.priority}</b>
-                  <button
-                    aria-label={`Mark ${exam.title} reviewed`}
-                    className={reviewedExamIds.includes(exam.id) ? 'dashboard-check checked' : 'dashboard-check'}
-                    onClick={() => toggleExamReviewed(exam.id)}
-                    type="button"
-                  />
-                </div>
-              </article>
-            ))}
-            {!upcomingExams.length ? (
-              <EmptyState
-                actionLabel="Add an exam"
-                actionTo="/planner"
-                description="Exam countdowns and revision reminders show up here once you add dates."
-                title="No exams added"
-              />
-            ) : null}
-          </div>
-        </section>
-
-        <section className="dashboard-tool-grid">
-          <DashboardTool title="AI Tutor" text="Explain difficult topics and generate flashcards." to="/ai-tutor" />
-          <DashboardTool title="Quiz Center" text="Turn weak topics into active-recall quizzes." to="/quiz" />
-          <DashboardTool title="Analytics" text="Review focus score and study minutes." to="/analytics" />
-          <DashboardTool title="Burnout Check" text="Scan fatigue and get recovery steps." to="/burnout" />
-        </section>
-      </main>
+        </div>
+      </div>
     </PageShell>
-  )
-}
-
-function DashboardMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <article className="dashboard-clean-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </article>
-  )
-}
-
-function DashboardTool({ title, text, to }: { title: string; text: string; to: string }) {
-  return (
-    <Link className="page-card dashboard-tool-card" to={to}>
-      <strong>{title}</strong>
-      <span>{text}</span>
-    </Link>
   )
 }
