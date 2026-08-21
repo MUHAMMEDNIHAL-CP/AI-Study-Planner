@@ -681,7 +681,10 @@ export default function ExamsPage() {
             className="cal-modal"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <h3>Add Exam</h3>
+            <div className="zq-modal-head">
+              <h2>Add Exam</h2>
+              <button className="zq-modal-close" onClick={() => setShowCreateModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="cal-modal-field">
                 <label>Title *</label>
@@ -696,7 +699,7 @@ export default function ExamsPage() {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="cal-modal-row">
                 <div className="cal-modal-field">
                   <label>Date *</label>
                   <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />

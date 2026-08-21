@@ -51,10 +51,6 @@ export default function FocusModePage() {
   const [selectedMood, setSelectedMood] = useState('')
   const [activeSound, setActiveSound] = useState('none')
   const [showSoundMenu, setShowSoundMenu] = useState(false)
-  const [showAiPanel, setShowAiPanel] = useState(false)
-  const [aiQuestion, setAiQuestion] = useState('')
-  const [aiAnswer, setAiAnswer] = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
   const [breakSecondsLeft, setBreakSecondsLeft] = useState(5 * 60)
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -207,16 +203,6 @@ export default function FocusModePage() {
     setPhase('setup'); setSecondsLeft(totalSeconds); setSelectedMood('')
   }
 
-  async function askAi() {
-    if (!aiQuestion.trim()) return
-    setAiLoading(true); setAiAnswer('')
-    try {
-      const { data } = await api.post('/ai/chat/', { message: aiQuestion, subject: subjectName || undefined })
-      setAiAnswer(data.response || data.answer || 'No response')
-    } catch { setAiAnswer('Sorry, I could not process that right now.') }
-    setAiLoading(false)
-  }
-
   const breakTime = fmt(breakSecondsLeft)
 
   return (
@@ -313,48 +299,26 @@ export default function FocusModePage() {
 
           {/* Bottom bar */}
           <div className="fm-bottom">
-            <div className="fm-bottom-left">
-              {/* Sound */}
-              <div className="fm-bottom-group">
-                <button className="fm-bottom-btn" onClick={() => { setShowSoundMenu(!showSoundMenu); setShowAiPanel(false) }} type="button">
-                  <span>🔊</span><span>Sound</span>
-                </button>
-                {showSoundMenu && (
-                  <div className="fm-popup fm-sound-popup">
-                    {SOUNDS.map((s) => (
-                      <button key={s.id} className={`fm-popup-item ${activeSound === s.id ? 'active' : ''}`} onClick={() => { setActiveSound(s.id); setShowSoundMenu(false) }} type="button">
-                        <span>{s.icon}</span> {s.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Break */}
-              {phase !== 'break' && (
-                <button className="fm-bottom-btn" onClick={startBreak} type="button">
-                  <span>☕</span><span>Break</span>
-                </button>
+            <div className="fm-bottom-group">
+              <button className="fm-bottom-btn" onClick={() => setShowSoundMenu(!showSoundMenu)} type="button">
+                <span>🔊</span><span>Sound</span>
+              </button>
+              {showSoundMenu && (
+                <div className="fm-popup fm-sound-popup">
+                  {SOUNDS.map((s) => (
+                    <button key={s.id} className={`fm-popup-item ${activeSound === s.id ? 'active' : ''}`} onClick={() => { setActiveSound(s.id); setShowSoundMenu(false) }} type="button">
+                      <span>{s.icon}</span> {s.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
-            <div className="fm-bottom-right">
-              {/* AI */}
-              <div className="fm-bottom-group">
-                <button className="fm-bottom-btn" onClick={() => { setShowAiPanel(!showAiPanel); setShowSoundMenu(false) }} type="button">
-                  <span>🤖</span><span>AI</span>
-                </button>
-                {showAiPanel && (
-                  <div className="fm-popup fm-ai-popup">
-                    <div className="fm-ai-head">🤖 Flox AI</div>
-                    <p className="fm-ai-sub">Need help with something?</p>
-                    <input className="fm-ai-input" placeholder={`Ask about ${topic || subjectName || 'anything'}...`} value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && askAi()} />
-                    <button className="fm-ai-send" onClick={askAi} type="button" disabled={aiLoading || !aiQuestion.trim()}>{aiLoading ? 'Thinking...' : 'Ask AI'}</button>
-                    {aiAnswer && <div className="fm-ai-answer">{aiAnswer}</div>}
-                  </div>
-                )}
-              </div>
-            </div>
+            {phase !== 'break' && (
+              <button className="fm-bottom-btn" onClick={startBreak} type="button">
+                <span>☕</span><span>Break</span>
+              </button>
+            )}
           </div>
 
           {/* Streak */}

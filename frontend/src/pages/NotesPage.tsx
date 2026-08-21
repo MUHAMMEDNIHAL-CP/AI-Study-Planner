@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
@@ -39,12 +39,12 @@ const TEMPLATES: { key: string; label: string; icon: string; content: string }[]
 ]
 
 const AI_TOOLS: { key: AiTool; label: string; icon: string }[] = [
-  { key: 'summarize', label: 'Summarize Note', icon: '\u2728' },
+  { key: 'summarize', label: 'Summarize Note', icon: '\uD83E\uDD16' },
   { key: 'explain', label: 'Explain Simply', icon: '\uD83E\uDDE0' },
   { key: 'quiz', label: 'Generate Quiz', icon: '\uD83D\uDCDD' },
   { key: 'flashcards', label: 'Generate Flashcards', icon: '\uD83D\uDCA0' },
   { key: 'keypoints', label: 'Find Important Points', icon: '\uD83C\uDFAF' },
-  { key: 'improve', label: 'Improve Note', icon: '\u2728' },
+  { key: 'improve', label: 'Improve Note', icon: '\uD83E\uDD16' },
   { key: 'ask', label: 'Ask AI About This', icon: '\uD83D\uDCAC' },
 ]
 
@@ -304,7 +304,7 @@ export default function NotesPage() {
             <button className="np-back-btn" onClick={() => setView('grid')} type="button">{'\u2190'} Notes</button>
             <button className="np-save-btn" disabled={saving} onClick={saveNote} type="button">{saving ? 'Saving...' : 'Save \u2713'}</button>
             <div className="np-ai-tools-wrap">
-              <button className="np-ai-tools-btn" onClick={() => setShowAiTools(!showAiTools)} type="button">{'\u2728'} AI Tools</button>
+              <button className="np-ai-tools-btn" onClick={() => setShowAiTools(!showAiTools)} type="button">{'\uD83E\uDD16'} AI Tools</button>
               {showAiTools && (
                 <div className="np-ai-dropdown">
                   {AI_TOOLS.map((t) => (
@@ -445,7 +445,7 @@ export default function NotesPage() {
               {showAiTools && (
                 <div className="np-ai-panel">
                   <div className="np-ai-panel-header">
-                    <span>{'\u2726'} AI Result</span>
+                    <span>{'\uD83E\uDD16'} AI Result</span>
                     <button onClick={() => { setAiResult({ text: '', loading: false }); setShowAiTools(false) }} type="button">{'\u2715'}</button>
                   </div>
                   {aiResult.loading ? (

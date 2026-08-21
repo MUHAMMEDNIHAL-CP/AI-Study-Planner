@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
@@ -628,7 +628,7 @@ export default function ProgressPage() {
       {/* ── 6. AI Progress Analysis ── */}
       <section className="pg-card pg-ai-card">
         <div className="pg-card-header">
-          <span className="eyebrow pg-ai-eyebrow">{'\u2726'} Flox AI</span>
+          <span className="eyebrow pg-ai-eyebrow">{'\uD83E\uDD16'} Flox AI</span>
         </div>
         <div className="pg-ai-title">YOUR WEEKLY INSIGHT</div>
         <div className="pg-ai-body">

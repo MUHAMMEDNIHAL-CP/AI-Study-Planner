@@ -407,7 +407,10 @@ export default function TasksPage() {
             onMouseDown={(e) => e.stopPropagation()}
             role="dialog"
           >
-            <h3 id="add-task-title">Add Task</h3>
+            <div className="zq-modal-head">
+              <h2 id="add-task-title">Add Task</h2>
+              <button className="zq-modal-close" onClick={() => setShowModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }} onSubmit={handleCreate}>
               <div className="cal-modal-field">
                 <label>Title *</label>
@@ -422,7 +425,7 @@ export default function TasksPage() {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="cal-modal-row">
                 <div className="cal-modal-field">
                   <label>Due date *</label>
                   <input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} required />

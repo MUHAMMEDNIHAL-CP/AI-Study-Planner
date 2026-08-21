@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useUserProfile, initials } from '../hooks/useUserProfile'
@@ -115,6 +115,7 @@ export default function FloatingBot() {
 
   const currentPath = location.pathname
   const quickActions = pageQuickActions[currentPath] || defaultQuickActions
+  const isCoarsePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -125,10 +126,10 @@ export default function FloatingBot() {
   }, [messages, scrollToBottom])
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
+    if (isOpen && inputRef.current && !isCoarsePointer) {
       inputRef.current.focus()
     }
-  }, [isOpen])
+  }, [isOpen, isCoarsePointer])
 
   useEffect(() => {
     if (isOpen && !hasWelcomed) {
@@ -226,7 +227,7 @@ export default function FloatingBot() {
         <div className="floating-bot-panel">
           <header className="floating-bot-header">
             <div className="floating-bot-header-left">
-              <span className="floating-bot-avatar">{'\u2726'}</span>
+              <span className="floating-bot-avatar">{'\uD83E\uDD16'}</span>
               <div>
                 <strong>Flox AI</strong>
                 <small>Study Assistant</small>
@@ -248,7 +249,7 @@ export default function FloatingBot() {
           <div className="floating-bot-messages">
             {messages.map((msg) => (
               <div className={'floating-bot-msg ' + msg.role} key={msg.id}>
-                {msg.role === 'bot' && <span className="floating-bot-msg-avatar">{'\u2726'}</span>}
+                {msg.role === 'bot' && <span className="floating-bot-msg-avatar">{'\uD83E\uDD16'}</span>}
                 <div className="floating-bot-msg-content">
                   <p>{msg.text}</p>
                   {msg.action && (
@@ -282,7 +283,7 @@ export default function FloatingBot() {
             ))}
             {loading && (
               <div className="floating-bot-msg bot">
-                <span className="floating-bot-msg-avatar">{'\u2726'}</span>
+                <span className="floating-bot-msg-avatar">{'\uD83E\uDD16'}</span>
                 <div className="floating-bot-msg-content">
                   <div className="floating-bot-typing">
                     <span /><span /><span />

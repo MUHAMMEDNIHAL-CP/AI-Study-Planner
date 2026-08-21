@@ -171,7 +171,8 @@ export default function AiTutorPage() {
   const [mobilePanel, setMobilePanel] = useState<'conversations' | 'chat' | 'context'>('chat')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const isCoarsePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -180,8 +181,12 @@ export default function AiTutorPage() {
   useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
 
   useEffect(() => {
-    if (!showWelcome && inputRef.current) inputRef.current.focus()
-  }, [showWelcome])
+    if (!showWelcome && inputRef.current && !isCoarsePointer) inputRef.current.focus()
+  }, [showWelcome, isCoarsePointer])
+
+  useEffect(() => {
+    if (!input && inputRef.current) inputRef.current.style.height = 'auto'
+  }, [input])
 
   useEffect(() => {
     let active = true
@@ -275,21 +280,35 @@ export default function AiTutorPage() {
     void sendMessage(input)
   }
 
+  function autoResizeInput() {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 132) + 'px'
+  }
+
+  function handleInputKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey && !isCoarsePointer) {
+      e.preventDefault()
+      void sendMessage(input)
+    }
+  }
+
   return (
     <PageShell
       className="ai-coach-page"
       eyebrow="AI Coach"
       title="AI Study Coach"
       subtitle="Plan, learn, practice, and analyze with your AI coach."
-      actions={
+    >
+      <div className="ac-layout">
+        {/* Mobile panel tabs */}
         <div className="ac-mobile-tabs">
           <button className={mobilePanel === 'conversations' ? 'active' : ''} onClick={() => setMobilePanel('conversations')} type="button">Chats</button>
           <button className={mobilePanel === 'chat' ? 'active' : ''} onClick={() => setMobilePanel('chat')} type="button">AI</button>
           <button className={mobilePanel === 'context' ? 'active' : ''} onClick={() => setMobilePanel('context')} type="button">Context</button>
         </div>
-      }
-    >
-      <div className="ac-layout">
+
         {/* Left: Conversations */}
         <aside className={'ac-sidebar ' + (mobilePanel === 'conversations' ? 'ac-mobile-show' : '')}>
           <div className="ac-sidebar-header">
@@ -318,7 +337,7 @@ export default function AiTutorPage() {
         <main className={'ac-chat ' + (mobilePanel === 'chat' ? 'ac-mobile-show' : '')}>
           {showWelcome ? (
             <div className="ac-welcome">
-              <div className="ac-welcome-icon">{'✦'}</div>
+              <div className="ac-welcome-icon">{'\uD83E\uDD16'}</div>
               <h2 className="ac-welcome-name">Hey {userName}!</h2>
               <p className="ac-welcome-sub">I am your Flox AI Coach.</p>
               <p className="ac-welcome-desc">I can help you plan, learn, revise, practice, and stay on track.</p>
@@ -336,7 +355,7 @@ export default function AiTutorPage() {
             <div className="ac-messages">
               {messages.map((msg) => (
                 <div className={'ac-msg ' + msg.role} key={msg.id}>
-                  {msg.role === 'coach' && <span className="ac-msg-avatar">{'✦'}</span>}
+                  {msg.role === 'coach' && <span className="ac-msg-avatar">{'\uD83E\uDD16'}</span>}
                   <div className="ac-msg-content">
                     <p>{msg.text}</p>
                   </div>
@@ -345,7 +364,7 @@ export default function AiTutorPage() {
               ))}
               {loading && (
                 <div className="ac-msg coach">
-                  <span className="ac-msg-avatar">{'✦'}</span>
+                  <span className="ac-msg-avatar">{'\uD83E\uDD16'}</span>
                   <div className="ac-msg-content">
                     <div className="ac-typing"><span /><span /><span /></div>
                   </div>
@@ -364,8 +383,16 @@ export default function AiTutorPage() {
           )}
 
           <form className="ac-input-bar" onSubmit={handleSubmit}>
-            <input ref={inputRef} placeholder="Ask Flox AI..." value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} />
-            <button className="ac-send-btn" disabled={!input.trim() || loading} type="submit">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              placeholder="Ask Flox AI..."
+              value={input}
+              onChange={(e) => { setInput(e.target.value); autoResizeInput() }}
+              onKeyDown={handleInputKeyDown}
+              disabled={loading}
+            />
+            <button className="ac-send-btn" disabled={!input.trim() || loading} type="submit" aria-label="Send message">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
               </svg>

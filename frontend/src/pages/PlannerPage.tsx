@@ -358,27 +358,6 @@ export default function PlannerPage() {
     }
   }
 
-  async function toggleTask(task: Task) {
-    const next = task.status === 'done' ? 'todo' : 'done'
-    setTasks((cur) => cur.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
-    try {
-      await api.patch(`/study/tasks/${task.id}/`, { status: next })
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-      await loadPlanner()
-    }
-  }
-
-  async function deleteTask(taskId: number) {
-    try {
-      await api.delete(`/study/tasks/${taskId}/`)
-      toast.success('Task removed')
-      await loadPlanner()
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
-  }
-
   if (loading) {
     return (
       <PageShell eyebrow="Study Planner" title="Plan Your Study" subtitle="Loading your planner...">
@@ -599,7 +578,10 @@ export default function PlannerPage() {
       {modal === 'session' && (
         <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <h3>New Study Session</h3>
+            <div className="zq-modal-head">
+              <h2>New Study Session</h2>
+              <button className="zq-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <form onSubmit={handleCreateSession} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="cal-modal-field">
                 <label>Subject</label>
@@ -647,7 +629,10 @@ export default function PlannerPage() {
       {modal === 'ai' && (
         <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <h3>Generate Study Plan</h3>
+            <div className="zq-modal-head">
+              <h2>Generate Study Plan</h2>
+              <button className="zq-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <form onSubmit={handleAiGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="cal-modal-field"><label>Exam Date</label><input type="date" value={aiExamDate} onChange={(e) => setAiExamDate(e.target.value)} /></div>
               <div className="cal-modal-field"><label>Available Time per Day (hours)</label><input type="number" min={1} max={16} value={aiDailyHours} onChange={(e) => setAiDailyHours(Number(e.target.value))} /></div>

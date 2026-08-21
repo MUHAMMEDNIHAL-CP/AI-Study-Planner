@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
@@ -61,8 +61,8 @@ export default function QuizCenterPage() {
 
   const [aiAnalysis, setAiAnalysis] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
-  const [viewHistoryId, setViewHistoryId] = useState<number | null>(null)
   const [viewHistoryQuiz, setViewHistoryQuiz] = useState<Quiz | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -79,6 +79,13 @@ export default function QuizCenterPage() {
   }, [])
 
   useEffect(() => { void loadData() }, [loadData])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCreateModal(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCreateModal])
 
   useEffect(() => {
     if (view !== 'active' || submitted) return
@@ -113,10 +120,6 @@ export default function QuizCenterPage() {
     return topics.sort((a, b) => a.accuracy - b.accuracy).slice(0, 5)
   }, [history])
 
-  const recentQuizzes = useMemo(() => {
-    return viewHistoryId !== null ? history.filter((q) => q.id === viewHistoryId) : []
-  }, [history, viewHistoryId])
-
   async function generateQuiz() {
     const topic = quizTopic.trim() || subjects.find((s) => s.id === Number(quizSubject))?.name || ''
     if (!topic) { toast.warn('Select a subject or enter a topic.'); return }
@@ -134,8 +137,8 @@ export default function QuizCenterPage() {
       setElapsed(0)
       setShowFeedback(null)
       setView('active')
-      setViewHistoryId(null)
       setViewHistoryQuiz(null)
+      setShowCreateModal(false)
       toast.success('Quiz generated!')
     } catch (err) { toast.error(getErrorMessage(err)) }
     finally { setGenerating(false) }
@@ -183,15 +186,7 @@ export default function QuizCenterPage() {
     if (currentQ > 0) setCurrentQ((p) => p - 1)
   }
 
-  function reviewAnswer(qId: number, selected: number | undefined, answerIndex: number) {
-    setShowFeedback({
-      correct: selected === answerIndex,
-      explanation: activeQuiz?.questions.find((q) => q.id === qId)?.explanation || viewHistoryQuiz?.questions.find((q) => q.id === qId)?.explanation || '',
-    })
-  }
-
   function viewHistoryItem(quiz: Quiz) {
-    setViewHistoryId(quiz.id)
     setViewHistoryQuiz(quiz)
     setActiveQuiz(quiz)
     setAnswers({})
@@ -204,7 +199,7 @@ export default function QuizCenterPage() {
   function startQuizFromSubject(subject: Subject) {
     setQuizSubject(String(subject.id))
     setQuizTopic(subject.weak_topics || subject.name)
-    setView('dashboard')
+    setShowCreateModal(true)
   }
 
   function resetToDashboard() {
@@ -214,7 +209,6 @@ export default function QuizCenterPage() {
     setSubmitted(false)
     setCurrentQ(0)
     setAnswers({})
-    setViewHistoryId(null)
     setViewHistoryQuiz(null)
     setShowFeedback(null)
   }
@@ -236,7 +230,7 @@ export default function QuizCenterPage() {
       subtitle="Test your knowledge and find your weak areas."
       actions={
         view === 'dashboard' ? (
-          <button className="zq-create-btn" onClick={() => { setView('dashboard'); setQuizTopic('') }} type="button">+ Create Quiz</button>
+          <button className="zq-create-btn" onClick={() => setShowCreateModal(true)} type="button">+ Create Quiz</button>
         ) : view === 'active' ? (
           <div className="zq-active-nav">
             <button className="zq-back-btn" onClick={resetToDashboard} type="button">{'\u2190'} Back</button>
@@ -270,46 +264,7 @@ export default function QuizCenterPage() {
             </div>
           </div>
 
-          {/* Generator */}
-          <div className="zq-generator">
-            <h2 className="zq-section-title">Create Quiz</h2>
-            <div className="zq-gen-grid">
-              <div className="zq-gen-field">
-                <label>Subject</label>
-                <select value={quizSubject} onChange={(e) => {
-                  setQuizSubject(e.target.value)
-                  const s = subjects.find((s) => s.id === Number(e.target.value))
-                  if (s) setQuizTopic(s.weak_topics || s.name)
-                }}>
-                  <option value="">Custom topic</option>
-                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="zq-gen-field">
-                <label>Topic</label>
-                <input placeholder="e.g. Constructors & Destructors" value={quizTopic} onChange={(e) => setQuizTopic(e.target.value)} />
-              </div>
-              <div className="zq-gen-field">
-                <label>Difficulty</label>
-                <div className="zq-diff-row">
-                  {DIFFICULTIES.map((d) => (
-                    <button key={d.key} className={'zq-diff-chip' + (quizDifficulty === d.key ? ' active' : '')} style={quizDifficulty === d.key ? { borderColor: d.color, color: d.color, background: d.color + '12' } : undefined} onClick={() => setQuizDifficulty(d.key)} type="button">{d.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="zq-gen-field">
-                <label>Questions</label>
-                <div className="zq-count-row">
-                  {QUESTION_COUNTS.map((c) => (
-                    <button key={c} className={'zq-count-chip' + (quizCount === c ? ' active' : '')} onClick={() => setQuizCount(c)} type="button">{c}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <button className="zq-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
-              {generating ? 'Generating...' : 'Generate Quiz'}
-            </button>
-          </div>
+          {/* Generator moved into Create Quiz modal */}
 
           <div className="zq-two-col">
             {/* Quick Start */}
@@ -363,7 +318,7 @@ export default function QuizCenterPage() {
                     <div key={e.id} className="zq-exam-card">
                       <strong>{e.title}</strong>
                       <span className="zq-exam-date">{e.date} ({daysLeft} days)</span>
-                      <button className="zq-exam-practice-btn" onClick={() => { setQuizTopic(e.title); setQuizSubject(e.subject ? String(e.subject) : ''); setQuizDifficulty('hard'); setQuizCount(15); }} type="button">Practice Quiz</button>
+                      <button className="zq-exam-practice-btn" onClick={() => { setQuizTopic(e.title); setQuizSubject(e.subject ? String(e.subject) : ''); setQuizDifficulty('hard'); setQuizCount(15); setShowCreateModal(true) }} type="button">Practice Quiz</button>
                     </div>
                   )
                 })}
@@ -493,7 +448,7 @@ export default function QuizCenterPage() {
 
           {/* AI Analysis */}
           <div className="zq-ai-analysis">
-            <h3>{'\u2726'} Flox AI Analysis</h3>
+            <h3>{'\uD83E\uDD16'} Flox AI Analysis</h3>
             {aiLoading ? (
               <div className="zq-ai-loading"><div className="ac-typing"><span /><span /><span /></div></div>
             ) : aiAnalysis ? (
@@ -535,6 +490,54 @@ export default function QuizCenterPage() {
 
           <div className="zq-result-actions">
             <button className="zq-back-btn" onClick={resetToDashboard} type="button">Back to Quiz</button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ CREATE QUIZ MODAL ═══════════ */}
+      {showCreateModal && (
+        <div className="zq-modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="zq-modal" role="dialog" aria-modal="true" aria-label="Create Quiz" onClick={(e) => e.stopPropagation()}>
+            <div className="zq-modal-head">
+              <h2>Create Quiz</h2>
+              <button className="zq-modal-close" onClick={() => setShowCreateModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
+            <div className="zq-gen-grid">
+              <div className="zq-gen-field">
+                <label>Subject</label>
+                <select value={quizSubject} onChange={(e) => {
+                  setQuizSubject(e.target.value)
+                  const s = subjects.find((s) => s.id === Number(e.target.value))
+                  if (s) setQuizTopic(s.weak_topics || s.name)
+                }}>
+                  <option value="">Custom topic</option>
+                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="zq-gen-field">
+                <label>Topic</label>
+                <input placeholder="e.g. Constructors & Destructors" value={quizTopic} onChange={(e) => setQuizTopic(e.target.value)} />
+              </div>
+              <div className="zq-gen-field">
+                <label>Difficulty</label>
+                <div className="zq-diff-row">
+                  {DIFFICULTIES.map((d) => (
+                    <button key={d.key} className={'zq-diff-chip' + (quizDifficulty === d.key ? ' active' : '')} style={quizDifficulty === d.key ? { borderColor: d.color, color: d.color, background: d.color + '12' } : undefined} onClick={() => setQuizDifficulty(d.key)} type="button">{d.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="zq-gen-field">
+                <label>Questions</label>
+                <div className="zq-count-row">
+                  {QUESTION_COUNTS.map((c) => (
+                    <button key={c} className={'zq-count-chip' + (quizCount === c ? ' active' : '')} onClick={() => setQuizCount(c)} type="button">{c}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button className="zq-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
+              {generating ? 'Generating...' : 'Generate Quiz'}
+            </button>
           </div>
         </div>
       )}

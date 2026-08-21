@@ -2,22 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { applyTheme } from '../lib/theme'
-import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
 import PageShell from '../components/PageShell'
-
-type UserProfile = {
-  id: number
-  username: string
-  email: string
-  profile?: {
-    bio: string
-    college: string
-    course: string
-    semester: number
-    study_goal: string
-  }
-}
 
 type Preferences = {
   theme: 'dark' | 'light' | 'system'
@@ -72,40 +58,12 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', college: '', course: '', semester: 1, study_goal: '' })
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences())
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let active = true
-    api.get<UserProfile>('/auth/me/')
-      .then(({ data }) => {
-        if (!active) return
-        setProfile(data)
-        const p = data.profile
-        setProfileForm({
-          username: data.username,
-          email: data.email,
-          bio: p?.bio ?? '',
-          college: p?.college ?? '',
-          course: p?.course ?? '',
-          semester: p?.semester ?? 1,
-          study_goal: p?.study_goal ?? '',
-        })
-        setError(null)
-      })
-      .catch((err) => {
-        if (!active) return
-        setError(getErrorMessage(err))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => { active = false }
+    const timer = window.setTimeout(() => setLoading(false), 250)
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -120,63 +78,10 @@ export default function SettingsPage() {
     setPreferences((c) => ({ ...c, [key]: value }))
   }
 
-  async function saveProfile() {
-    if (!profileForm.username.trim() || !profileForm.email.trim()) {
-      toast.error('Name and email are required.')
-      return
-    }
-    setSaving(true)
-    try {
-      const { data } = await api.patch<UserProfile>('/auth/me/', {
-        username: profileForm.username.trim(),
-        email: profileForm.email.trim(),
-        bio: profileForm.bio,
-        college: profileForm.college,
-        course: profileForm.course,
-        semester: profileForm.semester,
-        study_goal: profileForm.study_goal,
-      })
-      setProfile(data)
-      const p = data.profile
-      setProfileForm({
-        username: data.username,
-        email: data.email,
-        bio: p?.bio ?? '',
-        college: p?.college ?? '',
-        course: p?.course ?? '',
-        semester: p?.semester ?? 1,
-        study_goal: p?.study_goal ?? '',
-      })
-      setEditing(false)
-      setError(null)
-      toast.success('Profile updated.')
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function cancelEdit() {
-    const p = profile?.profile
-    setProfileForm({
-      username: profile?.username ?? '',
-      email: profile?.email ?? '',
-      bio: p?.bio ?? '',
-      college: p?.college ?? '',
-      course: p?.course ?? '',
-      semester: p?.semester ?? 1,
-      study_goal: p?.study_goal ?? '',
-    })
-    setEditing(false)
-  }
-
   function logout() {
     clearAuthTokens()
     navigate('/login')
   }
-
-  const name = profile?.username ?? 'Scholar'
 
   return (
     <PageShell
@@ -185,13 +90,10 @@ export default function SettingsPage() {
       subtitle="Personalize your flow and manage your workspace."
       title="Settings"
     >
-      {error && <div className="auth-alert">{error}</div>}
-
       {loading ? (
         <div className="dashboard-loading">Loading settings...</div>
       ) : (
-        <div className="settings-grid">
-          <div className="settings-main">
+        <div className="settings-main settings-single">
             <section className="page-card settings-card">
               <div className="settings-card-head">
                 <span className="eyebrow">Appearance</span>
@@ -317,96 +219,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             </section>
-          </div>
-
-          <div className="settings-side">
-            <section className="page-card settings-card settings-profile-card">
-              <div className="settings-profile-header">
-                <div className="settings-profile-avatar">
-                  {name.slice(0, 2).toUpperCase()}
-                </div>
-                <h2>{name}</h2>
-                <span>{profile?.email}</span>
-              </div>
-              <div className="settings-profile-fields">
-                <label>
-                  Full Name
-                  <input
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, username: e.target.value }))}
-                    value={profileForm.username}
-                  />
-                </label>
-                <label>
-                  Email
-                  <input
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, email: e.target.value }))}
-                    type="email"
-                    value={profileForm.email}
-                  />
-                </label>
-                <label>
-                  Course
-                  <input
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, course: e.target.value }))}
-                    placeholder="e.g. B.Sc Computer Science"
-                    value={profileForm.course}
-                  />
-                </label>
-                <label>
-                  Semester
-                  <input
-                    disabled={!editing || saving}
-                    max="12"
-                    min="1"
-                    onChange={(e) => setProfileForm((c) => ({ ...c, semester: Number(e.target.value) }))}
-                    type="number"
-                    value={profileForm.semester}
-                  />
-                </label>
-                <label>
-                  College
-                  <input
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, college: e.target.value }))}
-                    placeholder="e.g. MIT"
-                    value={profileForm.college}
-                  />
-                </label>
-                <label className="settings-field-full">
-                  Bio
-                  <textarea
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, bio: e.target.value }))}
-                    placeholder="Tell us about yourself..."
-                    rows={3}
-                    value={profileForm.bio}
-                  />
-                </label>
-                <label className="settings-field-full">
-                  Study Goal
-                  <input
-                    disabled={!editing || saving}
-                    onChange={(e) => setProfileForm((c) => ({ ...c, study_goal: e.target.value }))}
-                    placeholder="e.g. Score 90%+ in semester finals"
-                    value={profileForm.study_goal}
-                  />
-                </label>
-              </div>
-              <div className="settings-profile-actions">
-                {editing && <button className="ghost-action settings-cancel" onClick={cancelEdit} type="button">Cancel</button>}
-                <button
-                  className="gradient-action"
-                  disabled={saving}
-                  onClick={editing ? saveProfile : () => setEditing(true)}
-                  type="button"
-                >
-                  {editing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
-                </button>
-              </div>
-            </section>
 
             <section className="page-card settings-card">
               <div className="settings-card-head">
@@ -453,7 +265,6 @@ export default function SettingsPage() {
                 </button>
               </div>
             </section>
-          </div>
         </div>
       )}
     </PageShell>

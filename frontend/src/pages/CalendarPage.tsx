@@ -46,7 +46,6 @@ function dateKey(y: number, m: number, d: number) { return y + '-' + pad2(m + 1)
 function fmt12(h: number) { const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h; return pad2(h12) + ':00 ' + ap }
 function startOfWeek(date: Date) { const d = new Date(date); const diff = d.getDay() === 0 ? -6 : 1 - d.getDay(); d.setDate(d.getDate() + diff); return d }
 function addDays(date: Date, n: number) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
-function sameDay(a: Date, b: Date) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate() }
 function isExamSoon(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   const diff = (d.getTime() - Date.now()) / 86400000
@@ -378,7 +377,10 @@ export default function CalendarPage() {
       {showAddModal && (
         <div className="cal-modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Create Event</h3>
+            <div className="zq-modal-head">
+              <h2>Create Event</h2>
+              <button className="zq-modal-close" onClick={() => setShowAddModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <div className="cal-modal-field">
               <label>Type</label>
               <select value={newEvent.type} onChange={(e) => setNewEvent((p) => ({ ...p, type: e.target.value as EventType }))}>

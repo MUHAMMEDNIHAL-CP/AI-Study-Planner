@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+﻿import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
@@ -30,7 +30,6 @@ type DashboardSummary = {
 function greetingWord() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
 function todayInput() { return new Date().toISOString().slice(0, 10) }
 function formatMinutes(m: number) { const h = Math.floor(m / 60); const min = m % 60; return h ? `${h}h ${min}m` : `${min}m` }
-function shortDate(v: string | null | undefined) { if (!v) return ''; return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(v)) }
 function daysUntil(v: string) { return Math.max(0, Math.ceil((new Date(todayInput()).getTime() - 0 + (new Date(v).getTime() - new Date(todayInput()).getTime())) / 86_400_000)) }
 function timeAgo(dateStr: string) {
   const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
@@ -228,7 +227,7 @@ export default function DashboardPage() {
 
         {/* ── AI Recommendation ── */}
         <div className="dc-card dc-ai">
-          <span className="dc-eyebrow">✨ Flox AI</span>
+          <span className="dc-eyebrow">{'\uD83E\uDD16'} Flox AI</span>
           <p className="dc-ai-head">{aiInsight.text}</p>
           <p className="dc-ai-body">{aiInsight.detail}</p>
           <span className="dc-ai-time">Estimated time: {aiInsight.minutes} minutes</span>

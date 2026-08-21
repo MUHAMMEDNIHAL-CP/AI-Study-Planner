@@ -13,7 +13,6 @@ type Exam = { id: number; title: string; date: string; priority: string }
 
 const COLORS = ['#ff6b4a', '#cb89ff', '#2dd4bf', '#fbbf24', '#fb7185', '#38bdf8', '#a78bfa', '#4ade80']
 
-function shortDate(d: string) { return d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—' }
 function daysUntil(d: string) { return Math.ceil((new Date(`${d}T00:00:00`).getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000) }
 
 export default function MySubjectsPage() {
@@ -226,7 +225,10 @@ export default function MySubjectsPage() {
       {showModal && (
         <div className="cal-modal-overlay" onClick={() => setShowModal(false)} onMouseDown={(e) => e.target === e.currentTarget && setShowModal(false)}>
             <section className="cal-modal" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <h3>Add Subject</h3>
+            <div className="zq-modal-head">
+              <h2>Add Subject</h2>
+              <button className="zq-modal-close" onClick={() => setShowModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+            </div>
             <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }} onSubmit={handleCreate}>
               <div className="cal-modal-field"><label>Subject Name *</label><input autoFocus placeholder="Computer Science" value={fName} onChange={(e) => setFName(e.target.value)} required /></div>
               <div className="cal-modal-field"><label>Subject Code</label><input placeholder="CS101" value={fCode} onChange={(e) => setFCode(e.target.value)} /></div>
