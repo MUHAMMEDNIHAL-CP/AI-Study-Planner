@@ -5,7 +5,6 @@ import { getTheme, toggleTheme, type ThemeMode } from '../lib/theme'
 import { IconMoon, IconSettings, IconSun } from './icons'
 
 type PageShellProps = {
-  eyebrow?: string
   title: string
   subtitle?: string
   actions?: ReactNode
@@ -15,7 +14,6 @@ type PageShellProps = {
 }
 
 export default function PageShell({
-  eyebrow,
   title,
   subtitle,
   actions,
@@ -79,7 +77,6 @@ export default function PageShell({
 
       <section className="page-shell-hero">
         <div className="page-shell-copy">
-          {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
           <h1>{title}</h1>
           {subtitle ? <p>{subtitle}</p> : null}
         </div>

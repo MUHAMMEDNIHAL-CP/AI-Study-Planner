@@ -74,12 +74,13 @@ class MeView(APIView):
         user = request.user
         username = (request.data.get("username") or "").strip()
         email = (request.data.get("email") or "").strip()
+        full_name = (request.data.get("full_name") or "").strip()
         errors = {}
 
         if not username:
-            errors["username"] = "Full name is required."
+            errors["username"] = "Username is required."
         elif User.objects.exclude(pk=user.pk).filter(username__iexact=username).exists():
-            errors["username"] = "This name is already in use."
+            errors["username"] = "This username is already in use."
 
         if not email:
             errors["email"] = "Email address is required."
@@ -96,9 +97,15 @@ class MeView(APIView):
 
         user.username = username
         user.email = email
-        user.save(update_fields=["username", "email"])
+        if full_name:
+            user.first_name = full_name
+        user.save(update_fields=["username", "email", "first_name"])
 
-        profile_fields = ("bio", "college", "course", "semester", "study_goal", "daily_study_goal", "target_grade", "main_goal")
+        profile_fields = (
+            "bio", "college", "course", "semester", "study_goal",
+            "daily_study_goal", "target_grade", "main_goal",
+            "preferred_study_time", "session_length", "learning_style", "coaching_style",
+        )
         profile_data = {f: request.data.get(f) for f in profile_fields if f in request.data}
         if profile_data:
             profile, _ = Profile.objects.get_or_create(user=user)

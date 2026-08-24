@@ -20,7 +20,6 @@ export default function SetupStepper({ steps, onStepClick }: SetupStepperProps) 
     <section className="setup-stepper">
       <div className="setup-stepper-head">
         <div>
-          <span className="eyebrow">Guided setup</span>
           <h2>Build your study orbit</h2>
         </div>
         <div className="setup-stepper-progress">

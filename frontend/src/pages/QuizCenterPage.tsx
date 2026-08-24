@@ -1,15 +1,32 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
 
+/* ── Types ─────────────────────────────────────────────────── */
+
 type Question = { id: number; question: string; options: string[]; answer_index: number; explanation: string }
 type Quiz = { id: number; topic: string; difficulty: string; questions: Question[]; score: number | null; total_questions: number; created_at: string }
 type QuizResult = { score: number; total: number; results: { id: number; correct: boolean; explanation: string; answer_index: number; selected?: number }[] }
-type Subject = { id: number; name: string; color: string; weak_topics: string; total_topics: number; topics_completed: number }
-type Exam = { id: number; subject: number | null; subject_name?: string; title: string; date: string }
+type Subject = { id: number; name: string; color: string; weak_topics?: string; total_topics: number; topics_completed: number }
+type Exam = { id: number; title: string; date: string; subject: number | null; subject_name?: string; preparation_pct?: number }
+type NoteLite = { id: number; title: string; content: string }
 
 type QuizView = 'dashboard' | 'active' | 'result'
+type SourceKey = 'subject' | 'notes' | 'weak' | 'exam'
+
+type PerfBar = { concept: string; pct: number }
+type AiAnalysis = {
+  strong: string[]
+  weak: string[]
+  recommendation: string
+  performance: PerfBar[]
+}
+
+const EMPTY_ANALYSIS: AiAnalysis = { strong: [], weak: [], recommendation: '', performance: [] }
+
+/* ── Constants ─────────────────────────────────────────────── */
 
 const DIFFICULTIES = [
   { key: 'easy', label: 'Easy', color: '#36d479' },
@@ -19,539 +36,909 @@ const DIFFICULTIES = [
 
 const QUESTION_COUNTS = [5, 10, 15, 20]
 
+const SOURCES: Array<{ key: SourceKey; label: string; icon: string }> = [
+  { key: 'subject', label: 'Subject', icon: '\uD83D\uDCD8' },
+  { key: 'notes', label: 'My Notes', icon: '\uD83D\uDCDD' },
+  { key: 'weak', label: 'Weak Topics', icon: '\uD83C\uDFAF' },
+  { key: 'exam', label: 'Exam', icon: '\uD83C\uDF93' },
+]
+
+const SUBJECT_ICONS = ['\uD83D\uDCD8', '\uD83D\uDCD0', '\uD83D\uDEE1', '\uD83E\uDDEA', '\uD83E\uDDEB', '\uD83E\uDDCA']
+
+function accColor(pct: number) {
+  return pct >= 80 ? '#36d479' : pct >= 60 ? '#ffb84d' : '#ff6b6b'
+}
+
+function accDot(pct: number) {
+  return pct >= 80 ? '\uD83D\uDFE2' : pct >= 60 ? '\uD83D\uDFE1' : pct >= 45 ? '\uD83D\uDFE0' : '\uD83D\uDD34'
+}
+
+function currentTs() {
+  return Date.now()
+}
+
 function fmtTime(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return m + 'm ' + (s < 10 ? '0' : '') + s + 's'
 }
 
+function dayKey(iso: string) {
+  return iso.slice(0, 10)
+}
+
 function timeAgo(date: string) {
-  const mins = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
+  const d = new Date(date)
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000)
   if (mins < 1) return 'just now'
   if (mins < 60) return mins + 'm ago'
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return hrs + 'h ago'
-  const days = Math.floor(hrs / 24)
+  const days = Math.floor(hrs / 60)
   if (days === 1) return 'Yesterday'
   if (days < 7) return days + 'd ago'
-  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function daysUntil(date: string) {
+  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86400000))
+}
+
+function quizStreakDays(history: Quiz[]) {
+  const done = new Set(
+    history.filter((q) => q.score !== null).map((q) => dayKey(q.created_at)),
+  )
+  if (!done.size) return 0
+  const cursor = new Date()
+  if (!done.has(dayKey(cursor.toISOString()))) {
+    cursor.setDate(cursor.getDate() - 1)
+    if (!done.has(dayKey(cursor.toISOString()))) return 0
+  }
+  let streak = 0
+  while (done.has(dayKey(cursor.toISOString()))) {
+    streak++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return streak
+}
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const candidates: string[] = []
+  if (fenced) candidates.push(fenced[1])
+  const braceStart = text.indexOf('{')
+  const braceEnd = text.lastIndexOf('}')
+  if (braceStart !== -1 && braceEnd > braceStart) candidates.push(text.slice(braceStart, braceEnd + 1))
+  for (const c of candidates) {
+    try {
+      const parsed = JSON.parse(c.trim()) as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>
+    } catch { /* next candidate */ }
+  }
+  return null
+}
+
+function normalizeAnalysis(obj: Record<string, unknown> | null): AiAnalysis | null {
+  if (!obj) return null
+  const strArr = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
+  let performance: PerfBar[] = []
+  if (Array.isArray(obj.performance)) {
+    performance = obj.performance
+      .filter((p): p is Record<string, unknown> => !!p && typeof p === 'object')
+      .map((p) => ({ concept: String(p.concept ?? p.topic ?? ''), pct: Math.max(0, Math.min(100, Math.round(Number(p.pct ?? p.accuracy ?? 0)))) }))
+      .filter((p) => p.concept)
+      .slice(0, 6)
+  }
+  const strong = strArr(obj.strong).slice(0, 4)
+  const weak = strArr(obj.weak).slice(0, 4)
+  const recommendation = typeof obj.recommendation === 'string' ? obj.recommendation : ''
+  if (!strong.length && !weak.length && !recommendation && !performance.length) return null
+  return { strong, weak, recommendation, performance }
+}
+
+type HintState = { text: string; loading: boolean }
+
 export default function QuizCenterPage() {
+
+  const navigate = useNavigate()
   const [view, setView] = useState<QuizView>('dashboard')
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [exams, setExams] = useState<Exam[]>([])
+  const [notes, setNotes] = useState<NoteLite[]>([])
   const [history, setHistory] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
+  const [nowTs] = useState(() => Date.now())
 
-  const [quizSubject, setQuizSubject] = useState('')
-  const [quizTopic, setQuizTopic] = useState('')
-  const [quizDifficulty, setQuizDifficulty] = useState('medium')
-  const [quizCount, setQuizCount] = useState(10)
+  /* create-quiz modal */
+  const [showCreate, setShowCreate] = useState(false)
+  const [cqSubject, setCqSubject] = useState('')
+  const [cqTopic, setCqTopic] = useState('')
+  const [cqCustomTopic, setCqCustomTopic] = useState('')
+  const [cqSource, setCqSource] = useState<SourceKey>('subject')
+  const [cqCount, setCqCount] = useState(10)
+  const [cqDifficulty, setCqDifficulty] = useState('medium')
   const [generating, setGenerating] = useState(false)
 
+  /* active quiz */
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [submitted, setSubmitted] = useState(false)
-  const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
-  const [quizStartTime, setQuizStartTime] = useState(0)
+  const [feedbackQid, setFeedbackQid] = useState<number | null>(null)
+  const [hints, setHints] = useState<Record<number, HintState>>({})
+  const [openHint, setOpenHint] = useState(false)
+  const [startTime, setStartTime] = useState(0)
   const [elapsed, setElapsed] = useState(0)
-  const [showFeedback, setShowFeedback] = useState<{ correct: boolean; explanation: string } | null>(null)
 
-  const [aiAnalysis, setAiAnalysis] = useState('')
+  /* result */
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
+  const [analysis, setAnalysis] = useState<AiAnalysis>(EMPTY_ANALYSIS)
+  const [aiText, setAiText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
-  const [viewHistoryQuiz, setViewHistoryQuiz] = useState<Quiz | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showReview, setShowReview] = useState(false)
+  const [examMeta, setExamMeta] = useState<{ title: string; before: number } | null>(null)
+
+  const loadRef = useRef(0)
 
   const loadData = useCallback(async () => {
+    const run = ++loadRef.current
     try {
-      const [subRes, examRes, histRes] = await Promise.all([
+      const [subRes, examRes, histRes, noteRes] = await Promise.all([
         api.get<Subject[]>('/study/subjects/'),
-        api.get<Exam[]>('/study/exams/'),
+        api.get<Exam[]>('/study/exams/').catch(() => ({ data: [] as Exam[] })),
         api.get<Quiz[]>('/quiz/history/').catch(() => ({ data: [] as Quiz[] })),
+        api.get<NoteLite[]>('/notes/').catch(() => ({ data: [] as NoteLite[] })),
       ])
+      if (run !== loadRef.current) return
       setSubjects(subRes.data)
       setExams(examRes.data)
       setHistory(histRes.data)
+      setNotes(noteRes.data)
     } catch (err) { toast.error(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    finally { if (run === loadRef.current) setLoading(false) }
   }, [])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => {
+    void (async () => { await loadData() })()
+  }, [loadData])
 
   useEffect(() => {
-    if (!showCreateModal) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCreateModal(false) }
+    if (!showCreate) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCreate(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [showCreateModal])
+  }, [showCreate])
 
   useEffect(() => {
-    if (view !== 'active' || submitted) return
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - quizStartTime) / 1000)), 1000)
+    if (view !== 'active') return
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000)
     return () => clearInterval(timer)
-  }, [view, submitted, quizStartTime])
+  }, [view, startTime])
+
+  /* ── Derived ── */
+
+  const completed = useMemo(() => history.filter((q) => q.score !== null), [history])
 
   const stats = useMemo(() => {
-    const completed = history.filter((q) => q.score !== null)
-    const total = completed.length
-    const avgScore = total > 0 ? Math.round(completed.reduce((sum, q) => sum + ((q.score ?? 0) / q.total_questions) * 100, 0) / total) : 0
-    const totalCorrect = completed.reduce((sum, q) => sum + (q.score ?? 0), 0)
-    const totalQuestions = completed.reduce((sum, q) => sum + q.total_questions, 0)
-    const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0
-    return { total, avgScore, accuracy, completed: total }
-  }, [history])
+    const totalQs = completed.reduce((s, q) => s + q.total_questions, 0)
+    const totalCorrect = completed.reduce((s, q) => s + (q.score ?? 0), 0)
+    return {
+      quizzes: history.length,
+      accuracy: totalQs ? Math.round((totalCorrect / totalQs) * 100) : 0,
+      completedCount: completed.length,
+      streak: quizStreakDays(history),
+    }
+  }, [history, completed])
 
   const weakTopics = useMemo(() => {
-    const topicScores = new Map<string, { correct: number; total: number }>()
-    for (const q of history) {
-      if (q.score === null) continue
-      const existing = topicScores.get(q.topic) || { correct: 0, total: 0 }
-      existing.correct += q.score
-      existing.total += q.total_questions
-      topicScores.set(q.topic, existing)
+    const map = new Map<string, { correct: number; total: number }>()
+    for (const q of completed) {
+      const e = map.get(q.topic) ?? { correct: 0, total: 0 }
+      e.correct += q.score ?? 0
+      e.total += q.total_questions
+      map.set(q.topic, e)
     }
-    const topics: { name: string; accuracy: number; color: string }[] = []
-    topicScores.forEach((data, name) => {
-      const acc = Math.round((data.correct / data.total) * 100)
-      topics.push({ name, accuracy: acc, color: acc >= 80 ? '#36d479' : acc >= 60 ? '#ffb84d' : '#ff6b6b' })
-    })
-    return topics.sort((a, b) => a.accuracy - b.accuracy).slice(0, 5)
-  }, [history])
+    return [...map.entries()]
+      .map(([name, v]) => ({ name, accuracy: Math.round((v.correct / v.total) * 100), dot: accDot(Math.round((v.correct / v.total) * 100)) }))
+      .sort((a, b) => a.accuracy - b.accuracy)
+      .slice(0, 5)
+  }, [completed])
+
+  const nextExam = useMemo(() => {
+    const upcoming = exams
+      .filter((e) => new Date(e.date).getTime() >= nowTs - 86400000)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    return upcoming[0] ?? null
+  }, [exams, nowTs])
+
+  const recentQuizzes = useMemo(
+    () =>
+      [...history]
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 6),
+    [history],
+  )
+
+  const topicOptions = useMemo(() => {
+    const s = subjects.find((x) => x.id === Number(cqSubject))
+    const base = s ? [s.name] : []
+    const weakList = (s?.weak_topics ?? '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    return [...new Set([...base, ...weakList])]
+  }, [subjects, cqSubject])
+
+  function resetActive() {
+    setCurrentQ(0)
+    setAnswers({})
+    setFeedbackQid(null)
+    setOpenHint(false)
+    setHints({})
+    setStartTime(currentTs())
+    setElapsed(0)
+  }
+
+  function beginQuiz(quiz: Quiz) {
+    setActiveQuiz(quiz)
+    resetActive()
+    setView('active')
+  }
+
+  /* ── Create quiz ── */
+
+  function openCreate() {
+    setCqSubject(subjects[0] ? String(subjects[0].id) : '')
+    setCqTopic(subjects[0]?.name ?? '')
+    setCqCustomTopic('')
+    setCqSource('subject')
+    setCqCount(10)
+    setCqDifficulty('medium')
+    setShowCreate(true)
+  }
+
+  function openCreateForExam() {
+    const ex = nextExam
+    if (!ex) { toast.warn('No upcoming exams. Add one on the Exams page.'); return }
+    setCqSubject(ex.subject ? String(ex.subject) : '')
+    setCqTopic(ex.title || ex.subject_name || 'Exam preparation')
+    setCqCustomTopic('')
+    setCqSource('exam')
+    setCqCount(10)
+    setCqDifficulty('hard')
+    setExamMeta({ title: ex.title, before: Math.min(100, Math.max(0, ex.preparation_pct ?? 0)) })
+    setShowCreate(true)
+  }
 
   async function generateQuiz() {
-    const topic = quizTopic.trim() || subjects.find((s) => s.id === Number(quizSubject))?.name || ''
-    if (!topic) { toast.warn('Select a subject or enter a topic.'); return }
+    let topic: string
+    let payloadExtra: Record<string, unknown>
+    if (cqSource === 'notes') {
+      const n = notes[0]
+      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : n?.title || cqTopic || ''
+      payloadExtra = { source: 'notes', note_id: n?.id ?? null, notes_context: (n?.content ?? '').slice(0, 1200) }
+    } else if (cqSource === 'weak') {
+      topic = weakTopics[0]?.name || (cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic) || ''
+      payloadExtra = { source: 'weak_topics', focus: 'areas where the student struggles' }
+    } else if (cqSource === 'exam') {
+      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic || nextExam?.title || ''
+      payloadExtra = { source: 'exam', exam_title: examMeta?.title ?? null }
+    } else {
+      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic || ''
+      payloadExtra = { source: 'subject' }
+    }
+    if (!topic) { toast.warn('Pick a subject or enter a topic.'); return }
+
     setGenerating(true)
     try {
       const { data } = await api.post<Quiz>('/quiz/generate/', {
-        topic, difficulty: quizDifficulty, count: quizCount,
+        topic,
+        difficulty: cqDifficulty,
+        count: cqCount,
+        ...payloadExtra,
       })
-      setActiveQuiz(data)
-      setCurrentQ(0)
-      setAnswers({})
-      setSubmitted(false)
-      setQuizResult(null)
-      setQuizStartTime(Date.now())
-      setElapsed(0)
-      setShowFeedback(null)
-      setView('active')
-      setViewHistoryQuiz(null)
-      setShowCreateModal(false)
-      toast.success('Quiz generated!')
+      setShowCreate(false)
+      if (cqSource !== 'exam') setExamMeta(null)
+      beginQuiz(data)
+      toast.success('Quiz ready \u2014 good luck!')
     } catch (err) { toast.error(getErrorMessage(err)) }
     finally { setGenerating(false) }
   }
 
+  function startSubjectQuiz(s: Subject) {
+    setCqSubject(String(s.id))
+    setCqTopic(s.name)
+    setCqCustomTopic('')
+    setCqSource('subject')
+    setCqCount(10)
+    setCqDifficulty('medium')
+    setExamMeta(null)
+    setShowCreate(true)
+  }
+
+  async function practiceWeakTopic(name: string) {
+    setGenerating(true)
+    try {
+      const { data } = await api.post<Quiz>('/quiz/generate/', {
+        topic: name,
+        difficulty: 'medium',
+        count: 10,
+        source: 'weak_topics',
+      })
+      setExamMeta(null)
+      beginQuiz(data)
+    } catch (err) { toast.error(getErrorMessage(err)) }
+    finally { setGenerating(false) }
+  }
+
+  /* ── Active quiz flow ── */
+
+  const currentQuestion = activeQuiz?.questions[currentQ] ?? null
+  const isLast = !!activeQuiz && currentQ === activeQuiz.questions.length - 1
+
+  function pickAnswer(optIdx: number) {
+    if (!currentQuestion || answers[currentQuestion.id] !== undefined) return
+    setAnswers((p) => ({ ...p, [currentQuestion.id]: optIdx }))
+    setFeedbackQid(currentQuestion.id)
+  }
+
+  function toggleHint() {
+    if (!currentQuestion) return
+    setOpenHint((p) => !p)
+    if (!hints[currentQuestion.id]) fetchHint(currentQuestion)
+  }
+
+  async function fetchHint(q: Question) {
+    setHints((p) => ({ ...p, [q.id]: { text: '', loading: true } }))
+    try {
+      const { data } = await api.post<{ reply?: string }>('/ai/chat/', {
+        message:
+          'Give ONE short sentence (max 22 words) that helps me reason toward the answer without revealing or narrowing it to any option. Question: "' +
+          q.question +
+          '" Options: ' +
+          q.options.join(' | ') +
+          '. Reply with only the hint sentence.',
+        context: { page: '/quiz', mode: 'hint' },
+      })
+      setHints((p) => ({ ...p, [q.id]: { text: data.reply?.trim() || 'Think about what happens step by step before looking at the options.', loading: false } }))
+    } catch {
+      setHints((p) => ({ ...p, [q.id]: { text: 'Think about what happens step by step before looking at the options.', loading: false } }))
+    }
+  }
+
+  async function advanceOrSubmit() {
+    if (!activeQuiz) return
+    if (!isLast) {
+      setCurrentQ((p) => p + 1)
+      setFeedbackQid(null)
+      setOpenHint(false)
+      return
+    }
+    await submitQuiz()
+  }
+
   async function submitQuiz() {
     if (!activeQuiz) return
-    const unanswered = activeQuiz.questions.length - Object.keys(answers).length
-    if (unanswered > 0) { toast.warn('Answer all questions before submitting.'); return }
     try {
+      const finalElapsed = elapsed || Math.floor((currentTs() - startTime) / 1000)
       const { data } = await api.post<QuizResult>('/quiz/' + activeQuiz.id + '/submit/', { answers })
+      setElapsed(finalElapsed)
       setQuizResult(data)
-      setSubmitted(true)
       setView('result')
-      setElapsed(Math.floor((Date.now() - quizStartTime) / 1000))
-      await loadData()
-      void generateAiAnalysis(activeQuiz.topic, data)
+      setShowReview(false)
+      void loadData()
+      void buildAnalysis(activeQuiz, data)
     } catch (err) { toast.error(getErrorMessage(err)) }
   }
 
-  async function generateAiAnalysis(topic: string, result: QuizResult) {
+  /* ── AI analysis ── */
+
+  async function buildAnalysis(quiz: Quiz, result: QuizResult) {
     setAiLoading(true)
-    setAiAnalysis('')
+    setAnalysis(EMPTY_ANALYSIS)
+    setAiText('')
+    const wrongQs = result.results.filter((r) => !r.correct)
+    const rightQs = result.results.filter((r) => r.correct)
     try {
-      const { data } = await api.post('/ai/chat/', {
-        message: `Analyze quiz results for "${topic}". Score: ${result.score}/${result.total} (${Math.round((result.score / result.total) * 100)}%). Correct: ${result.results.filter((r) => r.correct).map((r) => r.id).join(',')}. Wrong: ${result.results.filter((r) => !r.correct).map((r) => r.id).join(',')}. Give a brief analysis with strong areas, weak areas, and a specific revision recommendation.`,
+      const prompt =
+        'You are FocusFlow AI. Analyze this finished quiz and reply with STRICT JSON only, no prose. ' +
+        'Schema: {"strong": string[] (up to 3 concepts mastered), "weak": string[] (up to 3 concepts needing revision), ' +
+        '"recommendation": string (one sentence, include a suggested revision length in minutes), ' +
+        '"performance": [{"concept": string, "pct": number 0-100}] (up to 5 concept-level bars)}. ' +
+        'Quiz topic: ' + quiz.topic + '. Difficulty: ' + quiz.difficulty + '.' +
+        ' Questions the student answered CORRECTLY: ' +
+        (rightQs.length ? rightQs.map((r) => '"' + quiz.questions.find((q) => q.id === r.id)?.question.slice(0, 80) + '"').join('; ') : 'none') +
+        '. Answered WRONG: ' +
+        (wrongQs.length ? wrongQs.map((r) => '"' + quiz.questions.find((q) => q.id === r.id)?.question.slice(0, 80) + '"').join('; ') : 'none') +
+        '.'
+      const { data } = await api.post<{ reply?: string }>('/ai/chat/', {
+        message: prompt,
         context: { page: '/quiz', mode: 'analysis' },
       })
-      setAiAnalysis(data.reply || 'No analysis available.')
-    } catch { setAiAnalysis('AI analysis is temporarily unavailable.') }
+      const parsed = normalizeAnalysis(extractJsonObject(data.reply ?? ''))
+      if (parsed) setAnalysis(parsed)
+      else setAiText((data.reply ?? '').replace(/```[\s\S]*?```/g, '').trim() || 'Nice work! Keep practicing to sharpen your weak areas.')
+    } catch {
+      const pct = Math.round((result.score / result.total) * 100)
+      setAiText(pct >= 80 ? 'Excellent! You have a solid grip on ' + quiz.topic + '.' : 'Solid effort. Review your missed questions and run a short revision session on ' + quiz.topic + '.')
+    } finally { setAiLoading(false) }
+  }
+
+  /* ── Result actions ── */
+
+  function tryAgain() {
+    if (!activeQuiz) return
+    setQuizResult(null)
+    setAnalysis(EMPTY_ANALYSIS)
+    setAiText('')
+    resetActive()
+    setView('active')
+  }
+
+  function viewHistoryItem(q: Quiz) {
+    setActiveQuiz(q)
+    setAnswers({})
+    setCurrentQ(0)
+    setElapsed(0)
+    setQuizResult({
+      score: q.score ?? 0,
+      total: q.total_questions,
+      results: q.questions.map((qq) => ({ id: qq.id, correct: false, explanation: qq.explanation, answer_index: qq.answer_index })),
+    })
+    setAnalysis(EMPTY_ANALYSIS)
+    setAiText('')
+    setShowReview(true)
+    setExamMeta(null)
+    setView('result')
+    if (q.score !== null) {
+      setAiLoading(false)
+      void buildAnalysisFromStored(q)
+    }
+  }
+
+  async function buildAnalysisFromStored(quiz: Quiz) {
+    setAiLoading(true)
+    setAnalysis(EMPTY_ANALYSIS)
+    setAiText('')
+    try {
+      const pct = Math.round(((quiz.score ?? 0) / quiz.total_questions) * 100)
+      const { data } = await api.post<{ reply?: string }>('/ai/chat/', {
+        message:
+          'You are FocusFlow AI. A student previously scored ' + pct + '% on a quiz about "' + quiz.topic +
+          '". Reply with STRICT JSON only: {"strong": string[], "weak": string[], "recommendation": string, "performance": [{"concept": string, "pct": number}]}.',
+        context: { page: '/quiz', mode: 'analysis' },
+      })
+      const parsed = normalizeAnalysis(extractJsonObject(data.reply ?? ''))
+      if (parsed) setAnalysis(parsed)
+      else setAiText('Past performance on ' + quiz.topic + ': ' + pct + '%.')
+    } catch { setAiText('AI analysis unavailable for past quizzes.') }
     finally { setAiLoading(false) }
   }
 
-  function answerQuestion(qId: number, optIdx: number) {
-    if (submitted) return
-    setAnswers((p) => ({ ...p, [qId]: optIdx }))
-  }
-
-  function nextQuestion() {
-    if (!activeQuiz) return
-    if (currentQ < activeQuiz.questions.length - 1) setCurrentQ((p) => p + 1)
-  }
-
-  function prevQuestion() {
-    if (currentQ > 0) setCurrentQ((p) => p - 1)
-  }
-
-  function viewHistoryItem(quiz: Quiz) {
-    setViewHistoryQuiz(quiz)
-    setActiveQuiz(quiz)
-    setAnswers({})
-    setCurrentQ(0)
-    setSubmitted(true)
-    setView('result')
-    setQuizResult(quiz.score !== null ? { score: quiz.score, total: quiz.total_questions, results: quiz.questions.map((q) => ({ id: q.id, correct: false, explanation: q.explanation, answer_index: q.answer_index })) } : null)
-  }
-
-  function startQuizFromSubject(subject: Subject) {
-    setQuizSubject(String(subject.id))
-    setQuizTopic(subject.weak_topics || subject.name)
-    setShowCreateModal(true)
-  }
-
-  function resetToDashboard() {
+  function exitQuiz() {
     setView('dashboard')
     setActiveQuiz(null)
     setQuizResult(null)
-    setSubmitted(false)
-    setCurrentQ(0)
-    setAnswers({})
-    setViewHistoryQuiz(null)
-    setShowFeedback(null)
+    setFeedbackQid(null)
+    setShowReview(false)
+    setExamMeta(null)
   }
 
-  if (loading) {
-    return <PageShell eyebrow="Quiz" title="Loading..." subtitle="Fetching quiz data."><div className="page-card">Loading...</div></PageShell>
-  }
 
-  const displayQuiz = viewHistoryQuiz || activeQuiz
-  const currentQuestion = displayQuiz?.questions[currentQ]
-  const progressPct = displayQuiz ? Math.round(((currentQ + 1) / displayQuiz.questions.length) * 100) : 0
-  const answeredCount = Object.keys(answers).length
+  /* ── Render pieces ── */
 
-  return (
-    <PageShell
-      className="zq-page"
-      eyebrow="Quiz"
-      title="Quiz"
-      subtitle="Test your knowledge and find your weak areas."
-      actions={
-        view === 'dashboard' ? (
-          <button className="zq-create-btn" onClick={() => setShowCreateModal(true)} type="button">+ Create Quiz</button>
-        ) : view === 'active' ? (
-          <div className="zq-active-nav">
-            <button className="zq-back-btn" onClick={resetToDashboard} type="button">{'\u2190'} Back</button>
-            <span className="zq-progress-label">{currentQ + 1} / {displayQuiz?.questions.length}</span>
-          </div>
-        ) : (
-          <button className="zq-back-btn" onClick={resetToDashboard} type="button">{'\u2190'} All Quizzes</button>
-        )
-      }
-    >
-      {/* ═══════════ DASHBOARD ═══════════ */}
-      {view === 'dashboard' && (
-        <>
-          {/* Stats */}
-          <div className="zq-stats-row">
-            <div className="zq-stat-card">
-              <span className="zq-stat-num">{stats.total}</span>
-              <span className="zq-stat-label">Quizzes</span>
-            </div>
-            <div className="zq-stat-card">
-              <span className="zq-stat-num">{stats.accuracy}%</span>
-              <span className="zq-stat-label">Accuracy</span>
-            </div>
-            <div className="zq-stat-card">
-              <span className="zq-stat-num">{stats.completed}</span>
-              <span className="zq-stat-label">Completed</span>
-            </div>
-            <div className="zq-stat-card">
-              <span className="zq-stat-num">{stats.avgScore}%</span>
-              <span className="zq-stat-label">Avg Score</span>
-            </div>
-          </div>
+  const displayQuiz = activeQuiz
+  const resultPct = quizResult ? Math.round((quizResult.score / quizResult.total) * 100) : 0
+  const readinessAfter = examMeta && quizResult ? Math.min(100, examMeta.before + Math.round(resultPct / 10)) : 0
 
-          {/* Generator moved into Create Quiz modal */}
+  const activeView = activeQuiz && currentQuestion && (
+    <div className="zq-take">
+      <header className="zt-top">
+        <button className="zt-exit" onClick={exitQuiz} type="button">{'\u2190'} Exit</button>
+        <span className="zt-title">{activeQuiz.topic}</span>
+        <span className="zt-count">{currentQ + 1}/{activeQuiz.questions.length}</span>
+      </header>
+      <div className="zt-progress">
+        <i style={{ width: Math.round(((currentQ + 1) / activeQuiz.questions.length) * 100) + '%' }} />
+      </div>
 
-          <div className="zq-two-col">
-            {/* Quick Start */}
-            <div className="zq-quick-start">
-              <h2 className="zq-section-title">Start a Quiz</h2>
-              <div className="zq-subject-grid">
-                {subjects.length > 0 ? subjects.map((s) => (
-                  <button key={s.id} className="zq-subject-card" onClick={() => startQuizFromSubject(s)} type="button">
-                    <span className="zq-subject-dot" style={{ background: s.color }} />
-                    <strong>{s.name}</strong>
-                    <span className="zq-subject-meta">{s.topics_completed}/{s.total_topics} topics</span>
-                    <span className="zq-subject-start">Start {'\u2192'}</span>
-                  </button>
-                )) : (
-                  <p className="zq-empty-text">Add subjects first to get quick-start quizzes.</p>
-                )}
-              </div>
-            </div>
+      <main className="zt-body" key={currentQuestion.id}>
+        <span className="zt-kicker">Question {currentQ + 1}</span>
+        <h2 className="zt-question">{currentQuestion.question}</h2>
 
-            {/* Weak Topics */}
-            <div className="zq-weak-section">
-              <h2 className="zq-section-title">Weak Topics</h2>
-              {weakTopics.length > 0 ? (
-                <div className="zq-weak-list">
-                  {weakTopics.map((t) => (
-                    <div key={t.name} className="zq-weak-item">
-                      <div className="zq-weak-info">
-                        <span className="zq-weak-name">{t.name}</span>
-                        <span className="zq-weak-acc" style={{ color: t.color }}>{t.accuracy}%</span>
-                      </div>
-                      <div className="zq-weak-bar">
-                        <div className="zq-weak-fill" style={{ width: t.accuracy + '%', background: t.color }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        <div className="zt-options">
+          {currentQuestion.options.map((opt, idx) => {
+            const answered = answers[currentQuestion.id] !== undefined
+            const picked = answers[currentQuestion.id] === idx
+            const isRight = idx === currentQuestion.answer_index
+            let cls = 'zt-opt'
+            if (picked) cls += ' picked'
+            if (answered && isRight) cls += ' right'
+            if (answered && picked && !isRight) cls += ' wrongpick'
+            return (
+              <button key={idx} className={cls} disabled={answered} onClick={() => pickAnswer(idx)} type="button">
+                <span className="zt-letter">{String.fromCharCode(65 + idx)}</span>
+                <span className="zt-opt-text">{opt}</span>
+                {answered && isRight && <span className="zt-mark ok">{'\u2713'}</span>}
+                {answered && picked && !isRight && <span className="zt-mark no">{'\u2717'}</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="zt-hintrow">
+          <button className="zt-hintbtn" onClick={toggleHint} type="button">
+            {'\uD83D\uDCA1'} Hint
+          </button>
+          {openHint && (
+            <div className="zt-hintbox">
+              {hints[currentQuestion.id]?.loading ? (
+                <div className="ac-typing"><span /><span /><span /></div>
               ) : (
-                <p className="zq-empty-text">Complete some quizzes to see weak topic analysis.</p>
+                hints[currentQuestion.id]?.text ?? 'Think it through step by step.'
               )}
             </div>
-          </div>
-
-          {/* Exam Practice */}
-          {exams.length > 0 && (
-            <div className="zq-exam-section">
-              <h2 className="zq-section-title">Exam Practice</h2>
-              <div className="zq-exam-grid">
-                {exams.filter((e) => new Date(e.date) >= new Date()).slice(0, 3).map((e) => {
-                  const daysLeft = Math.ceil((new Date(e.date).getTime() - Date.now()) / 86400000)
-                  return (
-                    <div key={e.id} className="zq-exam-card">
-                      <strong>{e.title}</strong>
-                      <span className="zq-exam-date">{e.date} ({daysLeft} days)</span>
-                      <button className="zq-exam-practice-btn" onClick={() => { setQuizTopic(e.title); setQuizSubject(e.subject ? String(e.subject) : ''); setQuizDifficulty('hard'); setQuizCount(15); setShowCreateModal(true) }} type="button">Practice Quiz</button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
           )}
+        </div>
 
-          {/* History */}
-          <div className="zq-history-section">
-            <h2 className="zq-section-title">Recent Quizzes</h2>
-            {history.length > 0 ? (
-              <div className="zq-history-list">
-                {history.slice(0, 10).map((q) => {
-                  const pct = q.score !== null ? Math.round((q.score / q.total_questions) * 100) : 0
-                  return (
-                    <button key={q.id} className="zq-history-item" onClick={() => viewHistoryItem(q)} type="button">
-                      <div className="zq-history-info">
-                        <strong>{q.topic}</strong>
-                        <span>{q.difficulty} {'\u00b7'} {q.total_questions}Q</span>
-                      </div>
-                      <div className="zq-history-score" style={{ color: pct >= 80 ? '#36d479' : pct >= 60 ? '#ffb84d' : '#ff6b6b' }}>
-                        {q.score !== null ? pct + '%' : 'In Progress'}
-                      </div>
-                      <span className="zq-history-time">{timeAgo(q.created_at)}</span>
-                    </button>
-                  )
-                })}
+        {feedbackQid === currentQuestion.id && answers[currentQuestion.id] !== undefined && (
+          (() => {
+            const chosenIdx = answers[currentQuestion.id]
+            const good = chosenIdx === currentQuestion.answer_index
+            return (
+              <div className={'zt-feedback ' + (good ? 'good' : 'bad')}>
+                <strong>{good ? '\u2713 Correct!' : 'Not quite.'}</strong>
+                <p>{currentQuestion.explanation}</p>
+                <div className="zt-fb-boxes">
+                  <div className="zt-fb-box">
+                    <span>Your Answer</span>
+                    <b>{currentQuestion.options[chosenIdx]}</b>
+                  </div>
+                  {!good && (
+                    <div className="zt-fb-box right">
+                      <span>Correct concept</span>
+                      <b>{currentQuestion.options[currentQuestion.answer_index]}</b>
+                    </div>
+                  )}
+                </div>
+                <button className="zt-nextbtn" onClick={() => void advanceOrSubmit()} type="button">
+                  {isLast ? 'See Results \u2192' : 'Next Question \u2192'}
+                </button>
               </div>
-            ) : (
-              <p className="zq-empty-text">No quizzes taken yet. Generate one above!</p>
-            )}
-          </div>
-        </>
+            )
+          })()
+        )}
+      </main>
+    </div>
+  )
+
+  const resultView = view === 'result' && displayQuiz && quizResult && (
+    <div className="zr-wrap">
+      <div className="zr-hero">
+        <span className="zr-emoji">{'\uD83C\uDF89'}</span>
+        <h2>Quiz Complete</h2>
+        <div className="zr-pct" style={{ color: accColor(resultPct) }}>{resultPct}%</div>
+        <div className="zr-frac">{quizResult.score} / {quizResult.total}</div>
+        <div className="zr-statgrid">
+          <div><span>Correct</span><b className="ok">{quizResult.score}</b></div>
+          <div><span>Incorrect</span><b className="no">{quizResult.total - quizResult.score}</b></div>
+          <div><span>Time</span><b>{fmtTime(elapsed)}</b></div>
+        </div>
+      </div>
+
+      {analysis.performance.length > 0 && (
+        <section className="zr-perf">
+          <span className="zq-mini-label">PERFORMANCE</span>
+          {analysis.performance.map((p) => (
+            <div key={p.concept} className="zp-row">
+              <span className="zp-name">{p.concept}</span>
+              <div className="zp-bar"><i style={{ width: p.pct + '%', background: accColor(p.pct) }} /></div>
+              <span className="zp-pct">{p.pct}%</span>
+            </div>
+          ))}
+        </section>
       )}
 
-      {/* ═══════════ ACTIVE QUIZ ═══════════ */}
-      {view === 'active' && displayQuiz && currentQuestion && (
-        <div className="zq-quiz-active">
-          <div className="zq-quiz-bar">
-            <div className="zq-bar-track">
-              <div className="zq-bar-fill" style={{ width: progressPct + '%' }} />
-            </div>
-            <span className="zq-bar-label">{currentQ + 1} / {displayQuiz.questions.length}</span>
-          </div>
-
-          <div className="zq-question-card">
-            <h2 className="zq-q-text">{currentQuestion.question}</h2>
-            <div className="zq-options">
-              {currentQuestion.options.map((opt, idx) => {
-                const isSelected = answers[currentQuestion.id] === idx
-                return (
-                  <button key={idx} className={'zq-option' + (isSelected ? ' selected' : '')} onClick={() => answerQuestion(currentQuestion.id, idx)} type="button">
-                    <span className="zq-option-letter">{String.fromCharCode(65 + idx)}</span>
-                    <span className="zq-option-text">{opt}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {showFeedback && (
-              <div className={'zq-feedback ' + (showFeedback.correct ? 'correct' : 'wrong')}>
-                <strong>{showFeedback.correct ? '\u2713 Correct!' : '\u2717 Not quite.'}</strong>
-                <p>{showFeedback.explanation}</p>
-                <button className="zq-feedback-close" onClick={() => setShowFeedback(null)} type="button">Continue</button>
-              </div>
+      <section className="zr-ai">
+        <header className="zrai-head">{'\u2726'} FOCUSFLOW AI</header>
+        {aiLoading ? (
+          <div className="zr-ai-loading"><div className="ac-typing"><span /><span /><span /></div></div>
+        ) : (
+          <>
+            {analysis.strong.length > 0 && (
+              <ul className="zrai-list">
+                {analysis.strong.map((s) => <li key={s} className="ok">{'\u2713'} {s}</li>)}
+              </ul>
             )}
-          </div>
-
-          <div className="zq-quiz-nav">
-            <button className="zq-nav-btn" onClick={prevQuestion} disabled={currentQ === 0} type="button">{'\u2190'} Prev</button>
-            {currentQ === displayQuiz.questions.length - 1 ? (
-              <button className="zq-submit-btn" onClick={() => void submitQuiz()} type="button">Submit Quiz</button>
-            ) : (
-              <button className="zq-nav-btn primary" onClick={nextQuestion} type="button">Next {'\u2192'}</button>
+            {analysis.weak.length > 0 && (
+              <>
+                <span className="zrai-sub">Needs revision:</span>
+                <ul className="zrai-list">
+                  {analysis.weak.map((w) => <li key={w} className="warn">{'\u26A0'} {w}</li>)}
+                </ul>
+              </>
             )}
-          </div>
+            {(analysis.recommendation || aiText) && <p className="zrai-rec">{analysis.recommendation || aiText}</p>}
+          </>
+        )}
+        <button className="zrai-action" onClick={() => navigate('/focus')} type="button">Start Revision</button>
+      </section>
 
-          <div className="zq-q-dots">
-            {displayQuiz.questions.map((q, i) => (
-              <span key={q.id} className={'zq-dot' + (i === currentQ ? ' current' : '') + (answers[q.id] !== undefined ? ' answered' : '')} onClick={() => setCurrentQ(i)} />
-            ))}
-          </div>
-
-          <div className="zq-side-info">
-            <div className="zq-side-card">
-              <span>Topic</span>
-              <strong>{displayQuiz.topic}</strong>
-            </div>
-            <div className="zq-side-card">
-              <span>Difficulty</span>
-              <strong style={{ color: DIFFICULTIES.find((d) => d.key === displayQuiz.difficulty)?.color }}>{displayQuiz.difficulty}</strong>
-            </div>
-            <div className="zq-side-card">
-              <span>Time</span>
-              <strong>{fmtTime(elapsed)}</strong>
-            </div>
-            <div className="zq-side-card">
-              <span>Answered</span>
-              <strong>{answeredCount}/{displayQuiz.questions.length}</strong>
-            </div>
-          </div>
+      {examMeta && (
+        <div className="zr-readiness">
+          <span className="zq-mini-label">EXAM READINESS {'\u00B7'} {examMeta.title.toUpperCase()}</span>
+          <p>Before: <b>{examMeta.before}%</b>{'\u2003'}After: <b className="ok">{readinessAfter}%</b> {'\u2B50'}</p>
         </div>
       )}
 
-      {/* ═══════════ RESULT ═══════════ */}
-      {view === 'result' && displayQuiz && quizResult && (
-        <div className="zq-result">
-          <div className="zq-result-hero">
-            <span className="zq-result-emoji">{'\uD83C\uDF89'}</span>
-            <h2>Quiz Complete</h2>
-            <div className="zq-result-score">
-              <span className="zq-result-pct">{Math.round((quizResult.score / quizResult.total) * 100)}%</span>
-              <span className="zq-result-fraction">{quizResult.score} / {quizResult.total}</span>
-            </div>
-            <div className="zq-result-meta">
-              <div><span>Correct</span><strong>{quizResult.score}</strong></div>
-              <div><span>Incorrect</span><strong>{quizResult.total - quizResult.score}</strong></div>
-              <div><span>Time</span><strong>{fmtTime(elapsed)}</strong></div>
-            </div>
-            <div className="zq-result-bar-wrap">
-              <div className="zq-result-bar">
-                <div className="zq-result-fill" style={{ width: Math.round((quizResult.score / quizResult.total) * 100) + '%' }} />
+      <div className="zr-actions">
+        <button className="zq-back-btn" onClick={() => setShowReview((p) => !p)} type="button">
+          {showReview ? 'Hide Answers' : 'Review Answers'}
+        </button>
+        <button className="zr-retry" onClick={tryAgain} type="button">Try Again</button>
+        <button className="zq-back-btn" onClick={exitQuiz} type="button">Done</button>
+      </div>
+
+      {showReview && (
+        <div className="zr-review">
+          {displayQuiz.questions.map((qq, i) => {
+            const ans = quizResult.results.find((r) => r.id === qq.id)
+            const isCorrect = ans ? ans.correct : false
+            return (
+              <div key={qq.id} className={'zr-item' + (isCorrect ? ' ok' : ' no')}>
+                <div className="zri-head">
+                  <span className="zri-num">{i + 1}</span>
+                  <span className={'zri-badge ' + (isCorrect ? 'ok' : 'no')}>{isCorrect ? '\u2713' : '\u2717'}</span>
+                </div>
+                <p className="zri-q">{qq.question}</p>
+                <div className="zri-opts">
+                  {qq.options.map((opt, oi) => {
+                    const isAnswer = oi === qq.answer_index
+                    const wasPicked = ans?.selected === oi
+                    return (
+                      <span key={oi} className={'zri-opt' + (isAnswer ? ' answer' : '') + (wasPicked && !isAnswer ? ' pickedwrong' : '')}>
+                        {String.fromCharCode(65 + oi)}{'\u2002'}{opt}
+                      </span>
+                    )
+                  })}
+                </div>
+                {qq.explanation && <p className="zri-explain">{qq.explanation}</p>}
               </div>
-              <span className="zq-result-bar-pct">{Math.round((quizResult.score / quizResult.total) * 100)}%</span>
-            </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
+
+  const createModal = showCreate && (
+    <div className="zq-modal-overlay" onClick={() => setShowCreate(false)}>
+      <div className="zq-modal cq-modal" role="dialog" aria-modal="true" aria-label="Create Quiz" onClick={(e) => e.stopPropagation()}>
+        <div className="zq-modal-head cq-head">
+          <button className="cq-back" onClick={() => setShowCreate(false)} type="button" aria-label="Back">{'\u2190'}</button>
+          <h2>Create Quiz</h2>
+          <button className="zq-modal-close" onClick={() => setShowCreate(false)} type="button" aria-label="Close">{'\u00D7'}</button>
+        </div>
+
+        <span className="cq-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
+
+        <label className="cq-field">
+          <span>Subject</span>
+          <select
+            value={cqSubject}
+            onChange={(e) => {
+              setCqSubject(e.target.value)
+              const s = subjects.find((x) => x.id === Number(e.target.value))
+              if (s) { setCqTopic(s.name); setCqSource('subject') }
+            }}
+          >
+            <option value="">No subject</option>
+            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+
+        <label className="cq-field">
+          <span>Topic</span>
+          <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
+            {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+            <option value="__custom">Custom topic...</option>
+          </select>
+        </label>
+        {cqTopic === '__custom' && (
+          <input
+            className="cq-custom-input"
+            placeholder="e.g. Constructors & Destructors"
+            value={cqCustomTopic}
+            onChange={(e) => setCqCustomTopic(e.target.value)}
+            autoFocus
+          />
+        )}
+
+        <div className="cq-field">
+          <span>Source</span>
+          <div className="cq-sources">
+            {SOURCES.map((src) => (
+              <button
+                key={src.key}
+                className={'cq-source' + (cqSource === src.key ? ' on' : '')}
+                onClick={() => {
+                  setCqSource(src.key)
+                  if (src.key === 'weak' && weakTopics[0]) setCqTopic(weakTopics[0].name)
+                  if (src.key === 'exam') openCreateForExam()
+                }}
+                type="button"
+              >
+                <i className="cq-radio" />{src.icon} {src.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cq-field">
+          <span>Questions</span>
+          <div className="cq-counts">
+            {QUESTION_COUNTS.map((c) => (
+              <button key={c} className={'cq-count' + (cqCount === c ? ' on' : '')} onClick={() => setCqCount(c)} type="button">{c}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cq-field">
+          <span>Difficulty</span>
+          <div className="cq-diffs">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.key}
+                className={'cq-diff' + (cqDifficulty === d.key ? ' on' : '')}
+                style={cqDifficulty === d.key ? { borderColor: d.color, color: d.color, background: d.color + '14' } : undefined}
+                onClick={() => setCqDifficulty(d.key)}
+                type="button"
+              >
+                {d.label}{cqDifficulty === d.key ? ' \u2713' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="cq-field">
+          <span>Question Type</span>
+          <select defaultValue="mcq">
+            <option value="mcq">Multiple Choice</option>
+          </select>
+        </label>
+
+        <button className="cq-generate" disabled={generating} onClick={() => void generateQuiz()} type="button">
+          {generating ? 'Generating...' : 'Generate Quiz'}
+        </button>
+      </div>
+    </div>
+  )
+
+  const dashboardView = (
+    <>
+      <div className="zq-stats-row">
+        <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83D\uDCDD'}</span><b>{stats.quizzes}</b><span className="zq-stat-label">Quizzes</span></div>
+        <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83C\uDFAF'}</span><b>{stats.accuracy}%</b><span className="zq-stat-label">Accuracy</span></div>
+        <div className="zq-stat-card"><span className="zq-stat-icon">{'\u2713'}</span><b>{stats.completedCount}</b><span className="zq-stat-label">Completed</span></div>
+        <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83D\uDD25'}</span><b>{stats.streak}</b><span className="zq-stat-label">Quiz Streak</span></div>
+      </div>
+
+      <section>
+        <h2 className="zq-section-title">START A QUIZ</h2>
+        <div className="zq-start-grid">
+          <div className="zq-ai-card">
+            <header className="zq-start-head">{'\u2726'} AI QUIZ</header>
+            <p>Generate a quiz from your subjects, notes or weak topics.</p>
+            <button className="zq-startbtn primary" onClick={openCreate} type="button">Generate Quiz {'\u2192'}</button>
           </div>
 
-          {/* AI Analysis */}
-          <div className="zq-ai-analysis">
-            <h3>{'\uD83E\uDD16'} Flox AI Analysis</h3>
-            {aiLoading ? (
-              <div className="zq-ai-loading"><div className="ac-typing"><span /><span /><span /></div></div>
-            ) : aiAnalysis ? (
-              <p>{aiAnalysis}</p>
+          <div className="zq-examcard">
+            <header className="zq-start-head">{'\uD83C\uDF93'} EXAM PRACTICE</header>
+            {nextExam ? (
+              <>
+                <b className="ze-name">{nextExam.subject_name ?? nextExam.title}</b>
+                <span className="ze-days">{daysUntil(nextExam.date)} days remaining</span>
+                <div className="ze-barlab">Preparation</div>
+                <div className="ze-barwrap">
+                  <div className="ze-bar"><i style={{ width: Math.min(100, nextExam.preparation_pct ?? 0) + '%' }} /></div>
+                  <span className="ze-pct">{Math.min(100, nextExam.preparation_pct ?? 0)}%</span>
+                </div>
+                <span className="ze-reco">Recommended: 10 questions {'\u00B7'} Hard {'\u00B7'} Weak topics included</span>
+                <button className="zq-startbtn" onClick={openCreateForExam} type="button">Start Practice {'\u2192'}</button>
+              </>
             ) : (
-              <p>Generating analysis...</p>
+              <p>No upcoming exams. Add one on the Exams page to unlock exam practice.</p>
             )}
           </div>
+        </div>
+      </section>
 
-          {/* Answer Review */}
-          <div className="zq-review">
-            <h2 className="zq-section-title">Review Answers</h2>
-            {displayQuiz.questions.map((q, i) => {
-              const ans = quizResult.results.find((r) => r.id === q.id)
-              const isCorrect = ans?.correct
+      <section>
+        <h2 className="zq-section-title">SUBJECT QUIZZES</h2>
+        <div className="zq-subject-grid">
+          {subjects.length > 0 ? subjects.map((s, i) => (
+            <button key={s.id} className="zq-subject-card" onClick={() => startSubjectQuiz(s)} type="button">
+              <span className="zs-icon">{SUBJECT_ICONS[i % SUBJECT_ICONS.length]}</span>
+              <strong className="zs-name">{s.name}</strong>
+              <span className="zs-meta">{Math.max(5, s.total_topics || 10)} Questions</span>
+              <span className="zs-diff">Medium</span>
+              <span className="zs-start">Start</span>
+            </button>
+          )) : (
+            <p className="zq-empty-text">Add subjects first to unlock quick quizzes.</p>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="zq-section-title">WEAK TOPICS</h2>
+        {weakTopics.length > 0 ? (
+          <div className="zq-weak-list">
+            {weakTopics.map((t) => (
+              <button key={t.name} className="zw-row" onClick={() => void practiceWeakTopic(t.name)} disabled={generating} type="button">
+                <span className="zw-dot">{t.dot}</span>
+                <span className="zw-info">
+                  <b>{t.name}</b>
+                  <em>{t.accuracy}% accuracy</em>
+                </span>
+                <span className="zw-go">Practice this topic {'\u2192'}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="zq-empty-text">Complete a few quizzes and your weak topics will show up here.</p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="zq-section-title">RECENT QUIZZES</h2>
+        {recentQuizzes.length > 0 ? (
+          <div className="zq-history-list">
+            {recentQuizzes.map((qq) => {
+              const pct = qq.score !== null ? Math.round((qq.score / qq.total_questions) * 100) : null
               return (
-                <div key={q.id} className={'zq-review-item' + (isCorrect ? ' correct' : ' wrong')}>
-                  <div className="zq-review-head">
-                    <span className="zq-review-num">{i + 1}</span>
-                    <span className={'zq-review-badge ' + (isCorrect ? 'correct' : 'wrong')}>{isCorrect ? '\u2713' : '\u2717'}</span>
-                  </div>
-                  <p className="zq-review-q">{q.question}</p>
-                  <div className="zq-review-opts">
-                    {q.options.map((opt, oi) => {
-                      const isAnswer = oi === q.answer_index
-                      const wasSelected = ans?.selected === oi
-                      return (
-                        <span key={oi} className={'zq-review-opt' + (isAnswer ? ' answer' : '') + (wasSelected && !isAnswer ? ' selected-wrong' : '')}>
-                          {String.fromCharCode(65 + oi)} {opt}
-                        </span>
-                      )
-                    })}
-                  </div>
-                  {q.explanation && <p className="zq-review-explain">{q.explanation}</p>}
-                </div>
+                <button key={qq.id} className="zh-row" onClick={() => viewHistoryItem(qq)} type="button">
+                  <span className="zh-topic">{qq.topic}</span>
+                  <span className="zh-pct" style={{ color: pct !== null ? accColor(pct) : undefined }}>{pct !== null ? pct + '%' : '\u2014'}</span>
+                  <span className="zh-score">{qq.score !== null ? qq.score + '/' + qq.total_questions : qq.total_questions + 'Q'}</span>
+                  <span className="zh-date">{timeAgo(qq.created_at)}</span>
+                  <span className="zh-review">Review {'\u2192'}</span>
+                </button>
               )
             })}
           </div>
+        ) : (
+          <p className="zq-empty-text">No quizzes taken yet. Generate one above!</p>
+        )}
+      </section>
+    </>
+  )
 
-          <div className="zq-result-actions">
-            <button className="zq-back-btn" onClick={resetToDashboard} type="button">Back to Quiz</button>
-          </div>
-        </div>
-      )}
+  /* ── Render ── */
 
-      {/* ═══════════ CREATE QUIZ MODAL ═══════════ */}
-      {showCreateModal && (
-        <div className="zq-modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="zq-modal" role="dialog" aria-modal="true" aria-label="Create Quiz" onClick={(e) => e.stopPropagation()}>
-            <div className="zq-modal-head">
-              <h2>Create Quiz</h2>
-              <button className="zq-modal-close" onClick={() => setShowCreateModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
-            </div>
-            <div className="zq-gen-grid">
-              <div className="zq-gen-field">
-                <label>Subject</label>
-                <select value={quizSubject} onChange={(e) => {
-                  setQuizSubject(e.target.value)
-                  const s = subjects.find((s) => s.id === Number(e.target.value))
-                  if (s) setQuizTopic(s.weak_topics || s.name)
-                }}>
-                  <option value="">Custom topic</option>
-                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="zq-gen-field">
-                <label>Topic</label>
-                <input placeholder="e.g. Constructors & Destructors" value={quizTopic} onChange={(e) => setQuizTopic(e.target.value)} />
-              </div>
-              <div className="zq-gen-field">
-                <label>Difficulty</label>
-                <div className="zq-diff-row">
-                  {DIFFICULTIES.map((d) => (
-                    <button key={d.key} className={'zq-diff-chip' + (quizDifficulty === d.key ? ' active' : '')} style={quizDifficulty === d.key ? { borderColor: d.color, color: d.color, background: d.color + '12' } : undefined} onClick={() => setQuizDifficulty(d.key)} type="button">{d.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="zq-gen-field">
-                <label>Questions</label>
-                <div className="zq-count-row">
-                  {QUESTION_COUNTS.map((c) => (
-                    <button key={c} className={'zq-count-chip' + (quizCount === c ? ' active' : '')} onClick={() => setQuizCount(c)} type="button">{c}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <button className="zq-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
-              {generating ? 'Generating...' : 'Generate Quiz'}
-            </button>
-          </div>
-        </div>
-      )}
+  if (loading) {
+    return (
+      <PageShell title="Loading..." subtitle="Fetching quiz data.">
+        <div className="page-card">Loading...</div>
+      </PageShell>
+    )
+  }
 
-      {/* Feedback overlay */}
-      {showFeedback && (
-        <div className="zq-feedback-overlay" onClick={() => setShowFeedback(null)}>
-          <div className={'zq-feedback-modal ' + (showFeedback.correct ? 'correct' : 'wrong')} onClick={(e) => e.stopPropagation()}>
-            <strong>{showFeedback.correct ? '\u2713 Correct!' : '\u2717 Not quite.'}</strong>
-            <p>{showFeedback.explanation}</p>
-            <button onClick={() => setShowFeedback(null)} type="button">Continue</button>
-          </div>
-        </div>
-      )}
+  return (
+    <PageShell
+      className={'zq-page' + (view === 'active' ? ' taking' : '')}
+      title="Quiz"
+      subtitle="Test your knowledge and discover what to improve."
+      actions={
+        view === 'dashboard' && !generating ? (
+          <button className="zq-create-btn" onClick={openCreate} type="button">{'\uFF0B'} Create Quiz</button>
+        ) : null
+      }
+    >
+      {view === 'dashboard' && dashboardView}
+      {view === 'active' && activeView}
+      {view === 'result' && resultView}
+      {createModal}
     </PageShell>
   )
 }

@@ -247,7 +247,7 @@ export default function ExamsPage() {
 
   if (loading) {
     return (
-      <PageShell eyebrow="Exams" title="Exam Preparation" subtitle="Track your exam readiness and plan your preparation.">
+      <PageShell title="Exam Preparation" subtitle="Track your exam readiness and plan your preparation.">
         <div className="page-card" style={{ padding: 60, textAlign: 'center', opacity: 0.6 }}>
           Loading exams...
         </div>
@@ -257,7 +257,7 @@ export default function ExamsPage() {
 
   if (view === 'detail' && selectedExamId) {
     return (
-      <PageShell eyebrow="Exams" title="Exam Detail" subtitle="">
+      <PageShell title="Exam Detail" subtitle="">
         <div style={{ marginBottom: 16 }}>
           <button className="ghost-action" onClick={backToList} type="button">
             &#8249; Back to Exams
@@ -350,14 +350,12 @@ export default function ExamsPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div className="page-card" style={{ padding: '1.25rem' }}>
-                <span className="eyebrow">Today's Plan</span>
                 <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{examDetail.today_plan.sessions}</div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
                   sessions &middot; {examDetail.today_plan.minutes} min
                 </div>
               </div>
               <div className="page-card" style={{ padding: '1.25rem' }}>
-                <span className="eyebrow">Tomorrow's Plan</span>
                 <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{examDetail.tomorrow_plan.sessions}</div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
                   sessions &middot; {examDetail.tomorrow_plan.minutes} min
@@ -366,8 +364,7 @@ export default function ExamsPage() {
             </div>
 
             <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span className="eyebrow" style={{ margin: 0 }}>Syllabus / Modules</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
                 <button className="ghost-action" onClick={() => setShowEditModules(!showEditModules)} type="button" style={{ fontSize: '0.78rem', padding: '4px 12px' }}>
                   {showEditModules ? 'Done' : 'Edit'}
                 </button>
@@ -425,7 +422,6 @@ export default function ExamsPage() {
 
             {examDetail.weak_areas.length > 0 && (
               <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-                <span className="eyebrow">Weak Areas</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   {examDetail.weak_areas.map((area) => (
                     <span
@@ -448,7 +444,6 @@ export default function ExamsPage() {
 
             {examDetail.upcoming_sessions.length > 0 && (
               <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-                <span className="eyebrow">Upcoming Sessions</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                   {examDetail.upcoming_sessions.map((session) => (
                     <div
@@ -523,7 +518,6 @@ export default function ExamsPage() {
 
   return (
     <PageShell
-      eyebrow="Exams"
       title="Exam Preparation"
       subtitle="Track your exam readiness and plan your preparation."
       actions={
@@ -534,7 +528,6 @@ export default function ExamsPage() {
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
         <div className="page-card" style={{ padding: '1.1rem' }}>
-          <span className="eyebrow">Upcoming Exam</span>
           <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: 6, minHeight: 30 }}>
             {nearestExam ? nearestExam.title : 'No exams'}
           </div>
@@ -545,7 +538,6 @@ export default function ExamsPage() {
           )}
         </div>
         <div className="page-card" style={{ padding: '1.1rem' }}>
-          <span className="eyebrow">Days Left</span>
           <div
             style={{
               fontSize: '1.8rem',
@@ -558,7 +550,6 @@ export default function ExamsPage() {
           </div>
         </div>
         <div className="page-card" style={{ padding: '1.1rem' }}>
-          <span className="eyebrow">Preparation</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>{avgPrep}%</div>
           <div className="streak-bar" style={{ marginTop: 8 }}>
             <i style={{ width: `${avgPrep}%` }} />

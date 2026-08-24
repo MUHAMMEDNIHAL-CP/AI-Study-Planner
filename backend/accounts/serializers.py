@@ -10,15 +10,20 @@ User = get_user_model()
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ("bio", "college", "course", "semester", "study_goal", "daily_study_goal", "target_grade", "main_goal")
+        fields = (
+            "bio", "college", "course", "semester", "study_goal",
+            "daily_study_goal", "target_grade", "main_goal",
+            "preferred_study_time", "session_length", "learning_style", "coaching_style",
+        )
 
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(required=False)
+    full_name = serializers.CharField(source="first_name", read_only=True)
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "profile")
+        fields = ("id", "username", "email", "full_name", "profile")
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop("profile", None)

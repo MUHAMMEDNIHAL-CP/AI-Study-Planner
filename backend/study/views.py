@@ -159,6 +159,15 @@ class DashboardView(APIView):
         completed = tasks.filter(status="done").count()
         total_tasks = tasks.count()
         minutes = logs.aggregate(total=Sum("minutes_studied"))["total"] or 0
+        prev_week_start = week_start - timedelta(days=7)
+        prev_week_minutes = (
+            ProductivityLog.objects.filter(
+                user=request.user,
+                date__gte=prev_week_start,
+                date__lt=week_start,
+            ).aggregate(total=Sum("minutes_studied"))["total"]
+            or 0
+        )
 
         streak_stats = compute_streak_stats(request.user)
 
@@ -191,6 +200,7 @@ class DashboardView(APIView):
             {
                 **streak_stats,
                 "week_minutes": minutes,
+                "prev_week_minutes": prev_week_minutes,
                 "completion_rate": round((completed / total_tasks) * 100) if total_tasks else 0,
                 "open_tasks": total_tasks - completed,
                 "upcoming_exams": ExamSerializer(upcoming_exams, many=True).data,

@@ -1,123 +1,370 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { applyTheme } from '../lib/theme'
+import { api, getErrorMessage } from '../lib/api'
+import { applyTheme, getTheme, type ThemeMode } from '../lib/theme'
 import { clearAuthTokens } from '../lib/auth'
 import PageShell from '../components/PageShell'
 
-type ThemeChoice = 'light' | 'dark' | 'system'
+/* ── Local preferences ─────────────────────────────────────── */
 
 type Preferences = {
-  theme: ThemeChoice
   studyReminders: boolean
   taskReminders: boolean
-  dailyProgress: boolean
-  studyDuration: number
-  breakDuration: number
+  examReminders: boolean
+  streakReminder: boolean
+  dailySummary: boolean
+  aiRecommendations: boolean
+  reminderTime: string
+
+  sessionLength: number
+  breakLength: number
+  weekStartsOn: string
+  aiAutoPlanning: boolean
+  autoStartBreak: boolean
+  studySounds: boolean
+  defaultSound: string
+  hideNotifications: boolean
+  showSessionProgress: boolean
+
+  qualifyingMinutes: number
+  showStreakDashboard: boolean
+  showStreakProfile: boolean
+
   aiSuggestions: boolean
+  dailyInsight: boolean
   personalizedPlanning: boolean
+  weakTopicDetection: boolean
+  adaptiveQuizzes: boolean
+
+  twoFactor: boolean
+  aiPersonalization: boolean
+
+  language: string
+  timezone: string
+  dateFormat: string
+  timeFormat: string
 }
 
-const preferenceKey = 'focusflow.settings.preferences'
+const preferenceKey = 'focusflow.settings.v2'
 
 const defaultPreferences: Preferences = {
-  theme: 'dark',
   studyReminders: true,
   taskReminders: true,
-  dailyProgress: true,
-  studyDuration: 50,
-  breakDuration: 10,
+  examReminders: true,
+  streakReminder: true,
+  dailySummary: false,
+  aiRecommendations: true,
+  reminderTime: '15m',
+
+  sessionLength: 50,
+  breakLength: 10,
+  weekStartsOn: 'monday',
+  aiAutoPlanning: true,
+  autoStartBreak: false,
+  studySounds: true,
+  defaultSound: 'rain',
+  hideNotifications: true,
+  showSessionProgress: true,
+
+  qualifyingMinutes: 20,
+  showStreakDashboard: true,
+  showStreakProfile: true,
+
   aiSuggestions: true,
+  dailyInsight: true,
   personalizedPlanning: true,
+  weakTopicDetection: true,
+  adaptiveQuizzes: true,
+
+  twoFactor: false,
+  aiPersonalization: true,
+
+  language: 'en',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+  dateFormat: 'dd/mm/yyyy',
+  timeFormat: '12h',
 }
 
 function loadPreferences(): Preferences {
   try {
     const saved = localStorage.getItem(preferenceKey)
-    const oldTheme = localStorage.getItem('theme') as ThemeChoice | null
-    return {
-      ...defaultPreferences,
-      ...(oldTheme === 'dark' || oldTheme === 'light' ? { theme: oldTheme } : {}),
-      ...(saved ? JSON.parse(saved) : {}),
-    }
+    return saved ? { ...defaultPreferences, ...JSON.parse(saved) } : defaultPreferences
   } catch {
     return defaultPreferences
   }
 }
 
-const THEME_OPTIONS: { value: ThemeChoice; label: string; icon: string }[] = [
-  { value: 'light', label: 'Light', icon: '\u2600\uFE0F' },
-  { value: 'dark', label: 'Dark', icon: '\uD83C\uDF19' },
-  { value: 'system', label: 'System', icon: '\uD83D\uDDA5\uFE0F' },
-]
+/* ── Options ───────────────────────────────────────────────── */
 
-type SectionId = 'appearance' | 'notifications' | 'study' | 'ai' | 'security' | 'account'
+type SectionId =
+  | 'notifications' | 'study' | 'focus' | 'streak' | 'ai'
+  | 'account' | 'security' | 'region' | 'privacy' | 'about'
 
 type SectionDef = {
   id: SectionId
-  group: string
   label: string
   desc: string
   icon: string
 }
 
-const SECTIONS: SectionDef[] = [
-  { id: 'appearance', group: 'General', label: 'Appearance', desc: 'Theme & display', icon: '\uD83C\uDFA8\uFE0F' },
-  { id: 'notifications', group: 'General', label: 'Notifications', desc: 'Study & task alerts', icon: '\uD83D\uDD14' },
-  { id: 'study', group: 'Study', label: 'Focus Sessions', desc: 'Timer & break lengths', icon: '\u23F1\uFE0F' },
-  { id: 'ai', group: 'AI', label: 'AI Coach', desc: 'Personalization & tips', icon: '\uD83E\uDD16' },
-  { id: 'security', group: 'Account', label: 'Security', desc: 'Password & devices', icon: '\uD83D\uDD12' },
-  { id: 'account', group: 'Account', label: 'Account Actions', desc: 'Logout & delete account', icon: '\uD83D\uDC64' },
+const SECTIONS: Record<SectionId, SectionDef> = {
+  notifications: { id: 'notifications', label: 'Notifications', desc: 'Study, task and exam reminders', icon: '\uD83D\uDD14' },
+  study: { id: 'study', label: 'Study Preferences', desc: 'Goals, study time and planning', icon: '\uD83D\uDCDA' },
+  focus: { id: 'focus', label: 'Focus Mode', desc: 'Timer, breaks and sounds', icon: '\u23F1\uFE0F' },
+  streak: { id: 'streak', label: 'Streak', desc: 'Streak and freeze settings', icon: '\uD83D\uDD25' },
+  ai: { id: 'ai', label: 'AI Preferences', desc: 'AI coaching and personalization', icon: '\uD83E\uDD16' },
+  account: { id: 'account', label: 'Account', desc: 'Email and account information', icon: '\uD83D\uDC64' },
+  security: { id: 'security', label: 'Security', desc: 'Password and active sessions', icon: '\uD83D\uDD12' },
+  region: { id: 'region', label: 'Language & Region', desc: 'Language, timezone and date format', icon: '\uD83C\uDF10' },
+  privacy: { id: 'privacy', label: 'Data & Privacy', desc: 'Data, AI usage and account deletion', icon: '\uD83D\uDEE1\uFE0F' },
+  about: { id: 'about', label: 'About', desc: 'FocusFlow AI version and information', icon: '\u2139\uFE0F' },
+}
+
+const GROUPS: Array<{ title: string; items: SectionId[] }> = [
+  { title: 'General', items: ['notifications'] },
+  { title: 'Study', items: ['study', 'focus', 'streak'] },
+  { title: 'AI', items: ['ai'] },
+  { title: 'Account', items: ['account', 'security', 'region'] },
+  { title: 'Privacy', items: ['privacy'] },
+  { title: 'About', items: ['about'] },
 ]
 
-const SECTION_GROUPS = ['General', 'Study', 'AI', 'Account']
+const REMINDER_TIME_OPTIONS = [
+  { value: '5m', label: '5 minutes before' },
+  { value: '15m', label: '15 minutes before' },
+  { value: '30m', label: '30 minutes before' },
+  { value: '1h', label: '1 hour before' },
+]
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+const SESSION_LENGTHS = [25, 30, 45, 50, 60, 90]
+const BREAK_LENGTHS = [5, 10, 15, 20, 30]
+const QUALIFYING_MINUTES = [5, 10, 15, 20, 30]
+
+const SOUND_OPTIONS = [
+  { value: 'rain', label: 'Rain' },
+  { value: 'forest', label: 'Forest' },
+  { value: 'ocean', label: 'Ocean' },
+  { value: 'lofi', label: 'Lofi Beats' },
+  { value: 'white-noise', label: 'White Noise' },
+  { value: 'silence', label: 'Silence' },
+]
+
+const STUDY_TIME_SELECT_OPTIONS = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+  { value: 'night', label: 'Night' },
+]
+
+const COACHING_STYLE_OPTIONS = [
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'motivational', label: 'Motivational' },
+  { value: 'strict', label: 'Strict' },
+]
+
+const TIMEZONE_OPTIONS = [
+  { value: 'Asia/Kolkata', label: 'India Standard Time' },
+  { value: 'Asia/Dubai', label: 'Gulf Standard Time' },
+  { value: 'Asia/Karachi', label: 'Pakistan Standard Time' },
+  { value: 'Asia/Dhaka', label: 'Bangladesh Standard Time' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'Europe/Berlin', label: 'Central European Time' },
+  { value: 'America/New_York', label: 'Eastern Time (US)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (US)' },
+  { value: 'UTC', label: 'Coordinated Universal Time' },
+]
+
+const DATE_FORMAT_OPTIONS = [
+  { value: 'dd/mm/yyyy', label: 'DD/MM/YYYY' },
+  { value: 'mm/dd/yyyy', label: 'MM/DD/YYYY' },
+  { value: 'yyyy-mm-dd', label: 'YYYY-MM-DD' },
+]
+
+const TIME_FORMAT_OPTIONS = [
+  { value: '12h', label: '12-hour' },
+  { value: '24h', label: '24-hour' },
+]
+
+/* ── Small building blocks ─────────────────────────────────── */
+
+function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
     <button
-      className={`settings-switch ${on ? 'on' : ''}`}
+      className={`st-switch ${on ? 'on' : ''}`}
       onClick={onToggle}
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={on ? 'Turn off' : 'Turn on'}
     >
-      <span className="settings-switch-track" />
+      <span className="st-switch-track" />
     </button>
   )
 }
+
+function RadioGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ value: string; label: string }>
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="st-radio-list" role="radiogroup">
+      {options.map((option) => (
+        <button
+          aria-checked={value === option.value}
+          className={`st-radio-row ${value === option.value ? 'active' : ''}`}
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          role="radio"
+          type="button"
+        >
+          <span className="st-radio-dot" />
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SelectRow({
+  title,
+  desc,
+  value,
+  onChange,
+  options,
+}: {
+  title: string
+  desc?: string
+  value: string | number
+  onChange: (value: string) => void
+  options: Array<{ value: string | number; label: string }>
+}) {
+  const current = options.find((o) => o.value === value)
+  return (
+    <div className="st-row">
+      <span className="st-row-text">
+        <strong>{title}</strong>
+        {desc && <small>{desc}</small>}
+      </span>
+      <span className="st-select-wrap">
+        <select
+          aria-label={title}
+          className="st-select"
+          onChange={(e) => onChange(e.target.value)}
+          value={String(value)}
+        >
+          {!current && <option value={String(value)}>{String(value)}</option>}
+          {options.map((o) => (
+            <option key={o.value} value={String(o.value)}>{o.label}</option>
+          ))}
+        </select>
+        <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+      </span>
+    </div>
+  )
+}
+
+function ToggleRow({
+  title,
+  desc,
+  on,
+  onToggle,
+}: {
+  title: string
+  desc?: string
+  on: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="st-row">
+      <span className="st-row-text">
+        <strong>{title}</strong>
+        {desc && <small>{desc}</small>}
+      </span>
+      <Switch on={on} onToggle={onToggle} />
+    </div>
+  )
+}
+
+function Divider() {
+  return <hr className="st-divider" />
+}
+
+/* ── Page ──────────────────────────────────────────────────── */
 
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences())
-  const [loading, setLoading] = useState(true)
+  const [theme, setTheme] = useState<ThemeMode>(() => getTheme())
+
+  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
+  const [dailyGoal, setDailyGoal] = useState(4)
+  const [preferredStudyTime, setPreferredStudyTime] = useState('evening')
+  const [coachingStyle, setCoachingStyle] = useState('balanced')
+  const [currentStreak, setCurrentStreak] = useState(0)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [editField, setEditField] = useState<'email' | 'username' | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 250)
-    return () => window.clearTimeout(timer)
+    let active = true
+    Promise.all([
+      api.get('/auth/me/').catch(() => null),
+      api.get('/study/dashboard/').catch(() => null),
+    ]).then(([meRes, dashRes]) => {
+      if (!active) return
+      if (meRes?.data) {
+        setEmail(meRes.data.email ?? '')
+        setUsername(meRes.data.username ?? '')
+        setDailyGoal(meRes.data.profile?.daily_study_goal ?? 4)
+        setPreferredStudyTime(meRes.data.profile?.preferred_study_time ?? 'evening')
+        setCoachingStyle(meRes.data.profile?.coaching_style ?? 'balanced')
+      }
+      if (dashRes?.data) setCurrentStreak(dashRes.data.current_streak ?? 0)
+    })
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
-    applyTheme(preferences.theme === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : preferences.theme
-    )
     localStorage.setItem(preferenceKey, JSON.stringify(preferences))
   }, [preferences])
-
-  const rawSection = searchParams.get('s')
-  const activeId: SectionId | null = SECTIONS.some((section) => section.id === rawSection)
-    ? (rawSection as SectionId)
-    : null
-  const current: SectionDef = SECTIONS.find((section) => section.id === activeId) ?? SECTIONS[0]
-
-  useEffect(() => {
-    window.scrollTo({ top: 0 })
-  }, [activeId])
 
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setPreferences((c) => ({ ...c, [key]: value }))
   }
+
+  async function patchProfile(payload: Record<string, unknown>) {
+    setSavingProfile(true)
+    try {
+      const { data } = await api.patch('/auth/me/', payload)
+      setEmail(data.email ?? '')
+      setUsername(data.username ?? '')
+      setDailyGoal(data.profile?.daily_study_goal ?? dailyGoal)
+      setPreferredStudyTime(data.profile?.preferred_study_time ?? preferredStudyTime)
+      setCoachingStyle(data.profile?.coaching_style ?? coachingStyle)
+      toast.success('Settings saved.')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const rawSection = searchParams.get('s')
+  const activeId: SectionId | null =
+    rawSection && rawSection in SECTIONS ? (rawSection as SectionId) : null
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [activeId])
 
   function openSection(id: SectionId) {
     setSearchParams({ s: id })
@@ -132,281 +379,513 @@ export default function SettingsPage() {
     navigate('/login')
   }
 
-  function sectionSubtitle(section: SectionDef): string {
-    if (section.id === 'appearance') {
-      return `${preferences.theme.charAt(0).toUpperCase()}${preferences.theme.slice(1)} mode`
-    }
-    if (section.id === 'study') {
-      return `${preferences.studyDuration} min focus \u00B7 ${preferences.breakDuration} min break`
-    }
-    return section.desc
+  function toggleDarkMode() {
+    const next: ThemeMode = theme === 'dark' ? 'light' : 'dark'
+    applyTheme(next)
+    setTheme(next)
   }
 
-  function renderPanel(id: SectionId) {
+  function startEdit(field: 'email' | 'username') {
+    setEditValue(field === 'email' ? email : username)
+    setEditField(field)
+  }
+
+  async function saveEdit() {
+    if (!editValue.trim()) {
+      toast.error('This field cannot be empty.')
+      return
+    }
+    await patchProfile(editField === 'email' ? { email: editValue.trim() } : { username: editValue.trim() })
+    setEditField(null)
+  }
+
+  function downloadMyData() {
+    toast.info('Preparing your data...')
+    Promise.all([
+      api.get('/productivity/logs/').catch(() => ({ data: [] })),
+      api.get('/productivity/focus-sessions/').catch(() => ({ data: [] })),
+      api.get('/quiz/history/').catch(() => ({ data: [] })),
+    ]).then(([logs, sessions, quizzes]) => {
+      const payload = {
+        exported_at: new Date().toISOString(),
+        productivity_logs: logs.data,
+        focus_sessions: sessions.data,
+        quizzes: quizzes.data,
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'focusflow-my-data.json'
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Your data has been downloaded.')
+    })
+  }
+
+  /* ── Detail panels ── */
+
+  function renderSection(id: SectionId) {
     switch (id) {
-      case 'appearance':
-        return (
-          <>
-            <div className="settings-card-head">
-              <span className="eyebrow">Appearance</span>
-              <h2>Theme</h2>
-              <p>Choose how Flox AI looks on this device.</p>
-            </div>
-            <div className="settings-theme-options" role="radiogroup" aria-label="Theme">
-              {THEME_OPTIONS.map((option) => (
-                <button
-                  aria-pressed={preferences.theme === option.value}
-                  className={`settings-theme-btn ${preferences.theme === option.value ? 'active' : ''}`}
-                  key={option.value}
-                  onClick={() => update('theme', option.value)}
-                  type="button"
-                >
-                  <span className="settings-theme-icon">{option.icon}</span>
-                  <span className="settings-theme-label">{option.label}</span>
-                  <span className="settings-theme-check" aria-hidden>&#10003;</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )
       case 'notifications':
         return (
           <>
-            <div className="settings-card-head">
-              <span className="eyebrow">Notifications</span>
-              <h2>Reminders</h2>
-              <p>Control what notifications you receive.</p>
+            <div className="st-rows">
+              <ToggleRow desc="Remind me when it's time to study." on={preferences.studyReminders} onToggle={() => update('studyReminders', !preferences.studyReminders)} title="Study Reminders" />
+              <ToggleRow on={preferences.taskReminders} onToggle={() => update('taskReminders', !preferences.taskReminders)} title="Task Reminders" />
+              <ToggleRow on={preferences.examReminders} onToggle={() => update('examReminders', !preferences.examReminders)} title="Exam Reminders" />
+              <ToggleRow on={preferences.streakReminder} onToggle={() => update('streakReminder', !preferences.streakReminder)} title="Streak Reminder" />
+              <ToggleRow on={preferences.dailySummary} onToggle={() => update('dailySummary', !preferences.dailySummary)} title="Daily Summary" />
+              <ToggleRow on={preferences.aiRecommendations} onToggle={() => update('aiRecommendations', !preferences.aiRecommendations)} title="AI Recommendations" />
             </div>
-            <div className="settings-row-list">
-              <div className="settings-row">
-                <div>
-                  <strong>Study reminders</strong>
-                  <small>Alerts before scheduled study blocks</small>
-                </div>
-                <Toggle on={preferences.studyReminders} onToggle={() => update('studyReminders', !preferences.studyReminders)} />
-              </div>
-              <div className="settings-row">
-                <div>
-                  <strong>Task reminders</strong>
-                  <small>Notifications for upcoming task deadlines</small>
-                </div>
-                <Toggle on={preferences.taskReminders} onToggle={() => update('taskReminders', !preferences.taskReminders)} />
-              </div>
-              <div className="settings-row">
-                <div>
-                  <strong>Daily progress</strong>
-                  <small>End-of-day summary of your study activity</small>
-                </div>
-                <Toggle on={preferences.dailyProgress} onToggle={() => update('dailyProgress', !preferences.dailyProgress)} />
-              </div>
-            </div>
+            <Divider />
+            <span className="st-section-label">Reminder Time</span>
+            <RadioGroup
+              onChange={(v) => update('reminderTime', v)}
+              options={REMINDER_TIME_OPTIONS}
+              value={preferences.reminderTime}
+            />
           </>
         )
+
       case 'study':
         return (
           <>
-            <div className="settings-card-head">
-              <span className="eyebrow">Study</span>
-              <h2>Session Durations</h2>
-              <p>Adjust focus and break lengths. Focus Mode starts here by default.</p>
+            <div className="st-rows">
+              <SelectRow
+                desc="Synced with your profile."
+                onChange={(v) => patchProfile({ daily_study_goal: Number(v) })}
+                options={[1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: n, label: `${n} hours` }))}
+                title="Daily Study Goal"
+                value={dailyGoal}
+              />
+              <SelectRow
+                onChange={(v) => update('sessionLength', Number(v))}
+                options={SESSION_LENGTHS.map((n) => ({ value: n, label: `${n} min` }))}
+                title="Default Focus Session"
+                value={preferences.sessionLength}
+              />
+              <SelectRow
+                onChange={(v) => update('breakLength', Number(v))}
+                options={BREAK_LENGTHS.map((n) => ({ value: n, label: `${n} min` }))}
+                title="Default Break"
+                value={preferences.breakLength}
+              />
+              <SelectRow
+                desc="When do you study best?"
+                onChange={(v) => patchProfile({ preferred_study_time: v })}
+                options={STUDY_TIME_SELECT_OPTIONS}
+                title="Preferred Study Time"
+                value={preferredStudyTime}
+              />
+              <SelectRow
+                onChange={(v) => update('weekStartsOn', v)}
+                options={[
+                  { value: 'monday', label: 'Monday' },
+                  { value: 'sunday', label: 'Sunday' },
+                ]}
+                title="Week Starts On"
+                value={preferences.weekStartsOn}
+              />
             </div>
-            <div className="settings-row-list">
-              <div className="settings-row">
-                <div className="settings-row-slider">
-                  <div className="settings-row-slider-head">
-                    <strong>Default focus duration</strong>
-                    <span>{preferences.studyDuration} min</span>
-                  </div>
-                  <input
-                    aria-label="Study duration"
-                    className="settings-range"
-                    max="90"
-                    min="25"
-                    onChange={(e) => update('studyDuration', Number(e.target.value))}
-                    step="5"
-                    type="range"
-                    value={preferences.studyDuration}
-                  />
-                  <div className="settings-range-labels"><span>25m</span><span>50m</span><span>90m</span></div>
-                </div>
-              </div>
-              <div className="settings-row">
-                <div className="settings-row-slider">
-                  <div className="settings-row-slider-head">
-                    <strong>Break duration</strong>
-                    <span>{preferences.breakDuration} min</span>
-                  </div>
-                  <input
-                    aria-label="Break duration"
-                    className="settings-range"
-                    max="30"
-                    min="5"
-                    onChange={(e) => update('breakDuration', Number(e.target.value))}
-                    step="5"
-                    type="range"
-                    value={preferences.breakDuration}
-                  />
-                  <div className="settings-range-labels"><span>5m</span><span>15m</span><span>30m</span></div>
-                </div>
-              </div>
+            <Divider />
+            <span className="st-section-label">Planning</span>
+            <div className="st-rows">
+              <ToggleRow desc="Let AI arrange your schedule automatically." on={preferences.aiAutoPlanning} onToggle={() => update('aiAutoPlanning', !preferences.aiAutoPlanning)} title="AI Auto Planning" />
             </div>
           </>
         )
+
+      case 'focus':
+        return (
+          <>
+            <span className="st-section-label">Timer</span>
+            <div className="st-rows">
+              <SelectRow
+                onChange={(v) => update('sessionLength', Number(v))}
+                options={SESSION_LENGTHS.map((n) => ({ value: n, label: `${n} min` }))}
+                title="Default Session"
+                value={preferences.sessionLength}
+              />
+              <SelectRow
+                onChange={(v) => update('breakLength', Number(v))}
+                options={BREAK_LENGTHS.map((n) => ({ value: n, label: `${n} min` }))}
+                title="Default Break"
+                value={preferences.breakLength}
+              />
+              <ToggleRow on={preferences.autoStartBreak} onToggle={() => update('autoStartBreak', !preferences.autoStartBreak)} title="Auto Start Break" />
+            </div>
+            <Divider />
+            <span className="st-section-label">Sounds</span>
+            <div className="st-rows">
+              <ToggleRow on={preferences.studySounds} onToggle={() => update('studySounds', !preferences.studySounds)} title="Study Sounds" />
+              <SelectRow
+                onChange={(v) => update('defaultSound', v)}
+                options={SOUND_OPTIONS}
+                title="Default Sound"
+                value={preferences.defaultSound}
+              />
+            </div>
+            <Divider />
+            <span className="st-section-label">While Focusing</span>
+            <div className="st-rows">
+              <ToggleRow on={preferences.hideNotifications} onToggle={() => update('hideNotifications', !preferences.hideNotifications)} title="Hide Notifications" />
+              <ToggleRow on={preferences.showSessionProgress} onToggle={() => update('showSessionProgress', !preferences.showSessionProgress)} title="Show Session Progress" />
+            </div>
+          </>
+        )
+
+      case 'streak':
+        return (
+          <>
+            <div className="st-streak-hero">
+              <span className="st-streak-flame">&#128293;</span>
+              <span className="st-streak-days">{currentStreak}</span>
+              <span className="st-streak-caption">{currentStreak === 1 ? 'DAY' : 'DAYS'} CURRENT STREAK</span>
+            </div>
+            <div className="st-rows">
+              <SelectRow
+                desc="Minimum focused time that keeps the streak alive."
+                onChange={(v) => update('qualifyingMinutes', Number(v))}
+                options={QUALIFYING_MINUTES.map((n) => ({ value: n, label: `${n} minutes / day` }))}
+                title="Qualifying Study Time"
+                value={preferences.qualifyingMinutes}
+              />
+              <ToggleRow on={preferences.streakReminder} onToggle={() => update('streakReminder', !preferences.streakReminder)} title="Streak Reminder" />
+              <button
+                className="st-row st-row-btn"
+                onClick={() => toast.info('Streak Freeze is coming soon.')}
+                type="button"
+              >
+                <span className="st-row-text">
+                  <strong>Streak Freeze</strong>
+                  <small>1 available &middot; protects your streak for one day</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+            </div>
+            <Divider />
+            <span className="st-section-label">Visibility</span>
+            <div className="st-rows">
+              <ToggleRow on={preferences.showStreakDashboard} onToggle={() => update('showStreakDashboard', !preferences.showStreakDashboard)} title="Show Streak on Dashboard" />
+              <ToggleRow on={preferences.showStreakProfile} onToggle={() => update('showStreakProfile', !preferences.showStreakProfile)} title="Show Streak on Profile" />
+            </div>
+          </>
+        )
+
       case 'ai':
         return (
           <>
-            <div className="settings-card-head">
-              <span className="eyebrow">AI Coach</span>
-              <h2>Intelligence</h2>
-              <p>Configure AI-powered study assistance.</p>
+            <div className="st-rows">
+              <ToggleRow on={preferences.aiSuggestions} onToggle={() => update('aiSuggestions', !preferences.aiSuggestions)} title="AI Study Suggestions" />
+              <ToggleRow on={preferences.dailyInsight} onToggle={() => update('dailyInsight', !preferences.dailyInsight)} title="Daily AI Insight" />
+              <ToggleRow on={preferences.personalizedPlanning} onToggle={() => update('personalizedPlanning', !preferences.personalizedPlanning)} title="Personalized Planning" />
+              <ToggleRow on={preferences.weakTopicDetection} onToggle={() => update('weakTopicDetection', !preferences.weakTopicDetection)} title="Weak Topic Detection" />
+              <ToggleRow on={preferences.adaptiveQuizzes} onToggle={() => update('adaptiveQuizzes', !preferences.adaptiveQuizzes)} title="Adaptive Quizzes" />
             </div>
-            <div className="settings-row-list">
-              <div className="settings-row">
-                <div>
-                  <strong>AI suggestions</strong>
-                  <small>Get smart recommendations based on your progress</small>
-                </div>
-                <Toggle on={preferences.aiSuggestions} onToggle={() => update('aiSuggestions', !preferences.aiSuggestions)} />
-              </div>
-              <div className="settings-row">
-                <div>
-                  <strong>Personalized planning</strong>
-                  <small>AI adapts study plans to your learning patterns</small>
-                </div>
-                <Toggle on={preferences.personalizedPlanning} onToggle={() => update('personalizedPlanning', !preferences.personalizedPlanning)} />
-              </div>
-            </div>
+            <Divider />
+            <span className="st-section-label">Coaching Style</span>
+            <RadioGroup
+              onChange={(v) => patchProfile({ coaching_style: v })}
+              options={COACHING_STYLE_OPTIONS}
+              value={coachingStyle}
+            />
           </>
         )
-      case 'security':
-        return (
-          <>
-            <div className="settings-card-head">
-              <span className="eyebrow">Security</span>
-              <h2>Account Security</h2>
-              <p>Keep your account safe across devices.</p>
-            </div>
-            <div className="settings-row-list">
-              <button className="settings-action-row" onClick={() => toast.info('Password reset flow is coming soon.')} type="button">
-                <div>
-                  <strong>Change password</strong>
-                  <small>Update your account password</small>
-                </div>
-                <span>&rsaquo;</span>
-              </button>
-              <button className="settings-action-row" onClick={() => toast.info('Sessions management coming soon.')} type="button">
-                <div>
-                  <strong>Active sessions</strong>
-                  <small>Manage signed-in devices</small>
-                </div>
-                <span>&rsaquo;</span>
-              </button>
-            </div>
-          </>
-        )
+
       case 'account':
         return (
           <>
-            <div className="settings-card-head">
-              <span className="eyebrow">Danger Zone</span>
-              <h2>Account Actions</h2>
-              <p>Sign out or permanently remove your data.</p>
-            </div>
-            <div className="settings-row-list">
-              <button className="settings-action-row" onClick={logout} type="button">
-                <div>
-                  <strong>Logout</strong>
-                  <small>Sign out of your account</small>
-                </div>
-                <span>&rsaquo;</span>
+            <div className="st-rows">
+              <button className="st-row st-row-btn" onClick={() => startEdit('email')} type="button">
+                <span className="st-row-text">
+                  <strong>Email</strong>
+                  <small>{email || 'Add your email address'}</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
-              <button className="settings-action-row settings-danger-row" onClick={() => toast.info('Account deletion needs a confirmation flow first.')} type="button">
-                <div>
-                  <strong>Delete account</strong>
-                  <small>Permanently remove your data</small>
-                </div>
-                <span>&rsaquo;</span>
+              <button className="st-row st-row-btn" onClick={() => startEdit('username')} type="button">
+                <span className="st-row-text">
+                  <strong>Username</strong>
+                  <small>{username || 'Set your username'}</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <button
+                className="st-row st-row-btn"
+                onClick={() => toast.info('Connected accounts are coming soon.')}
+                type="button"
+              >
+                <span className="st-row-text">
+                  <strong>Connected Accounts</strong>
+                  <small>Sign in with Google and more</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
             </div>
+            <Divider />
+            <button className="st-logout" onClick={logout} type="button">Log Out</button>
+          </>
+        )
+
+      case 'security':
+        return (
+          <div className="st-rows">
+            <button
+              className="st-row st-row-btn"
+              onClick={() => toast.info('Password change is coming soon.')}
+              type="button"
+            >
+              <span className="st-row-text">
+                <strong>Password</strong>
+                <small>Change your password</small>
+              </span>
+              <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+            </button>
+            <ToggleRow on={preferences.twoFactor} onToggle={() => update('twoFactor', !preferences.twoFactor)} title="Two-Factor Authentication" />
+            <button
+              className="st-row st-row-btn"
+              onClick={() => toast.info('Session management is coming soon.')}
+              type="button"
+            >
+              <span className="st-row-text">
+                <strong>Active Sessions</strong>
+                <small>You are signed in on 2 devices</small>
+              </span>
+              <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+            </button>
+            <button
+              className="st-row st-row-btn"
+              onClick={() => toast.info('Login activity is coming soon.')}
+              type="button"
+            >
+              <span className="st-row-text">
+                <strong>Login Activity</strong>
+                <small>Recent sign-ins to your account</small>
+              </span>
+              <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+            </button>
+          </div>
+        )
+
+      case 'region':
+        return (
+          <div className="st-rows">
+            <SelectRow
+              onChange={(v) => update('language', v)}
+              options={[{ value: 'en', label: 'English' }]}
+              title="Language"
+              value={preferences.language}
+            />
+            <SelectRow
+              onChange={(v) => update('timezone', v)}
+              options={TIMEZONE_OPTIONS}
+              title="Time Zone"
+              value={preferences.timezone}
+            />
+            <SelectRow
+              onChange={(v) => update('dateFormat', v)}
+              options={DATE_FORMAT_OPTIONS}
+              title="Date Format"
+              value={preferences.dateFormat}
+            />
+            <SelectRow
+              onChange={(v) => update('timeFormat', v)}
+              options={TIME_FORMAT_OPTIONS}
+              title="Time Format"
+              value={preferences.timeFormat}
+            />
+          </div>
+        )
+
+      case 'privacy':
+        return (
+          <>
+            <div className="st-rows">
+              <button
+                className="st-row st-row-btn"
+                onClick={() => navigate('/productivity')}
+                type="button"
+              >
+                <span className="st-row-text">
+                  <strong>Study History</strong>
+                  <small>Browse your logs and focus sessions</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <ToggleRow desc="Improve suggestions using your activity." on={preferences.aiPersonalization} onToggle={() => update('aiPersonalization', !preferences.aiPersonalization)} title="AI Personalization" />
+              <button className="st-row st-row-btn" onClick={downloadMyData} type="button">
+                <span className="st-row-text">
+                  <strong>Download My Data</strong>
+                  <small>Export everything as JSON</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+            </div>
+            <span className="st-section-label danger">Danger Zone</span>
+            <div className="st-danger-zone">
+              <button
+                className="st-danger-row"
+                onClick={() => toast.info('Clearing history is coming soon.')}
+                type="button"
+              >
+                <span className="st-danger-icon">&#128465;&#65039;</span>
+                <span className="st-row-text">
+                  <strong>Clear Study History</strong>
+                  <small>Delete all productivity logs permanently</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <button
+                className="st-danger-row"
+                onClick={() => toast.info('Account deletion is coming soon.')}
+                type="button"
+              >
+                <span className="st-danger-icon">&#9888;&#65039;</span>
+                <span className="st-row-text">
+                  <strong>Delete Account</strong>
+                  <small>Permanently remove your account and data</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+            </div>
+          </>
+        )
+
+      case 'about':
+        return (
+          <>
+            <div className="st-about">
+              <span className="st-about-logo">&#9673;</span>
+              <h2>FocusFlow AI</h2>
+              <span className="st-about-orbit">STUDY ORBIT</span>
+              <span className="st-about-version">Version 1.0.0</span>
+            </div>
+            <div className="st-rows">
+              <button
+                className="st-row st-row-btn"
+                onClick={() => window.open('mailto:support@focusflow.ai', '_blank')}
+                type="button"
+              >
+                <span className="st-row-text"><strong>Help &amp; Support</strong></span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <button
+                className="st-row st-row-btn"
+                onClick={() => toast.info('Privacy Policy is coming soon.')}
+                type="button"
+              >
+                <span className="st-row-text"><strong>Privacy Policy</strong></span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <button
+                className="st-row st-row-btn"
+                onClick={() => toast.info('Terms of Service are coming soon.')}
+                type="button"
+              >
+                <span className="st-row-text"><strong>Terms of Service</strong></span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+            </div>
+            <p className="st-about-tagline">Made for better studying &#10022;</p>
           </>
         )
     }
   }
 
+  const sectionDef = activeId ? SECTIONS[activeId] : null
+
   return (
     <PageShell
-      className={`settings-page-shell${activeId ? ' settings-in-section' : ''}`}
-      eyebrow="SETTINGS"
-      subtitle="Personalize your flow and manage your workspace."
+      className={`settings-page-shell st-page ${activeId ? 'st-in-section' : ''}`}
+      subtitle="Tune how FocusFlow works for you."
       title="Settings"
     >
-      {loading ? (
-        <div className="dashboard-loading">Loading settings...</div>
-      ) : (
-        <div className="settings-shell" data-view={activeId ? 'detail' : 'list'}>
-          <nav aria-label="Settings sections" className="settings-mobile-list">
-            {SECTION_GROUPS.map((group) => (
-              <div key={group}>
-                <span className="settings-group-title">{group}</span>
-                {SECTIONS.filter((section) => section.group === group).map((section) => (
-                  <button
-                    className="settings-list-row"
-                    key={section.id}
-                    onClick={() => openSection(section.id)}
-                    type="button"
-                  >
-                    <span className="settings-item-icon">{section.icon}</span>
-                    <span className="settings-list-text">
-                      <strong>{section.label}</strong>
-                      <small>{sectionSubtitle(section)}</small>
-                    </span>
-                    <span aria-hidden className="settings-chevron">&rsaquo;</span>
-                  </button>
-                ))}
+      {!activeId && (
+        <div className="st-list">
+          <div className="st-group">
+            <span className="st-group-title">General</span>
+            <div className="st-group-card">
+              <button className="st-row st-row-btn" onClick={() => openSection(SECTIONS.notifications.id)} type="button">
+                <span className="st-row-icon">{SECTIONS.notifications.icon}</span>
+                <span className="st-row-text">
+                  <strong>{SECTIONS.notifications.label}</strong>
+                  <small>{SECTIONS.notifications.desc}</small>
+                </span>
+                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
+              </button>
+              <div className="st-row">
+                <span className="st-row-icon">{theme === 'dark' ? '\uD83C\uDF19' : '\u2600\uFE0F'}</span>
+                <span className="st-row-text">
+                  <strong>Dark Mode</strong>
+                  <small>{theme === 'dark' ? 'On' : 'Off'}</small>
+                </span>
+                <Switch on={theme === 'dark'} onToggle={toggleDarkMode} />
               </div>
-            ))}
-          </nav>
+            </div>
+          </div>
 
-          <aside aria-label="Settings sections" className="settings-nav">
-            {SECTION_GROUPS.map((group) => (
-              <div className="settings-nav-group" key={group}>
-                <span className="settings-group-title">{group}</span>
-                {SECTIONS.filter((section) => section.group === group).map((section) => {
-                  const isActive = current.id === section.id
+          {GROUPS.filter((g) => g.title !== 'General').map((group) => (
+            <div className="st-group" key={group.title}>
+              <span className="st-group-title">{group.title}</span>
+              <div className="st-group-card">
+                {group.items.map((itemId) => {
+                  const def = SECTIONS[itemId]
                   return (
-                    <button
-                      aria-current={isActive || undefined}
-                      className={`settings-nav-item${isActive ? ' active' : ''}`}
-                      key={section.id}
-                      onClick={() => openSection(section.id)}
-                      type="button"
-                    >
-                      <span className="settings-item-icon">{section.icon}</span>
-                      <span>{section.label}</span>
+                    <button className="st-row st-row-btn" key={def.id} onClick={() => openSection(def.id)} type="button">
+                      <span className="st-row-icon">{def.icon}</span>
+                      <span className="st-row-text">
+                        <strong>{def.label}</strong>
+                        <small>{def.desc}</small>
+                      </span>
+                      <span aria-hidden className="st-row-chevron">&rsaquo;</span>
                     </button>
                   )
                 })}
               </div>
-            ))}
-          </aside>
+            </div>
+          ))}
+        </div>
+      )}
 
-          <section className="page-card settings-card settings-panel">
-            <header className="settings-detail-head">
-              <button
-                aria-label="Back to settings list"
-                className="settings-back-btn"
-                onClick={backToList}
-                type="button"
-              >
-                &larr;
+      {activeId && sectionDef && (
+        <div className="st-detail">
+          <button className="st-back" onClick={backToList} type="button">
+            <span aria-hidden>&larr;</span> Back
+          </button>
+          <header className="st-detail-head">
+            <span className="st-detail-icon">{sectionDef.icon}</span>
+            <div>
+              <h2>{sectionDef.label}</h2>
+              <p>{sectionDef.desc}</p>
+            </div>
+          </header>
+          {renderSection(activeId)}
+        </div>
+      )}
+
+      {editField && (
+        <div className="pf-modal-overlay" onClick={() => setEditField(null)} role="presentation">
+          <div className="pf-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <h3>Edit {editField === 'email' ? 'Email' : 'Username'}</h3>
+            <label className="pf-field">
+              <span>{editField === 'email' ? 'Email' : 'Username'}</span>
+              <input
+                autoFocus
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit() }}
+                placeholder={editField === 'email' ? 'you@example.com' : 'your_username'}
+                type={editField === 'email' ? 'email' : 'text'}
+                value={editValue}
+              />
+            </label>
+            <div className="pf-modal-actions">
+              <button className="ghost-action" onClick={() => setEditField(null)} type="button">Cancel</button>
+              <button className="gradient-action" disabled={savingProfile} onClick={saveEdit} type="button">
+                {savingProfile ? 'Saving...' : 'Save'}
               </button>
-              <div className="settings-detail-title">
-                <strong>{current.label}</strong>
-                <small>{current.desc}</small>
-              </div>
-            </header>
-            {renderPanel(current.id)}
-          </section>
+            </div>
+          </div>
         </div>
       )}
     </PageShell>

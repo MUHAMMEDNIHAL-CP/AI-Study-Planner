@@ -16,6 +16,10 @@ class Profile(models.Model):
     daily_study_goal = models.PositiveIntegerField(default=4)
     target_grade = models.CharField(max_length=10, blank=True, default="")
     main_goal = models.CharField(max_length=500, blank=True, default="")
+    preferred_study_time = models.CharField(max_length=20, blank=True, default="evening")
+    session_length = models.PositiveIntegerField(default=50)
+    learning_style = models.CharField(max_length=60, blank=True, default="")
+    coaching_style = models.CharField(max_length=20, blank=True, default="balanced")
 
     class Meta:
         db_table = "accounts_profile"

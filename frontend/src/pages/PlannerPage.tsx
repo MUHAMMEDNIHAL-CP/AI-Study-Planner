@@ -360,7 +360,7 @@ export default function PlannerPage() {
 
   if (loading) {
     return (
-      <PageShell eyebrow="Study Planner" title="Plan Your Study" subtitle="Loading your planner...">
+      <PageShell title="Plan Your Study" subtitle="Loading your planner...">
         <div className="page-card" style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
           Loading planner workspace...
         </div>
@@ -370,7 +370,6 @@ export default function PlannerPage() {
 
   return (
     <PageShell
-      eyebrow="Study Planner"
       title="Plan Your Study"
       subtitle="Build your schedule."
     >
@@ -413,7 +412,6 @@ export default function PlannerPage() {
         <div className="pl-card pl-plan-card">
           <div className="pl-plan-header">
             <IconSpark size={18} />
-            <span className="eyebrow">AI Generated Plan</span>
           </div>
           {plan && <p className="pl-plan-tip">{plan.focus_tip}</p>}
           <div className="pl-plan-list">
@@ -486,7 +484,7 @@ export default function PlannerPage() {
                           <span className="pl-exam-meta">{exam.subject_name || 'General'} · {shortDate(exam.date)}</span>
                         </div>
                         <span className={`pl-exam-badge ${days <= 3 ? 'pl-badge-urgent' : days <= 7 ? 'pl-badge-warn' : 'pl-badge-ok'}`}>
-                          {days}d
+                          {days}
                         </span>
                       </div>
                     )

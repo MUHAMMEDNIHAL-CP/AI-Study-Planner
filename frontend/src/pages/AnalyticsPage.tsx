@@ -201,7 +201,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <PageShell eyebrow="Performance hub" title="Loading insights..." subtitle="Gathering your focus and study data.">
+      <PageShell title="Loading insights..." subtitle="Gathering your focus and study data.">
         <div className="analytics-skeleton">Crunching your productivity numbers...</div>
       </PageShell>
     )
@@ -210,7 +210,6 @@ export default function AnalyticsPage() {
   return (
     <PageShell
       className="analytics-orbit-page"
-      eyebrow="Performance hub"
       title="Study Analytics"
       subtitle="See focus quality, study momentum, and task completion at a glance — then log today's session to keep the streak alive."
       actions={<strong className="analytics-day-pill">{studyDays} logged days</strong>}
@@ -247,7 +246,6 @@ export default function AnalyticsPage() {
           <section className="page-card analytics-recent-card">
             <div className="analytics-card-head">
               <div>
-                <span className="eyebrow">Recent activity</span>
                 <h2>Latest Study Days</h2>
               </div>
             </div>
@@ -282,7 +280,6 @@ export default function AnalyticsPage() {
             <section className="page-card analytics-insights-card">
               <div className="analytics-card-head">
                 <div>
-                  <span className="eyebrow">Highlights</span>
                   <h2>Best Moments</h2>
                 </div>
               </div>
@@ -305,7 +302,6 @@ export default function AnalyticsPage() {
             <section className="page-card analytics-mood-card">
               <div className="analytics-card-head">
                 <div>
-                  <span className="eyebrow">Mood pattern</span>
                   <h2>Session Feelings</h2>
                 </div>
               </div>
@@ -336,7 +332,6 @@ export default function AnalyticsPage() {
           <section className="page-card analytics-trend-card">
             <div className="analytics-card-head">
               <div>
-                <span className="eyebrow">14-day window</span>
                 <h2>Focus &amp; Study Trend</h2>
               </div>
             </div>
@@ -382,7 +377,6 @@ export default function AnalyticsPage() {
               <section className="page-card analytics-week-card" key={week.label}>
                 <div className="analytics-card-head">
                   <div>
-                    <span className="eyebrow">Weekly view</span>
                     <h2>{week.label}</h2>
                   </div>
                 </div>
@@ -414,7 +408,6 @@ export default function AnalyticsPage() {
           <form className="page-card analytics-log-form" onSubmit={addLog}>
             <div className="analytics-card-head">
               <div>
-                <span className="eyebrow">Daily check-in</span>
                 <h2>Log Today&apos;s Study</h2>
               </div>
             </div>
@@ -458,7 +451,6 @@ export default function AnalyticsPage() {
 
           <aside className="analytics-log-side">
             <section className="page-card analytics-log-tip">
-              <span className="eyebrow">Why log?</span>
               <h2>Every session counts</h2>
               <p>Logging minutes keeps your streak alive, refines your focus trend, and helps the AI tutor tailor better recommendations.</p>
               <ul>

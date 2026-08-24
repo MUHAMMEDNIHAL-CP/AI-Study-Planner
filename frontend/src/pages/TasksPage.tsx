@@ -185,7 +185,6 @@ export default function TasksPage() {
 
   return (
     <PageShell
-      eyebrow="Task manager"
       title="Tasks"
       subtitle="Organize your study work. Filter by today, upcoming, or overdue to stay on track."
       actions={
@@ -225,13 +224,6 @@ export default function TasksPage() {
           </div>
         ) : filteredTasks.length === 0 ? (
           <div className="page-card" style={{ textAlign: 'center', padding: 60 }}>
-            <span className="eyebrow">
-              {activeTab === 'today' && 'No tasks today'}
-              {activeTab === 'upcoming' && 'Nothing upcoming'}
-              {activeTab === 'all' && 'No tasks'}
-              {activeTab === 'completed' && 'No completed tasks'}
-              {activeTab === 'overdue' && 'No overdue tasks'}
-            </span>
             <h2 style={{ margin: '8px 0' }}>
               {activeTab === 'overdue' ? 'All caught up!' : 'Nothing here yet'}
             </h2>

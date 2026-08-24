@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { IconOrbit, IconSpark } from '../components/icons'
+import { IconOrbit } from '../components/icons'
 
 const flowSteps = [
   ['Plan', 'Add subjects, exams, and tasks in one workspace.'],
@@ -33,7 +33,6 @@ export default function LandingPage() {
 
       <section className="landing-hero-grid">
         <div className="landing-hero-copy">
-          <span className="eyebrow">AI Study Planner</span>
           <h1>One calm place for your entire <em>exam season</em></h1>
           <p>
             Flox AI turns messy study goals into a guided orbit — plan your week, focus deeply,
@@ -60,7 +59,6 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-flow-section" id="flow">
-        <span className="eyebrow">How it works</span>
         <h2>Your study loop, designed for real students</h2>
         <p>Not another generic to-do app — Flox AI follows the rhythm exams actually demand.</p>
         <div className="landing-flow-grid">
@@ -75,7 +73,6 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-proof-section" id="proof">
-        <span className="eyebrow"><IconSpark size={14} /> Built for MVP clarity</span>
         <h2>Everything in the PRD, nothing you do not need</h2>
         <div className="landing-proof-grid">
           {proof.map(([title, text]) => (

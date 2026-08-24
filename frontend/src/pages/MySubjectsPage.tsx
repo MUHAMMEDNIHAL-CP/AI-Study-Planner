@@ -78,7 +78,6 @@ export default function MySubjectsPage() {
   return (
     <PageShell
       className="ms-page"
-      eyebrow="Subjects"
       title="My Subjects"
       subtitle="Track every subject, monitor topic progress, and keep an eye on weak areas."
       actions={<button className="gradient-action" onClick={() => setShowModal(true)} type="button">+ Add Subject</button>}
@@ -86,7 +85,6 @@ export default function MySubjectsPage() {
       {loading ? <div className="ms-loading">Loading subjects...</div>
       : subjects.length === 0 ? (
         <div className="ms-empty">
-          <span className="eyebrow">No subjects yet</span>
           <h2>Add your first subject</h2>
           <p>Subjects let Flox AI track your topics, weak areas, and progress.</p>
           <button className="gradient-action" onClick={() => setShowModal(true)} type="button">+ Add Subject</button>
