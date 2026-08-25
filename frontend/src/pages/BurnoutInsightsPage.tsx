@@ -49,7 +49,7 @@ export default function BurnoutInsightsPage() {
   const [report, setReport] = useState<BurnoutReport | null>(null)
   const [adjustment, setAdjustment] = useState<AdjustResponse | null>(null)
   const [slots, setSlots] = useState<TimetableSlot[]>(defaultSlots)
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
 
   const energyScore = useMemo(
     () => clamp(100 - fatigue * 7 - screenTime * 3 - missedTasks * 8 + productivity * 4, 5, 100),
@@ -120,10 +120,6 @@ export default function BurnoutInsightsPage() {
             <BurnoutSlider label="Screen time" value={screenTime} min={1} max={12} onChange={setScreenTime} suffix="h" />
             <BurnoutSlider label="Missed tasks" value={missedTasks} min={0} max={6} onChange={setMissedTasks} />
           </div>
-
-          <button className="gradient-action" disabled={loading} type="submit">
-            {loading ? 'Diagnosing...' : 'Diagnose Fatigue & Adjust'}
-          </button>
         </form>
 
         <aside className="burnout-results-column">

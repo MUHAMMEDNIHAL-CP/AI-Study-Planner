@@ -28,7 +28,6 @@ export default function LandingPage() {
           <a href="#proof">Why students use it</a>
           <Link to="/login">Log in</Link>
         </nav>
-        <Link className="gradient-action" to="/register">Start free</Link>
       </header>
 
       <section className="landing-hero-grid">
@@ -39,7 +38,6 @@ export default function LandingPage() {
             practice with quizzes, and catch burnout before it hits.
           </p>
           <div className="landing-hero-actions">
-            <Link className="gradient-action" to="/register">Create your workspace</Link>
             <Link className="ghost-action" to="/login">I already have an account</Link>
           </div>
         </div>
@@ -87,7 +85,6 @@ export default function LandingPage() {
       <section className="landing-cta-band">
         <h2>Ready to enter your study orbit?</h2>
         <p>Register once, add a subject, and let Flox AI guide your next move.</p>
-        <Link className="gradient-action" to="/register">Get started — it&apos;s free</Link>
       </section>
     </main>
   )

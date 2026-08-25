@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import OnboardingPage from './pages/OnboardingPage'
 import DashboardPage from './pages/DashboardPage'
 import MySubjectsPage from './pages/MySubjectsPage'
 import PlannerPage from './pages/PlannerPage'
@@ -26,6 +27,7 @@ export default function AppRoutes() {
 
       <Route element={<RequireAuth />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/welcome" element={<OnboardingPage />} />
         <Route path="/subjects" element={<MySubjectsPage />} />
         <Route path="/planner" element={<PlannerPage />} />
         <Route path="/tasks" element={<TasksPage />} />

@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
   const [breaks, setBreaks] = useState('2')
   const [mood, setMood] = useState('great')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
 
   const daily = useMemo(() => analytics?.daily ?? [], [analytics])
@@ -269,9 +269,6 @@ export default function AnalyticsPage() {
               <div className="analytics-empty-state">
                 <h3>No study days yet</h3>
                 <p>Log your first study session in the Log tab to unlock insights, streaks, and trends.</p>
-                <button className="gradient-action" onClick={() => setActiveTab('log')} type="button">
-                  Log Study Day
-                </button>
               </div>
             )}
           </section>
@@ -365,9 +362,6 @@ export default function AnalyticsPage() {
               <div className="analytics-empty-state">
                 <h3>No trend data yet</h3>
                 <p>Log a study day to start building your focus and minutes chart.</p>
-                <button className="gradient-action" onClick={() => setActiveTab('log')} type="button">
-                  Log Study Day
-                </button>
               </div>
             )}
           </section>
@@ -443,10 +437,6 @@ export default function AnalyticsPage() {
                 </select>
               </label>
             </div>
-
-            <button className="gradient-action" disabled={saving} type="submit">
-              {saving ? 'Saving...' : 'Save Study Day'}
-            </button>
           </form>
 
           <aside className="analytics-log-side">

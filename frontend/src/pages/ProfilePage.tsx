@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
 import PageShell from '../components/PageShell'
@@ -143,7 +142,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalKind>(null)
-  const [saving, setSaving] = useState(false)
+  const [saving] = useState(false)
 
   const [identityForm, setIdentityForm] = useState<IdentityForm>({
     full_name: '', username: '', email: '', course: '', semester: 1, college: '', bio: '',
@@ -232,24 +231,6 @@ export default function ProfilePage() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [modal])
-
-  async function savePatch(payload: Record<string, unknown>) {
-    setSaving(true)
-    try {
-      const { data } = await api.patch<UserProfile>('/auth/me/', payload)
-      setProfile(data)
-      fillIdentity(data)
-      fillGoals(data)
-      fillLearning(data)
-      setError(null)
-      toast.success('Profile updated.')
-      setModal(null)
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   function logout() {
     clearAuthTokens()
@@ -377,9 +358,6 @@ export default function ProfilePage() {
               )}
               {prof?.college && <span className="pf-college">{prof.college}</span>}
               {prof?.bio && <p className="pf-bio">{prof.bio}</p>}
-              <button className="gradient-action pf-header-edit" onClick={() => setModal('profile')} type="button">
-                Edit Profile
-              </button>
             </div>
           </section>
 
@@ -655,22 +633,6 @@ export default function ProfilePage() {
 
             <footer className="pf-modal-actions">
               <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button
-                className="gradient-action"
-                disabled={saving}
-                onClick={() => savePatch({
-                  username: identityForm.username.trim(),
-                  email: identityForm.email.trim(),
-                  full_name: identityForm.full_name.trim(),
-                  course: identityForm.course,
-                  semester: identityForm.semester,
-                  college: identityForm.college,
-                  bio: identityForm.bio,
-                })}
-                type="button"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
             </footer>
           </div>
         </div>
@@ -726,19 +688,6 @@ export default function ProfilePage() {
 
             <footer className="pf-modal-actions">
               <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button
-                className="gradient-action"
-                disabled={saving}
-                onClick={() => savePatch({
-                  daily_study_goal: goalsForm.daily_study_goal,
-                  target_grade: goalsForm.target_grade,
-                  main_goal: goalsForm.main_goal.trim(),
-                  study_goal: goalsForm.study_goal.trim(),
-                })}
-                type="button"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
             </footer>
           </div>
         </div>
@@ -800,19 +749,6 @@ export default function ProfilePage() {
 
             <footer className="pf-modal-actions">
               <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button
-                className="gradient-action"
-                disabled={saving}
-                onClick={() => savePatch({
-                  preferred_study_time: learningForm.preferred_study_time,
-                  session_length: learningForm.session_length,
-                  learning_style: learningForm.learning_style,
-                  coaching_style: learningForm.coaching_style,
-                })}
-                type="button"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
             </footer>
           </div>
         </div>

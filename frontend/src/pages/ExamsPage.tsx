@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
-import { IconSpark } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 
 type Exam = {
@@ -223,25 +222,6 @@ export default function ExamsPage() {
     } catch (err) {
       toast.error(getErrorMessage(err))
       void loadExamDetail(examDetail.id)
-    }
-  }
-
-  async function handleGenerateAI() {
-    if (!examDetail?.subject) {
-      toast.warning('No subject linked to this exam')
-      return
-    }
-    try {
-      await api.post('/study/plan/generate/', {
-        subjects: [examDetail.subject.name],
-        weak_topics: examDetail.weak_areas.join(', ') || 'general',
-        daily_hours: 4,
-        exam_date: examDetail.date,
-        goal: `Prepare for ${examDetail.title}`,
-      })
-      toast.success('AI study plan generated! Check your planner.')
-    } catch (err) {
-      toast.error(getErrorMessage(err))
     }
   }
 
@@ -483,9 +463,6 @@ export default function ExamsPage() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button className="gradient-action" onClick={() => void handleGenerateAI()} type="button">
-                <IconSpark size={16} /> Generate AI Study Plan
-              </button>
               {confirmDeleteId === examDetail.id ? (
                 <>
                   <button className="ghost-action" onClick={() => setConfirmDeleteId(null)} type="button">
@@ -520,11 +497,6 @@ export default function ExamsPage() {
     <PageShell
       title="Exam Preparation"
       subtitle="Track your exam readiness and plan your preparation."
-      actions={
-        <button className="gradient-action" onClick={() => { resetForm(); setShowCreateModal(true) }} type="button">
-          + Add Exam
-        </button>
-      }
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
         <div className="page-card" style={{ padding: '1.1rem' }}>

@@ -3949,3 +3949,230 @@ button.st-row:hover,
     width: 100%;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   AI COACH PAGE LAYOUT FIX
+   App-style fixed-height flex column instead of magic-number
+   calc() heights — panes align and scroll internally on all
+   breakpoints; composer always visible above the mobile nav.
+   ════════════════════════════════════════════════════════════ */
+
+.ai-coach-page.flow-page {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  min-height: 480px;
+}
+
+.ai-coach-page .page-shell-header,
+.ai-coach-page .page-shell-hero {
+  flex: 0 0 auto;
+}
+
+.ai-coach-page .page-shell-hero {
+  margin-bottom: 16px;
+}
+
+/* Keep the hero compact so the chat gets its space back on PC */
+.ai-coach-page .page-shell-copy h1 {
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+}
+
+.ai-coach-page .ac-layout {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+/* Leave room for the floating bottom nav bar */
+@media (max-width: 1200px) {
+  .ai-coach-page.flow-page {
+    height: calc(100svh - 96px - env(safe-area-inset-bottom));
+    min-height: 440px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   BRAND THEME UNIFICATION
+   Every primary button across all pages uses --gradient-brand
+   (accent → orange → mint) with dark text for contrast.
+   ════════════════════════════════════════════════════════════ */
+
+.au-submit,
+.ac-send,
+.zq-create-btn,
+.zt-nextbtn,
+.zrai-action,
+.zr-retry,
+.qz-generate-btn,
+.qz-sc-btn,
+.pg-ai-btn,
+.nt-primary,
+.nt-savebtn,
+.nt-newcta,
+.cal-addfab,
+.cal-modal-create,
+.cal-modal-actions > button.cal-save,
+.cal-modal-actions > button.cal-startfocus,
+.fm-main-btn,
+.fm-start-focus-btn,
+.fm-complete-save,
+.gradient-action,
+.focus-session-button,
+.timer-start,
+.motivation-button {
+  border: none;
+  background: var(--gradient-brand);
+  color: #1a0f0a;
+  font-weight: 800;
+}
+
+[data-theme='light'] .fm-main-btn {
+  border-color: transparent;
+  background: var(--gradient-brand);
+  color: #1a0f0a;
+}
+
+/* Consistent hover: lift + warm glow */
+.au-submit:hover:not(:disabled),
+.zq-create-btn:hover:not(:disabled),
+.zt-nextbtn:hover:not(:disabled),
+.zrai-action:hover:not(:disabled),
+.zr-retry:hover:not(:disabled),
+.qz-generate-btn:hover:not(:disabled),
+.qz-sc-btn:hover:not(:disabled),
+.pg-ai-btn:hover:not(:disabled),
+.nt-primary:hover:not(:disabled),
+.nt-savebtn:hover:not(:disabled),
+.nt-newcta:hover:not(:disabled),
+.cal-addfab:hover,
+.cal-modal-create:hover:not(:disabled),
+.cal-modal-actions > button.cal-save:hover:not(:disabled),
+.cal-modal-actions > button.cal-startfocus:hover:not(:disabled),
+.fm-main-btn:hover:not(:disabled),
+.fm-start-focus-btn:hover:not(:disabled),
+.fm-complete-save:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(255, 107, 74, 0.32);
+  filter: brightness(1.04);
+}
+
+/* Accessible focus ring in brand accent */
+.au-submit:focus-visible,
+.zq-create-btn:focus-visible,
+.qz-generate-btn:focus-visible,
+.pg-ai-btn:focus-visible,
+.nt-primary:focus-visible,
+.cal-modal-create:focus-visible,
+.fm-main-btn:focus-visible,
+.gradient-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.35);
+}
+
+.au-submit:disabled,
+.zq-create-btn:disabled,
+.zt-nextbtn:disabled,
+.qz-generate-btn:disabled,
+.cal-modal-create:disabled,
+.nt-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  filter: none;
+}
+
+/* Unstyled modal action buttons (Tasks / Exams / Planner / Subjects) */
+.cal-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cal-modal-cancel {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.cal-modal-cancel:hover {
+  border-color: var(--accent);
+}
+
+.cal-modal-create {
+  min-height: 40px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(255, 107, 74, 0.28);
+}
+
+/* Quiz subject "Start" pill becomes a solid brand CTA */
+.qz-sc-btn {
+  border: none;
+  box-shadow: 0 4px 14px rgba(255, 107, 74, 0.24);
+}
+
+/* ── Auth pages (Login / Register / Onboarding) rebrand ── */
+
+.au-brand {
+  background:
+    radial-gradient(900px 500px at -10% -10%, rgba(255, 107, 74, 0.14), transparent 60%),
+    radial-gradient(700px 460px at 110% 115%, rgba(45, 212, 191, 0.1), transparent 60%),
+    var(--bg);
+}
+
+.au-orbit-glow {
+  background: radial-gradient(circle, rgba(255, 107, 74, 0.18), transparent 65%);
+}
+
+.au-logo {
+  border: none;
+  color: #1a0f0a;
+  background: var(--gradient-brand);
+  box-shadow: 0 6px 18px rgba(255, 107, 74, 0.3);
+}
+
+.au-brand-name em {
+  color: var(--accent);
+}
+
+.au-field input:focus,
+.au-input-wrap input:focus,
+.au-field select:focus {
+  border-color: rgba(255, 107, 74, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.14);
+}
+
+.au-forgot,
+.au-switch a {
+  color: var(--accent);
+}
+
+.au-terms input {
+  accent-color: var(--accent);
+}
+
+.ob-star {
+  color: var(--accent);
+}
+
+.ob-chip:hover {
+  border-color: rgba(255, 107, 74, 0.5);
+}
+
+.ob-chip.on {
+  border-color: var(--accent);
+  background: rgba(255, 107, 74, 0.12);
+  color: var(--accent);
+}

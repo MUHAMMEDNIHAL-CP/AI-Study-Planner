@@ -1102,9 +1102,6 @@ export default function AiTutorPage() {
       className="ai-coach-page"
       title={'\u2726 AI Coach'}
       subtitle="Your personal study assistant."
-      actions={
-        <button className="gradient-action" onClick={newChat}>+ New Chat</button>
-      }
     >
       <div className="ac-layout">
         {sidebar}

@@ -187,11 +187,6 @@ export default function TasksPage() {
     <PageShell
       title="Tasks"
       subtitle="Organize your study work. Filter by today, upcoming, or overdue to stay on track."
-      actions={
-        <button className="gradient-action" onClick={() => setShowModal(true)} type="button">
-          + Add Task
-        </button>
-      }
     >
       <div className="page-card" style={{ padding: '6px 10px', marginBottom: 0, display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
         {TABS.map((tab) => (

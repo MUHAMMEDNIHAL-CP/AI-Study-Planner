@@ -310,7 +310,7 @@ export default function SettingsPage() {
   const [preferredStudyTime, setPreferredStudyTime] = useState('evening')
   const [coachingStyle, setCoachingStyle] = useState('balanced')
   const [currentStreak, setCurrentStreak] = useState(0)
-  const [savingProfile, setSavingProfile] = useState(false)
+  const [, setSavingProfile] = useState(false)
   const [editField, setEditField] = useState<'email' | 'username' | null>(null)
   const [editValue, setEditValue] = useState('')
 
@@ -881,9 +881,6 @@ export default function SettingsPage() {
             </label>
             <div className="pf-modal-actions">
               <button className="ghost-action" onClick={() => setEditField(null)} type="button">Cancel</button>
-              <button className="gradient-action" disabled={savingProfile} onClick={saveEdit} type="button">
-                {savingProfile ? 'Saving...' : 'Save'}
-              </button>
             </div>
           </div>
         </div>

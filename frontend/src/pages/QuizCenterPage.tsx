@@ -67,21 +67,14 @@ function dayKey(iso: string) {
   return iso.slice(0, 10)
 }
 
-function timeAgo(date: string) {
+function friendlyDate(date: string) {
   const d = new Date(date)
-  const mins = Math.floor((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return mins + 'm ago'
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return hrs + 'h ago'
-  const days = Math.floor(hrs / 60)
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return days + 'd ago'
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function daysUntil(date: string) {
-  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86400000))
 }
 
 function quizStreakDays(history: Quiz[]) {
@@ -149,8 +142,7 @@ export default function QuizCenterPage() {
   const [loading, setLoading] = useState(true)
   const [nowTs] = useState(() => Date.now())
 
-  /* create-quiz modal */
-  const [showCreate, setShowCreate] = useState(false)
+  /* inline AI generator */
   const [cqSubject, setCqSubject] = useState('')
   const [cqTopic, setCqTopic] = useState('')
   const [cqCustomTopic, setCqCustomTopic] = useState('')
@@ -202,13 +194,6 @@ export default function QuizCenterPage() {
   }, [loadData])
 
   useEffect(() => {
-    if (!showCreate) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCreate(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showCreate])
-
-  useEffect(() => {
     if (view !== 'active') return
     const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000)
     return () => clearInterval(timer)
@@ -243,6 +228,24 @@ export default function QuizCenterPage() {
       .slice(0, 5)
   }, [completed])
 
+  const subjectStats = useMemo(() => {
+    const out = new Map<number, { quizzes: number; accuracy: number }>()
+    for (const s of subjects) {
+      const weakList = (s.weak_topics ?? '')
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
+      const rel = completed.filter((q) => {
+        const t = q.topic.trim().toLowerCase()
+        return t === s.name.toLowerCase() || weakList.includes(t)
+      })
+      const totalQs = rel.reduce((sum, q) => sum + q.total_questions, 0)
+      const correct = rel.reduce((sum, q) => sum + (q.score ?? 0), 0)
+      out.set(s.id, { quizzes: rel.length, accuracy: totalQs ? Math.round((correct / totalQs) * 100) : 0 })
+    }
+    return out
+  }, [subjects, completed])
+
   const nextExam = useMemo(() => {
     const upcoming = exams
       .filter((e) => new Date(e.date).getTime() >= nowTs - 86400000)
@@ -259,14 +262,17 @@ export default function QuizCenterPage() {
   )
 
   const topicOptions = useMemo(() => {
+    if (cqSource === 'notes') return notes.map((n) => n.title)
     const s = subjects.find((x) => x.id === Number(cqSubject))
     const base = s ? [s.name] : []
     const weakList = (s?.weak_topics ?? '')
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean)
-    return [...new Set([...base, ...weakList])]
-  }, [subjects, cqSubject])
+    const opts = [...new Set([...base, ...weakList])]
+    if (cqTopic && !opts.includes(cqTopic)) opts.unshift(cqTopic)
+    return opts
+  }, [subjects, notes, cqSubject, cqSource, cqTopic])
 
   function resetActive() {
     setCurrentQ(0)
@@ -284,40 +290,48 @@ export default function QuizCenterPage() {
     setView('active')
   }
 
-  /* ── Create quiz ── */
+  /* ── Inline AI quiz generator ── */
 
-  function openCreate() {
-    setCqSubject(subjects[0] ? String(subjects[0].id) : '')
-    setCqTopic(subjects[0]?.name ?? '')
-    setCqCustomTopic('')
-    setCqSource('subject')
-    setCqCount(10)
-    setCqDifficulty('medium')
-    setShowCreate(true)
+  function pickSubject(id: string) {
+    setCqSubject(id)
+    const s = subjects.find((x) => x.id === Number(id))
+    if (s) { setCqTopic(s.name); setCqSource('subject'); setExamMeta(null) }
   }
 
-  function openCreateForExam() {
-    const ex = nextExam
-    if (!ex) { toast.warn('No upcoming exams. Add one on the Exams page.'); return }
-    setCqSubject(ex.subject ? String(ex.subject) : '')
-    setCqTopic(ex.title || ex.subject_name || 'Exam preparation')
-    setCqCustomTopic('')
-    setCqSource('exam')
-    setCqCount(10)
-    setCqDifficulty('hard')
-    setExamMeta({ title: ex.title, before: Math.min(100, Math.max(0, ex.preparation_pct ?? 0)) })
-    setShowCreate(true)
+  function handleSource(key: SourceKey) {
+    setCqSource(key)
+    if (key === 'weak') {
+      setExamMeta(null)
+      if (weakTopics[0]) setCqTopic(weakTopics[0].name)
+    } else if (key === 'exam') {
+      const ex = nextExam
+      if (!ex) { toast.warn('No upcoming exams. Add one on the Exams page.'); setCqSource('subject'); return }
+      setCqSubject(ex.subject ? String(ex.subject) : '')
+      setCqTopic(ex.title || ex.subject_name || 'Exam preparation')
+      setExamMeta({ title: ex.title, before: Math.min(100, Math.max(0, ex.preparation_pct ?? 0)) })
+    } else if (key === 'notes') {
+      setExamMeta(null)
+      if (notes[0]) setCqTopic(notes[0].title)
+    } else {
+      setExamMeta(null)
+      const s = subjects.find((x) => x.id === Number(cqSubject))
+      if (s && (!cqTopic || cqTopic === '__custom')) setCqTopic(s.name)
+    }
+  }
+
+  function scrollToGenerator() {
+    document.getElementById('zq-generator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   async function generateQuiz() {
     let topic: string
     let payloadExtra: Record<string, unknown>
     if (cqSource === 'notes') {
-      const n = notes[0]
-      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : n?.title || cqTopic || ''
+      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic
+      const n = notes.find((x) => x.title === topic) ?? notes[0]
       payloadExtra = { source: 'notes', note_id: n?.id ?? null, notes_context: (n?.content ?? '').slice(0, 1200) }
     } else if (cqSource === 'weak') {
-      topic = weakTopics[0]?.name || (cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic) || ''
+      topic = cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic || weakTopics[0]?.name || ''
       payloadExtra = { source: 'weak_topics', focus: 'areas where the student struggles' }
     } else if (cqSource === 'exam') {
       topic = cqTopic === '__custom' ? cqCustomTopic.trim() : cqTopic || nextExam?.title || ''
@@ -336,7 +350,6 @@ export default function QuizCenterPage() {
         count: cqCount,
         ...payloadExtra,
       })
-      setShowCreate(false)
       if (cqSource !== 'exam') setExamMeta(null)
       beginQuiz(data)
       toast.success('Quiz ready \u2014 good luck!')
@@ -344,15 +357,20 @@ export default function QuizCenterPage() {
     finally { setGenerating(false) }
   }
 
-  function startSubjectQuiz(s: Subject) {
-    setCqSubject(String(s.id))
-    setCqTopic(s.name)
-    setCqCustomTopic('')
-    setCqSource('subject')
-    setCqCount(10)
-    setCqDifficulty('medium')
-    setExamMeta(null)
-    setShowCreate(true)
+  async function startSubjectQuiz(s: Subject) {
+    setGenerating(true)
+    try {
+      const { data } = await api.post<Quiz>('/quiz/generate/', {
+        topic: s.name,
+        difficulty: 'medium',
+        count: 10,
+        source: 'subject',
+      })
+      setExamMeta(null)
+      beginQuiz(data)
+      toast.success('Quiz ready \u2014 good luck!')
+    } catch (err) { toast.error(getErrorMessage(err)) }
+    finally { setGenerating(false) }
   }
 
   async function practiceWeakTopic(name: string) {
@@ -660,7 +678,18 @@ export default function QuizCenterPage() {
             {(analysis.recommendation || aiText) && <p className="zrai-rec">{analysis.recommendation || aiText}</p>}
           </>
         )}
-        <button className="zrai-action" onClick={() => navigate('/focus')} type="button">Start Revision</button>
+        {analysis.weak.length > 0 ? (
+          <button
+            className="zrai-action"
+            disabled={generating}
+            onClick={() => void practiceWeakTopic(analysis.weak[0])}
+            type="button"
+          >
+            {generating ? 'Preparing...' : 'Practice ' + analysis.weak[0] + ' \u2192'}
+          </button>
+        ) : (
+          <button className="zrai-action" onClick={() => navigate('/focus')} type="button">Start Revision</button>
+        )}
       </section>
 
       {examMeta && (
@@ -711,182 +740,111 @@ export default function QuizCenterPage() {
   )
 
 
-  const createModal = showCreate && (
-    <div className="zq-modal-overlay" onClick={() => setShowCreate(false)}>
-      <div className="zq-modal cq-modal" role="dialog" aria-modal="true" aria-label="Create Quiz" onClick={(e) => e.stopPropagation()}>
-        <div className="zq-modal-head cq-head">
-          <button className="cq-back" onClick={() => setShowCreate(false)} type="button" aria-label="Back">{'\u2190'}</button>
-          <h2>Create Quiz</h2>
-          <button className="zq-modal-close" onClick={() => setShowCreate(false)} type="button" aria-label="Close">{'\u00D7'}</button>
-        </div>
-
-        <span className="cq-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
-
-        <label className="cq-field">
-          <span>Subject</span>
-          <select
-            value={cqSubject}
-            onChange={(e) => {
-              setCqSubject(e.target.value)
-              const s = subjects.find((x) => x.id === Number(e.target.value))
-              if (s) { setCqTopic(s.name); setCqSource('subject') }
-            }}
-          >
-            <option value="">No subject</option>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
-
-        <label className="cq-field">
-          <span>Topic</span>
-          <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
-            {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-            <option value="__custom">Custom topic...</option>
-          </select>
-        </label>
-        {cqTopic === '__custom' && (
-          <input
-            className="cq-custom-input"
-            placeholder="e.g. Constructors & Destructors"
-            value={cqCustomTopic}
-            onChange={(e) => setCqCustomTopic(e.target.value)}
-            autoFocus
-          />
-        )}
-
-        <div className="cq-field">
-          <span>Source</span>
-          <div className="cq-sources">
-            {SOURCES.map((src) => (
-              <button
-                key={src.key}
-                className={'cq-source' + (cqSource === src.key ? ' on' : '')}
-                onClick={() => {
-                  setCqSource(src.key)
-                  if (src.key === 'weak' && weakTopics[0]) setCqTopic(weakTopics[0].name)
-                  if (src.key === 'exam') openCreateForExam()
-                }}
-                type="button"
-              >
-                <i className="cq-radio" />{src.icon} {src.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="cq-field">
-          <span>Questions</span>
-          <div className="cq-counts">
-            {QUESTION_COUNTS.map((c) => (
-              <button key={c} className={'cq-count' + (cqCount === c ? ' on' : '')} onClick={() => setCqCount(c)} type="button">{c}</button>
-            ))}
-          </div>
-        </div>
-
-        <div className="cq-field">
-          <span>Difficulty</span>
-          <div className="cq-diffs">
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d.key}
-                className={'cq-diff' + (cqDifficulty === d.key ? ' on' : '')}
-                style={cqDifficulty === d.key ? { borderColor: d.color, color: d.color, background: d.color + '14' } : undefined}
-                onClick={() => setCqDifficulty(d.key)}
-                type="button"
-              >
-                {d.label}{cqDifficulty === d.key ? ' \u2713' : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <label className="cq-field">
-          <span>Question Type</span>
-          <select defaultValue="mcq">
-            <option value="mcq">Multiple Choice</option>
-          </select>
-        </label>
-
-        <button className="cq-generate" disabled={generating} onClick={() => void generateQuiz()} type="button">
-          {generating ? 'Generating...' : 'Generate Quiz'}
-        </button>
-      </div>
-    </div>
-  )
-
   const dashboardView = (
     <>
       <div className="zq-stats-row">
         <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83D\uDCDD'}</span><b>{stats.quizzes}</b><span className="zq-stat-label">Quizzes</span></div>
         <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83C\uDFAF'}</span><b>{stats.accuracy}%</b><span className="zq-stat-label">Accuracy</span></div>
         <div className="zq-stat-card"><span className="zq-stat-icon">{'\u2713'}</span><b>{stats.completedCount}</b><span className="zq-stat-label">Completed</span></div>
-        <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83D\uDD25'}</span><b>{stats.streak}</b><span className="zq-stat-label">Quiz Streak</span></div>
+        <div className="zq-stat-card"><span className="zq-stat-icon">{'\uD83D\uDD25'}</span><b>{stats.streak}</b><span className="zq-stat-label">Streak</span></div>
       </div>
 
       <section>
         <h2 className="zq-section-title">START A QUIZ</h2>
-        <div className="zq-start-grid">
-          <div className="zq-ai-card">
-            <header className="zq-start-head">{'\u2726'} AI QUIZ</header>
-            <p>Generate a quiz from your subjects, notes or weak topics.</p>
-            <button className="zq-startbtn primary" onClick={openCreate} type="button">Generate Quiz {'\u2192'}</button>
+        <div className="qz-gen-card" id="zq-generator">
+          <header className="qz-gen-head">
+            <span className="qz-gen-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
+            <p className="qz-gen-sub">Create a personalized quiz from your subjects, notes, weak topics or exams.</p>
+          </header>
+
+          <div className="qz-gen-grid">
+            <label className="qz-field">
+              <span>Subject</span>
+              <select value={cqSubject} onChange={(e) => pickSubject(e.target.value)}>
+                <option value="">No subject</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+
+            <label className="qz-field">
+              <span>Topic</span>
+              <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
+                {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="__custom">Custom topic...</option>
+              </select>
+            </label>
+
+            <label className="qz-field">
+              <span>Questions</span>
+              <select value={cqCount} onChange={(e) => setCqCount(Number(e.target.value))}>
+                {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} Questions</option>)}
+              </select>
+            </label>
+
+            <label className="qz-field">
+              <span>Difficulty</span>
+              <select value={cqDifficulty} onChange={(e) => setCqDifficulty(e.target.value)}>
+                {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+              </select>
+            </label>
           </div>
 
-          <div className="zq-examcard">
-            <header className="zq-start-head">{'\uD83C\uDF93'} EXAM PRACTICE</header>
-            {nextExam ? (
-              <>
-                <b className="ze-name">{nextExam.subject_name ?? nextExam.title}</b>
-                <span className="ze-days">{daysUntil(nextExam.date)} days remaining</span>
-                <div className="ze-barlab">Preparation</div>
-                <div className="ze-barwrap">
-                  <div className="ze-bar"><i style={{ width: Math.min(100, nextExam.preparation_pct ?? 0) + '%' }} /></div>
-                  <span className="ze-pct">{Math.min(100, nextExam.preparation_pct ?? 0)}%</span>
-                </div>
-                <span className="ze-reco">Recommended: 10 questions {'\u00B7'} Hard {'\u00B7'} Weak topics included</span>
-                <button className="zq-startbtn" onClick={openCreateForExam} type="button">Start Practice {'\u2192'}</button>
-              </>
-            ) : (
-              <p>No upcoming exams. Add one on the Exams page to unlock exam practice.</p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="zq-section-title">SUBJECT QUIZZES</h2>
-        <div className="zq-subject-grid">
-          {subjects.length > 0 ? subjects.map((s, i) => (
-            <button key={s.id} className="zq-subject-card" onClick={() => startSubjectQuiz(s)} type="button">
-              <span className="zs-icon">{SUBJECT_ICONS[i % SUBJECT_ICONS.length]}</span>
-              <strong className="zs-name">{s.name}</strong>
-              <span className="zs-meta">{Math.max(5, s.total_topics || 10)} Questions</span>
-              <span className="zs-diff">Medium</span>
-              <span className="zs-start">Start</span>
-            </button>
-          )) : (
-            <p className="zq-empty-text">Add subjects first to unlock quick quizzes.</p>
+          {cqTopic === '__custom' && (
+            <input
+              className="qz-custom-input"
+              placeholder="e.g. Constructors & Destructors"
+              value={cqCustomTopic}
+              onChange={(e) => setCqCustomTopic(e.target.value)}
+            />
           )}
-        </div>
-      </section>
 
-      <section>
-        <h2 className="zq-section-title">WEAK TOPICS</h2>
-        {weakTopics.length > 0 ? (
-          <div className="zq-weak-list">
-            {weakTopics.map((t) => (
-              <button key={t.name} className="zw-row" onClick={() => void practiceWeakTopic(t.name)} disabled={generating} type="button">
-                <span className="zw-dot">{t.dot}</span>
-                <span className="zw-info">
-                  <b>{t.name}</b>
-                  <em>{t.accuracy}% accuracy</em>
-                </span>
-                <span className="zw-go">Practice this topic {'\u2192'}</span>
+          <div className="qz-source-row">
+            <span className="qz-source-label">Source:</span>
+            {SOURCES.map((src) => (
+              <button
+                key={src.key}
+                className={'qz-source' + (cqSource === src.key ? ' on' : '')}
+                onClick={() => handleSource(src.key)}
+                type="button"
+              >
+                <i className="qz-radio" />{src.label}
               </button>
             ))}
           </div>
+
+          <div className="qz-gen-actions">
+            <button className="qz-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
+              {generating ? 'Generating...' : 'Generate Quiz \u2192'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="zq-section-title">YOUR SUBJECTS</h2>
+        {subjects.length > 0 ? (
+          <div className="qz-subjects-grid">
+            {subjects.map((s, i) => {
+              const st = subjectStats.get(s.id)
+              return (
+                <article key={s.id} className="qz-subject-card">
+                  <header className="qz-sc-top">
+                    <span className="qz-sc-icon">{SUBJECT_ICONS[i % SUBJECT_ICONS.length]}</span>
+                    <strong className="qz-sc-name">{s.name}</strong>
+                  </header>
+                  <div className="qz-sc-meta">
+                    <span><b>{st?.quizzes ?? 0}</b> quizzes</span>
+                    <span><b style={{ color: accColor(st?.accuracy ?? 0) }}>{st?.accuracy ?? 0}%</b> accuracy</span>
+                  </div>
+                  <button className="qz-sc-btn" disabled={generating} onClick={() => void startSubjectQuiz(s)} type="button">
+                    Start Quiz {'\u2192'}
+                  </button>
+                </article>
+              )
+            })}
+          </div>
         ) : (
-          <p className="zq-empty-text">Complete a few quizzes and your weak topics will show up here.</p>
+          <p className="zq-empty-text">Add subjects first to unlock quick quizzes.</p>
         )}
       </section>
 
@@ -899,9 +857,9 @@ export default function QuizCenterPage() {
               return (
                 <button key={qq.id} className="zh-row" onClick={() => viewHistoryItem(qq)} type="button">
                   <span className="zh-topic">{qq.topic}</span>
-                  <span className="zh-pct" style={{ color: pct !== null ? accColor(pct) : undefined }}>{pct !== null ? pct + '%' : '\u2014'}</span>
                   <span className="zh-score">{qq.score !== null ? qq.score + '/' + qq.total_questions : qq.total_questions + 'Q'}</span>
-                  <span className="zh-date">{timeAgo(qq.created_at)}</span>
+                  <span className="zh-pct" style={{ color: pct !== null ? accColor(pct) : undefined }}>{pct !== null ? pct + '%' : '\u2014'}</span>
+                  <span className="zh-date">{friendlyDate(qq.created_at)}</span>
                   <span className="zh-review">Review {'\u2192'}</span>
                 </button>
               )
@@ -930,15 +888,14 @@ export default function QuizCenterPage() {
       title="Quiz"
       subtitle="Test your knowledge and discover what to improve."
       actions={
-        view === 'dashboard' && !generating ? (
-          <button className="zq-create-btn" onClick={openCreate} type="button">{'\uFF0B'} Create Quiz</button>
+        view === 'dashboard' ? (
+          <button className="zq-create-btn" onClick={scrollToGenerator} type="button">{'\uFF0B'} Create Quiz</button>
         ) : null
       }
     >
       {view === 'dashboard' && dashboardView}
       {view === 'active' && activeView}
       {view === 'result' && resultView}
-      {createModal}
     </PageShell>
   )
 }

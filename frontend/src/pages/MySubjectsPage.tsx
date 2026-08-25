@@ -80,14 +80,12 @@ export default function MySubjectsPage() {
       className="ms-page"
       title="My Subjects"
       subtitle="Track every subject, monitor topic progress, and keep an eye on weak areas."
-      actions={<button className="gradient-action" onClick={() => setShowModal(true)} type="button">+ Add Subject</button>}
     >
       {loading ? <div className="ms-loading">Loading subjects...</div>
       : subjects.length === 0 ? (
         <div className="ms-empty">
           <h2>Add your first subject</h2>
           <p>Subjects let Flox AI track your topics, weak areas, and progress.</p>
-          <button className="gradient-action" onClick={() => setShowModal(true)} type="button">+ Add Subject</button>
         </div>
       ) : detail ? (
         /* ── Detail View ── */

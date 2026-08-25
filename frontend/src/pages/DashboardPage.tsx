@@ -300,7 +300,6 @@ export default function DashboardPage() {
             <span>{goalSessionsDone} of {goalSessionsTotal || dailyGoalMinutes / 60} sessions completed</span>
             <span className="db-goal-remaining">{'\u23F3'} {formatMinutes(Math.max(0, dailyGoalMinutes - todayMinutes))} remaining today</span>
           </div>
-          <Link className="gradient-action db-btn" to="/focus">Continue Studying {'\u2192'}</Link>
         </section>
 
         {/* 2 - Next Exam */}
@@ -346,7 +345,6 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-              <Link className="gradient-action db-btn" to="/focus">{'\u25B6'} Continue</Link>
             </div>
           ) : (
             <div className="db-continue-inner">
@@ -355,7 +353,6 @@ export default function DashboardPage() {
                 <h3>Choose something to study today.</h3>
                 <span className="db-continue-meta">Your completed sessions will appear here.</span>
               </div>
-              <Link className="gradient-action db-btn" to="/focus">Start Focus Session</Link>
             </div>
           )}
         </section>
@@ -393,13 +390,11 @@ export default function DashboardPage() {
               <p className="db-ai-head">{aiInsight.text}</p>
               <p className="db-ai-body">{aiInsight.detail}</p>
               <span className="db-ai-time">Estimated time: {aiInsight.minutes} minutes</span>
-              <Link className="gradient-action db-btn" to="/focus">Start Session</Link>
             </>
           ) : (
             <>
               <p className="db-ai-head">I need a little more information to personalize your study plan.</p>
               <p className="db-ai-body">Add your subjects and goals, and I'll build a plan around them.</p>
-              <Link className="gradient-action db-btn" to="/planner">Set Up My Study Plan</Link>
             </>
           )}
         </section>

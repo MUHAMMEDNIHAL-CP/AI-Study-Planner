@@ -873,11 +873,6 @@ export default function NotesPage() {
       className="nt-page"
       title="Notes"
       subtitle="Your study knowledge in one place."
-      actions={
-        view === 'list' ? (
-          <button className="gradient-action" onClick={() => openEditor(null)}>+ New Note</button>
-        ) : undefined
-      }
     >
       {view === 'editor' ? (
         editorView

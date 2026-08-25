@@ -3,7 +3,7 @@ export type ThemeMode = 'dark' | 'light'
 export function getTheme(): ThemeMode {
   const saved = localStorage.getItem('theme')
   if (saved === 'light' || saved === 'dark') return saved
-  return 'dark'
+  return 'light'
 }
 
 export function applyTheme(theme: ThemeMode) {
