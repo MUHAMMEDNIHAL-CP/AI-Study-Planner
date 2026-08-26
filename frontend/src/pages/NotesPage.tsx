@@ -20,7 +20,7 @@ type Note = {
 
 type Subject = { id: number; name: string; color: string }
 
-type ListFilter = 'all' | 'favorites' | 'recent' | 'shared'
+type ListFilter = 'all' | 'favorites' | 'recent'
 
 type AiPanel = {
   open: boolean
@@ -327,12 +327,14 @@ export default function NotesPage() {
     setSavedTick(false)
   }
 
+  const prevView = useRef(view)
   useEffect(() => {
-    if (view === 'editor' && editorRef.current) {
+    if (view === 'editor' && prevView.current !== 'editor' && editorRef.current) {
       editorRef.current.innerHTML = pendingHtml.current
       draftHtml.current = pendingHtml.current
     }
-  }, [view, editId])
+    prevView.current = view
+  }, [view])
 
   async function saveNote() {
     if (!title.trim()) { toast.error('Give your note a title.'); return }
@@ -349,8 +351,8 @@ export default function NotesPage() {
       } else {
         const { data } = await api.post<Note>('/notes/', payload)
         setEditId(data.id)
+        setNotes((prev) => [data, ...prev])
       }
-      await loadData()
       setSavedTick(true)
       window.setTimeout(() => setSavedTick(false), 2200)
     } catch (err) {
@@ -657,13 +659,11 @@ export default function NotesPage() {
           ['all', 'All'],
           ['favorites', '\u2B50 Favorites'],
           ['recent', 'Recent'],
-          ['shared', 'Shared'],
         ] as Array<[ListFilter, string]>).map(([key, label]) => (
           <button
             key={key}
             className={'nt-chip' + (filter === key ? ' active' : '')}
             onClick={() => {
-              if (key === 'shared') { toast.info('Sharing is coming soon.'); return }
               setFilter(key)
               setTagFilter(null)
             }}
@@ -671,6 +671,7 @@ export default function NotesPage() {
             {label}
           </button>
         ))}
+        <button className="nt-newnote-btn" onClick={() => openEditor(null)}>+ New Note</button>
       </div>
 
       <h3 className="nt-sectiontitle">
@@ -721,17 +722,15 @@ export default function NotesPage() {
         <div className="nt-empty">
           <span className="ne-icon">{'\uD83D\uDCDD'}</span>
           <p>
-            {filter === 'shared'
-              ? 'Sharing is coming soon.'
-              : search.trim()
-                ? 'No notes match "' + search.trim() + '".'
-                : filter === 'favorites'
-                  ? 'Star a note to see it here.'
-                  : filter === 'recent'
-                    ? 'No edits in the last 7 days.'
-                    : 'No notes yet.'}
+            {search.trim()
+              ? 'No notes match "' + search.trim() + '".'
+              : filter === 'favorites'
+                ? 'Star a note to see it here.'
+                : filter === 'recent'
+                  ? 'No edits in the last 7 days.'
+                  : 'No notes yet.'}
           </p>
-          {!search.trim() && filter !== 'shared' && (
+          {!search.trim() && (
             <button className="nt-newcta" onClick={() => openEditor(null)}>+ New Note</button>
           )}
         </div>
@@ -781,7 +780,7 @@ export default function NotesPage() {
           <button className="nt-ai-open" onClick={() => setAiPanel({ open: true, mode: 'menu', text: '', loading: false })}>
             {'\u2728'} AI Tools
           </button>
-          <button className="nt-savebtn" disabled={saving} onClick={() => void saveNote()}>
+          <button className="nt-savebtn" type="button" disabled={saving} onClick={() => void saveNote()}>
             {saving ? 'Saving\u2026' : 'Save \u2713'}
           </button>
           {editId != null && (
