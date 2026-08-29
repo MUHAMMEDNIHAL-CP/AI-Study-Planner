@@ -57,6 +57,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class SocialLoginSerializer(serializers.Serializer):
+    provider = serializers.ChoiceField(choices=[("google", "google"), ("apple", "apple")])
+    id_token = serializers.CharField(required=True, write_only=True)
+    nonce = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+
 class LoginSerializer(serializers.Serializer):
     credential = serializers.CharField(required=True)
     password = serializers.CharField(required=True)

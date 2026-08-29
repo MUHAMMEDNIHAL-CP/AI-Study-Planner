@@ -384,7 +384,7 @@ export default function DashboardPage() {
 
         {/* 5 - AI Recommendation */}
         <section className="db-card db-ai">
-          <span className="db-eyebrow ai">{'\u2726'} FocusFlow AI</span>
+          <span className="db-eyebrow ai">{'\u2726'} FLOX AI</span>
           {aiInsight.hasData ? (
             <>
               <p className="db-ai-head">{aiInsight.text}</p>

@@ -6,4 +6,7 @@ gunicorn>=22,<23
 psycopg[binary]>=3.2,<4
 dj-database-url>=2.2,<3
 whitenoise>=6.7,<7
+PyJWT>=2.10,<3
+cryptography>=43
+requests>=2.32,<3
 

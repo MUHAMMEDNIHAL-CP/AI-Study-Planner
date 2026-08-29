@@ -90,7 +90,7 @@ class QuizGenerateView(APIView):
         AIHistory.objects.create(
             user=request.user,
             feature="quiz",
-            prompt=str(request.data),
+            prompt=f"Generate a {difficulty} quiz with {count} questions about {topic}.",
             response={"quiz_id": quiz.id, "questions": questions},
             provider=provider,
         )

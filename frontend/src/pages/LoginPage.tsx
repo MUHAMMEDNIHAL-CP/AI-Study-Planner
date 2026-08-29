@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import AuthLayout from '../components/AuthLayout'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
+import { socialLogin } from '../lib/socialAuth'
 
 type TokenResponse = {
   access: string
@@ -58,6 +59,20 @@ export default function LoginPage() {
       setAuthTokens(data.access, data.refresh)
       toast.success('Logged in')
       navigate('/dashboard')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSocial(provider: 'google' | 'apple') {
+    setError(null)
+    setLoading(true)
+    try {
+      const result = await socialLogin(provider)
+      toast.success(result.is_new ? 'Account created' : 'Logged in')
+      navigate(result.is_new ? '/welcome' : '/dashboard')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -125,10 +140,10 @@ export default function LoginPage() {
 
         <div className="au-divider"><span>or</span></div>
 
-        <button className="au-oauth" type="button" onClick={() => toast.info('Google sign in is not connected yet.')}>
+        <button className="au-oauth" disabled={loading} type="button" onClick={() => handleSocial('google')}>
           <GoogleIcon /> Continue with Google
         </button>
-        <button className="au-oauth" type="button" onClick={() => toast.info('Apple sign in is not connected yet.')}>
+        <button className="au-oauth" disabled={loading} type="button" onClick={() => handleSocial('apple')}>
           <AppleIcon /> Continue with Apple
         </button>
 

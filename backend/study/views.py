@@ -290,7 +290,7 @@ class GeneratePlanView(APIView):
         AIHistory.objects.create(
             user=request.user,
             feature="planner",
-            prompt=str(request.data),
+            prompt=f"Build me a study plan. Goal: {goal}. Exam date: {exam_date}. Daily hours: {daily_hours}. Subjects: {', '.join(subjects)}.",
             response=response,
             provider=response["provider"],
         )
@@ -363,7 +363,7 @@ class AdjustTimetableView(APIView):
         AIHistory.objects.create(
             user=request.user,
             feature="burnout",
-            prompt=str(request.data),
+            prompt=f"Adjust my timetable. Fatigue: {fatigue}/10. Productivity: {productivity}/10. Screen time: {screen_time}h. Missed tasks: {missed_tasks}.",
             response=response,
             provider=response["provider"],
         )

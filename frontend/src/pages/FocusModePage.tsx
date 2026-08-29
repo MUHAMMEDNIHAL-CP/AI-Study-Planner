@@ -32,7 +32,7 @@ const SOUNDS: Array<{ id: SoundId; label: string }> = [
   { id: 'lofi', label: 'Lo-fi' },
 ]
 
-const SETTINGS_KEY = 'focusflow.focus.settings.v1'
+const SETTINGS_KEY = 'FLOX.focus.settings.v1'
 
 type PersistedSettings = {
   durationIdx: number
@@ -204,10 +204,10 @@ export default function FocusModePage() {
 
   useEffect(() => {
     if (phase !== 'running' && phase !== 'paused') {
-      document.title = 'FocusFlow AI'
+      document.title = 'FLOX AI'
       return
     }
-    const base = 'FocusFlow AI — Focus'
+    const base = 'FLOX AI — Focus'
     const id = setInterval(() => {
       document.title = clock(secondsLeftRef.current) + ' · ' + base
     }, 1000)
@@ -628,7 +628,7 @@ export default function FocusModePage() {
 
       <aside className={'fm-ai' + (aiOpen ? ' open' : '')} aria-hidden={!aiOpen}>
         <header>
-          <span>{'\u2726'} FocusFlow AI</span>
+          <span>{'\u2726'} FLOX AI</span>
           <button onClick={() => setAiOpen(false)} type="button" aria-label="Close AI help">{'\u00D7'}</button>
         </header>
         <div className="fm-ai-thread">

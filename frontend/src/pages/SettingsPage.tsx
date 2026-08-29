@@ -46,7 +46,7 @@ type Preferences = {
   timeFormat: string
 }
 
-const preferenceKey = 'focusflow.settings.v2'
+const preferenceKey = 'FLOX.settings.v2'
 
 const defaultPreferences: Preferences = {
   studyReminders: true,
@@ -118,7 +118,7 @@ const SECTIONS: Record<SectionId, SectionDef> = {
   security: { id: 'security', label: 'Security', desc: 'Password and active sessions', icon: '\uD83D\uDD12' },
   region: { id: 'region', label: 'Language & Region', desc: 'Language, timezone and date format', icon: '\uD83C\uDF10' },
   privacy: { id: 'privacy', label: 'Data & Privacy', desc: 'Data, AI usage and account deletion', icon: '\uD83D\uDEE1\uFE0F' },
-  about: { id: 'about', label: 'About', desc: 'FocusFlow AI version and information', icon: '\u2139\uFE0F' },
+  about: { id: 'about', label: 'About', desc: 'FLOX AI version and information', icon: '\u2139\uFE0F' },
 }
 
 const GROUPS: Array<{ title: string; items: SectionId[] }> = [
@@ -416,7 +416,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'focusflow-my-data.json'
+      link.download = 'FLOX-my-data.json'
       link.click()
       URL.revokeObjectURL(url)
       toast.success('Your data has been downloaded.')
@@ -757,14 +757,14 @@ export default function SettingsPage() {
           <>
             <div className="st-about">
               <span className="st-about-logo">&#9673;</span>
-              <h2>FocusFlow AI</h2>
+              <h2>FLOX AI</h2>
               <span className="st-about-orbit">STUDY ORBIT</span>
               <span className="st-about-version">Version 1.0.0</span>
             </div>
             <div className="st-rows">
               <button
                 className="st-row st-row-btn"
-                onClick={() => window.open('mailto:support@focusflow.ai', '_blank')}
+                onClick={() => window.open('mailto:support@FLOX.ai', '_blank')}
                 type="button"
               >
                 <span className="st-row-text"><strong>Help &amp; Support</strong></span>
@@ -798,7 +798,7 @@ export default function SettingsPage() {
   return (
     <PageShell
       className={`settings-page-shell st-page ${activeId ? 'st-in-section' : ''}`}
-      subtitle="Tune how FocusFlow works for you."
+      subtitle="Tune how FLOX works for you."
       title="Settings"
     >
       {!activeId && (

@@ -1724,8 +1724,12 @@ h3 {
   padding: 8px 6px;
 }
 
-.ac-chatitem.hist { display: block; }
-.ac-chatitem.hist .ci-main { padding: 8px 10px; }
+.ac-chatitem.hist {
+  display: flex;
+  align-items: stretch;
+}
+.ac-chatitem.hist:hover { background: var(--glass); }
+.ac-chatitem.hist .ci-title { font-size: 12.8px; }
 
 /* ── Chat column ── */
 
@@ -2456,6 +2460,33 @@ h3 {
   .ac-mobilebar button:hover { background: var(--glass); }
   .mb-title { font-weight: 800; font-size: 14.5px; }
 
+  /* Full-bleed chat column on mobile: drop the boxed border/radius so the
+     header, messages and composer run edge-to-edge (matching the sidelong
+     full-screen app layout) instead of floating as a rounded card. */
+  .ac-chat {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+  .ac-mobilebar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .mb-title {
+    flex: 1;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: #ff8a5c;
+  }
+  .ac-mobilebar button {
+    padding: 6px 10px;
+    flex: 0 0 38px;
+  }
+
   .ac-sidebar,
   .ac-context {
     position: fixed;
@@ -2465,6 +2496,13 @@ h3 {
     max-height: none;
     border-radius: 0;
     transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ac-sidebar .ac-side-scroll {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .ac-context {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   .ac-sidebar { left: 0; transform: translateX(-104%); }
@@ -2501,6 +2539,11 @@ h3 {
 
   .ac-msgs { padding: 14px 12px 6px; }
   .ac-composer { margin: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
+
+  /* Keep every element flush to the same 12px gutter so bubbles,
+     chips, attachments and the composer all line up on mobile. */
+  .ac-inputchips { padding: 8px 12px 0; }
+  .ac-attrow { padding: 10px 12px 0; }
 }
 
 @media (max-width: 480px) {

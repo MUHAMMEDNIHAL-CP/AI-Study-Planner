@@ -1,4 +1,4 @@
-# FocusFlow AI - Infra
+# FLOX AI - Infra
 
 Deployment targets:
 - Frontend: Vercel

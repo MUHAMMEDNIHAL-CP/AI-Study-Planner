@@ -4,12 +4,12 @@ import { api } from '../lib/api'
 import { clearAuthTokens, isAuthenticated } from '../lib/auth'
 import { initials, useUserProfile } from '../hooks/useUserProfile'
 import {
+  IconBot,
   IconCalendar,
   IconDashboard,
   IconFocus,
   IconLogout,
   IconNotes,
-  IconOrbit,
   IconPlanner,
   IconProgress,
   IconQuiz,
@@ -99,7 +99,7 @@ export default function Navigation() {
   return (
     <aside className="sidebar orbit-sidebar">
       <Link className="sidebar-brand" to="/dashboard">
-        <span className="sidebar-mark"><IconOrbit size={22} /></span>
+        <span className="sidebar-mark"><IconBot size={22} /></span>
         <span className="sidebar-brand-text">
           <strong>Flox AI</strong>
           <small>Study Planner</small>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { IconOrbit } from './icons'
+import { IconBot } from './icons'
 
 type AuthLayoutProps = {
   headline: ReactNode
@@ -17,9 +17,9 @@ export default function AuthLayout({ headline, sub, benefits, children }: AuthLa
         <span className="au-orbit-ring r2" aria-hidden="true" />
         <div className="au-brand-inner">
           <div className="au-brand-mark">
-            <span className="au-logo"><IconOrbit size={18} /></span>
+            <span className="au-logo"><IconBot size={18} /></span>
             <div className="au-brand-name">
-              <strong>FocusFlow AI</strong>
+              <strong>FLOX AI</strong>
               <em>STUDY ORBIT</em>
             </div>
           </div>

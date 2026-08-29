@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { IconOrbit } from '../components/icons'
+import { IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 
 const GOALS = [2, 3, 4, 5]
@@ -47,8 +47,8 @@ export default function OnboardingPage() {
           onSubmit={(e) => { e.preventDefault(); void finish() }}
         >
           <header className="ob-head">
-            <span className="au-logo lg"><IconOrbit size={22} /></span>
-            <h2>Welcome to FocusFlow AI <span className="ob-star">{'\u2726'}</span></h2>
+            <span className="au-logo lg"><IconBot size={22} /></span>
+            <h2>Welcome to FLOX AI <span className="ob-star">{'\u2726'}</span></h2>
             <p>Let&apos;s personalize your study experience. This takes under a minute.</p>
           </header>
 

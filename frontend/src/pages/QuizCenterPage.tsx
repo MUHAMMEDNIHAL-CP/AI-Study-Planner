@@ -460,7 +460,7 @@ export default function QuizCenterPage() {
     const rightQs = result.results.filter((r) => r.correct)
     try {
       const prompt =
-        'You are FocusFlow AI. Analyze this finished quiz and reply with STRICT JSON only, no prose. ' +
+        'You are FLOX AI. Analyze this finished quiz and reply with STRICT JSON only, no prose. ' +
         'Schema: {"strong": string[] (up to 3 concepts mastered), "weak": string[] (up to 3 concepts needing revision), ' +
         '"recommendation": string (one sentence, include a suggested revision length in minutes), ' +
         '"performance": [{"concept": string, "pct": number 0-100}] (up to 5 concept-level bars)}. ' +
@@ -523,7 +523,7 @@ export default function QuizCenterPage() {
       const pct = Math.round(((quiz.score ?? 0) / quiz.total_questions) * 100)
       const { data } = await api.post<{ reply?: string }>('/ai/chat/', {
         message:
-          'You are FocusFlow AI. A student previously scored ' + pct + '% on a quiz about "' + quiz.topic +
+          'You are FLOX AI. A student previously scored ' + pct + '% on a quiz about "' + quiz.topic +
           '". Reply with STRICT JSON only: {"strong": string[], "weak": string[], "recommendation": string, "performance": [{"concept": string, "pct": number}]}.',
         context: { page: '/quiz', mode: 'analysis' },
       })

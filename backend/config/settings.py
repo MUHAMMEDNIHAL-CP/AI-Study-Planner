@@ -230,6 +230,12 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False,
 }
 
+# OAuth / social sign-in (Google Identity Services + Sign in with Apple).
+# Google: OAuth Client ID (Web application) from Google Cloud Console.
+# Apple: Services ID configured with the "Sign in with Apple" capability.
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID", "")
+
 # HTTPS / Security headers
 # Enforced automatically when DEBUG=False. Override via env if needed.
 if not DEBUG:

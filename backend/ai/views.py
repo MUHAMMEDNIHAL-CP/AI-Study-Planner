@@ -210,6 +210,17 @@ class AIHistoryListView(APIView):
         history = AIHistory.objects.filter(user=request.user)[:20]
         return Response(AIHistorySerializer(history, many=True).data)
 
+    def delete(self, request):
+        history_id = request.data.get("id") or request.query_params.get("id")
+        if history_id is None:
+            return Response({"detail": "Missing history id."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            item = AIHistory.objects.get(pk=history_id, user=request.user)
+        except AIHistory.DoesNotExist:
+            return Response({"detail": "History item not found."}, status=status.HTTP_404_NOT_FOUND)
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AIStatusView(APIView):
     def get(self, request):

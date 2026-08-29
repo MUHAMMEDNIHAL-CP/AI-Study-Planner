@@ -1,8 +1,8 @@
-# Product Requirements Document: FocusFlow AI
+# Product Requirements Document: FLOX AI
 
 ## 1. Product Overview
 
-FocusFlow AI is an AI-powered study planning and focus coaching web application for students. The product helps students organize subjects, exams, study tasks, revision plans, quizzes, productivity logs, and burnout checks in one workspace.
+FLOX AI is an AI-powered study planning and focus coaching web application for students. The product helps students organize subjects, exams, study tasks, revision plans, quizzes, productivity logs, and burnout checks in one workspace.
 
 The application combines a React frontend with a Django REST backend. AI features currently use deterministic mock responses so the product works without external API keys, with future support planned for OpenAI or Gemini.
 
@@ -17,7 +17,7 @@ Students often struggle with:
 - Managing stress and burnout during heavy study periods.
 - Keeping all study planning tools in one place.
 
-FocusFlow AI solves this by providing a centralized platform that turns study inputs into actionable schedules, quiz practice, analytics, and recovery recommendations.
+FLOX AI solves this by providing a centralized platform that turns study inputs into actionable schedules, quiz practice, analytics, and recovery recommendations.
 
 ## 3. Goals
 

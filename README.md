@@ -1,4 +1,4 @@
-# FocusFlow AI
+# FLOX AI
 
 AI-powered Study Planner + Focus Coach for students.
 
@@ -51,9 +51,43 @@ Create `frontend/.env` when your API URL changes:
 VITE_API_URL=http://localhost:8000
 ```
 
+## Social Sign-in (Google + Apple)
+
+The Login and Register pages include "Continue with Google" and "Continue with Apple" buttons. They call `POST /api/auth/social/` with the provider's `id_token`, which the backend verifies before creating or signing in the user (returns the usual `{ access, refresh }` JWT pair plus `is_new`).
+
+### Google (free)
+
+1. Create an **OAuth Client ID (Web application)** at the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. Add your app origin (e.g. `http://localhost:5173`) under **Authorized JavaScript origins** and the same URL under **Authorized redirect URIs**.
+3. Set both backend and frontend variables:
+
+```env
+# backend/.env
+GOOGLE_OAUTH_CLIENT_ID=xxxx.apps.googleusercontent.com
+
+# frontend/.env
+VITE_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+```
+
+### Apple (paid Apple Developer account, $99/yr)
+
+1. In [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list/servicesId), create a **Services ID** (e.g. `com.example.FLOX.signin`) and enable the **Sign in with Apple** capability. Add your domain and a return URL (your app origin).
+2. Set the variables on both sides:
+
+```env
+# backend/.env
+APPLE_CLIENT_ID=com.example.FLOX.signin
+
+# frontend/.env
+VITE_APPLE_CLIENT_ID=com.example.FLOX.signin
+VITE_APPLE_REDIRECT_URI=http://localhost:5173
+```
+
+Restart the backend and reload the frontend Vite dev server after changing `.env` files.
+
 ## Implemented API
 
-- `POST /api/auth/register/`, `POST /api/auth/login/`, `GET /api/auth/me/`
+- `POST /api/auth/register/`, `POST /api/auth/login/`, `POST /api/auth/social/`, `GET /api/auth/me/`
 - `GET/POST /api/study/subjects/`, `/api/study/exams/`, `/api/study/tasks/`
 - `GET /api/study/dashboard/`, `POST /api/study/plan/generate/`
 - `GET/POST /api/productivity/logs/`, `GET /api/productivity/analytics/`
@@ -97,7 +131,7 @@ The backend is hardened with the following controls:
 - **Input Validation**: DRF serializers validate all auth payloads. AI endpoints (`backend/ai/views.py`) sanitize and length-cap `prompt`/`topic`/`mode`/`level` inputs (max 8000 chars for prompts) via `sanitize_prompt()` in `backend/ai/gemini.py`.
 - **Secure Password Hashing**: Django's default PBKDF2 hashing is used via `User.set_password()`. Passwords are never stored in plaintext.
 - **API Key Protection**: The Gemini API key is sent in the `x-goog-api-key` request header (not in the URL query string) so it doesn't leak into proxy/access logs. `GEMINI_API_KEY` is read only from the environment.
-- **Logging & Monitoring**: Django logging is configured in `config/settings.py` with rotating file logs (`backend/logs/focusflow.log`) and console output. `django.security` and `django.request` logs are captured at `WARNING` for monitoring anomalies.
+- **Logging & Monitoring**: Django logging is configured in `config/settings.py` with rotating file logs (`backend/logs/FLOX.log`) and console output. `django.security` and `django.request` logs are captured at `WARNING` for monitoring anomalies.
 
 ### Production Checklist
 

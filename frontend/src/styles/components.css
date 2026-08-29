@@ -4406,8 +4406,8 @@ button.bn-drawer-row {
 /* Toolbar alignment */
 .pl-toolbar { align-items: center; }
 .pl-toolbar-left {
-  flex: 1;
-  justify-content: center;
+  flex: 0 1 auto;
+  justify-content: flex-start;
   flex-wrap: wrap;
 }
 .pl-actions { flex-shrink: 0; }
@@ -4417,6 +4417,14 @@ button.bn-drawer-row {
 .cal-nav-btn { width: 34px; height: 34px; }
 .cal-today-btn { height: 34px; padding: 0 13px; }
 .cal-nav-center { gap: 10px; }
+
+@media (max-width: 1024px) {
+  .pl-toolbar-left { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-width: 620px) {
+  .pl-toolbar-left { justify-content: center; }
+  .pl-actions { width: 100%; }
+}
 
 /* Scrollable daily schedule */
 .pl-timeline-grid {
@@ -4536,4 +4544,207 @@ button.bn-drawer-row {
 
 @media (max-width: 480px) {
   .cal-modal-row { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   Study Planner — Calendar-style reskin (pl-*)
+   Visual look only; structure unchanged.
+   ════════════════════════════════════════════════════════════ */
+
+/* Topbar — mirror the calendar's Today + ‹ › label + actions */
+.pl-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+.pl-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Day / Week / Month — calendar dropdown-style control */
+.pl-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.pl-view-btn {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pl-view-btn:hover { color: var(--text); }
+.pl-view-active {
+  background: linear-gradient(135deg, var(--accent), var(--cyan));
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 8px 18px -8px rgba(99, 102, 241, 0.6);
+}
+
+/* Date nav — circular arrows + centered bold label like the calendar */
+.planner-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cal-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cal-nav-btn:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.cal-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cal-nav-title {
+  min-width: 150px;
+  text-align: center;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.cal-today-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.cal-today-btn:hover { border-color: var(--accent); }
+
+/* Right actions — mirror calendar: ghost AI pill + round + add */
+.pl-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.pl-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid rgba(127, 200, 190, 0.45);
+  border-radius: 999px;
+  background: rgba(127, 200, 190, 0.12);
+  color: var(--cal-teal, #76bda5);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+  box-shadow: none;
+}
+.pl-action-btn svg { color: inherit; }
+.pl-action-btn:hover {
+  background: rgba(127, 200, 190, 0.22);
+  transform: none;
+}
+.pl-action-ghost {
+  border-color: var(--border) !important;
+  background: transparent !important;
+  color: var(--text) !important;
+}
+.pl-action-ghost:hover {
+  border-color: var(--accent) !important;
+}
+
+/* Cards — lighter faces, rounded like the calendar panels */
+.pl-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+}
+.pl-card-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* Daily schedule rows / chips — pastel event-block feel */
+.pl-timeline-task {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pl-color, var(--violet)) 8%, transparent);
+  border-left: 3px solid var(--pl-color, var(--accent));
+  box-shadow: none;
+}
+.pl-timeline-row { padding: 6px 0; }
+.pl-avatar {
+  border-radius: 11px;
+  box-shadow: none;
+}
+
+/* Sidebar & plan cards — flat, cal-like */
+.pl-exam-card, .pl-stats-card, .pl-plan-card { box-shadow: none; }
+.pl-stat-tile {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* Month/week cells — subtle like calendar grid */
+.pl-month-cell, .pl-week-header, .pl-week-empty, .pl-week-task {
+  border-radius: 12px;
+}
+.pl-week-today, .pl-month-today {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: none;
+}
+
+/* AI plan card — calendar's soft teal accent */
+.pl-plan-card {
+  border-color: color-mix(in srgb, var(--cal-teal, #76bda5) 35%, var(--border));
+}
+
+@media (max-width: 1024px) {
+  .pl-toolbar-left { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-width: 620px) {
+  .pl-toolbar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+  .pl-toolbar-left { justify-content: center; }
+  .pl-actions { justify-content: center; width: 100%; }
+  .pl-action-btn { flex: 1; justify-content: center; }
+  .cal-nav-title { min-width: 0; font-size: 0.95rem; white-space: normal; }
 }

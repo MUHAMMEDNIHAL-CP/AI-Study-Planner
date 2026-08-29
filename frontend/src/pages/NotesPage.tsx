@@ -993,7 +993,7 @@ export default function NotesPage() {
           <div className="nt-drawer-backdrop" onClick={closeAi} />
           <aside className="nt-aidrawer">
             <header className="ad-head">
-              <span className="ad-brand">{'\u2726'} FocusFlow AI</span>
+              <span className="ad-brand">{'\u2726'} FLOX AI</span>
               <button className="nt-x" onClick={closeAi} aria-label="Close">&#215;</button>
             </header>
 

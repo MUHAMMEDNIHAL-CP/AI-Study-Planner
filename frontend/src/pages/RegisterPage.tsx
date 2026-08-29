@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import AuthLayout from '../components/AuthLayout'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
+import { socialLogin } from '../lib/socialAuth'
 
 type TokenResponse = {
   access: string
@@ -76,16 +77,30 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleSocial(provider: 'google' | 'apple') {
+    setError(null)
+    setLoading(true)
+    try {
+      const result = await socialLogin(provider)
+      toast.success(result.is_new ? 'Account created' : 'Logged in')
+      navigate(result.is_new ? '/welcome' : '/dashboard')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <AuthLayout
       headline={<>Start building better<br />study habits today.</>}
-      sub="Join FocusFlow AI and start your journey."
+      sub="Join FLOX AI and start your journey."
       benefits={['\uD83D\uDD25 Build your streak', '\uD83D\uDCDA Organize your studies', '\uD83E\uDD16 Learn with AI']}
     >
       <form className="au-card" onSubmit={onSubmit}>
         <header className="au-card-head">
           <h2>Create your account</h2>
-          <p>Join FocusFlow AI and start your journey.</p>
+          <p>Join FLOX AI and start your journey.</p>
         </header>
 
         {error ? <div className="au-alert">{error}</div> : null}
@@ -158,10 +173,10 @@ export default function RegisterPage() {
 
         <div className="au-divider"><span>or</span></div>
 
-        <button className="au-oauth" type="button" onClick={() => toast.info('Google sign up is not connected yet.')}>
+        <button className="au-oauth" disabled={loading} type="button" onClick={() => handleSocial('google')}>
           <GoogleIcon /> Continue with Google
         </button>
-        <button className="au-oauth" type="button" onClick={() => toast.info('Apple sign up is not connected yet.')}>
+        <button className="au-oauth" disabled={loading} type="button" onClick={() => handleSocial('apple')}>
           <AppleIcon /> Continue with Apple
         </button>
 

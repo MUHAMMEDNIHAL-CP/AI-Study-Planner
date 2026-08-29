@@ -85,7 +85,7 @@ const WEEKDAY_UPPER = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DURATIONS = ['25', '30', '45', '50', '60', '90']
 
-const CUSTOM_KEY = 'focusflow.calendar.custom'
+const CUSTOM_KEY = 'flox.calendar.custom'
 
 function pad2(n: number) { return n < 10 ? '0' + n : '' + n }
 function dateKey(y: number, m: number, d: number) { return `${y}-${pad2(m + 1)}-${pad2(d)}` }

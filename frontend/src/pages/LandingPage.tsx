@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { IconOrbit } from '../components/icons'
+import { IconBot } from '../components/icons'
 
 const flowSteps = [
   ['Plan', 'Add subjects, exams, and tasks in one workspace.'],
@@ -20,8 +20,8 @@ export default function LandingPage() {
     <main className="landing-orbit-page">
       <header className="landing-orbit-nav">
         <div className="landing-brand">
-          <span className="landing-brand-mark"><IconOrbit size={20} /></span>
-          <strong>Flox AI AI</strong>
+          <span className="landing-brand-mark"><IconBot size={20} /></span>
+          <strong>Flox AI</strong>
         </div>
         <nav>
           <a href="#flow">How it works</a>

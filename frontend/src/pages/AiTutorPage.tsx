@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent } from
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile } from '../hooks/useUserProfile'
 
@@ -93,7 +94,7 @@ type Conversation = {
   messages: ChatMessage[]
 }
 
-const CHATS_KEY = 'focusflow.ai.chats.v1'
+const CHATS_KEY = 'FLOX.ai.chats.v1'
 
 /* ── Constants ─────────────────────────────────────────────── */
 
@@ -808,21 +809,46 @@ export default function AiTutorPage() {
     void send()
   }
 
+  function humanPrompt(raw: string): string {
+    const t = String(raw ?? '').trim()
+    if (t.startsWith('{')) return 'Review the FLOX AI session I ran earlier.'
+    if (t.startsWith('"') || t.startsWith("'")) return t.replace(/^['"]|['"]$/g, '')
+    return t
+  }
+
   function openAiHistoryItem(item: AiHistoryItem) {
     const resp = item.response as Record<string, unknown> | undefined
-    const text = resp ? String(resp.reply ?? resp.explanation ?? resp.title ?? '') || item.prompt : item.prompt
+    const isQuiz = item.feature === 'quiz' || item.feature === 'practice'
+    const questions = Array.isArray(resp?.questions) ? (resp?.questions as unknown[]) : []
+    const promptText = humanPrompt(item.prompt)
+    const mode = isQuiz ? ('practice' as const) : ('chat' as const)
+    const coachText = isQuiz
+      ? 'Here\u2019s a ' + (questions.length || 10) + '-question quiz for you. Answer right here \u2014 good luck!'
+      : resp
+        ? String(resp.reply ?? resp.explanation ?? resp.title ?? '') || promptText
+        : promptText
     const conv: Conversation = {
       id: uid(),
-      title: (String(resp?.title ?? '') || item.prompt).slice(0, 36),
+      title: (String(resp?.title ?? '') || promptText).slice(0, 36),
       updated_at: item.created_at,
       messages: [
-        { id: uid(), role: 'student', text: item.prompt, mode: 'chat' },
-        { id: uid(), role: 'coach', text, mode: 'chat' },
+        { id: uid(), role: 'student', text: promptText, mode },
+        { id: uid(), role: 'coach', text: coachText, mode },
       ],
     }
     commitChats([conv, ...chats])
     setActiveId(conv.id)
     setSidebarOpen(false)
+  }
+
+  async function deleteAiHistory(id: number) {
+    try {
+      await api.delete('/ai/history/', { data: { id } })
+      setAiHistory((prev) => prev.filter((h) => h.id !== id))
+      toast.success('History item deleted.')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
   }
 
   const sidebar = (
@@ -858,9 +884,17 @@ export default function AiTutorPage() {
           <section className="ac-group">
             <span className="ac-group-label">HISTORY</span>
             {aiHistory.slice(0, 8).map((h) => (
-              <button key={'h' + h.id} className="ac-chatitem hist" onClick={() => openAiHistoryItem(h)}>
-                <span className="ci-title">{(h.response?.title as string) || h.prompt.slice(0, 36)}</span>
-              </button>
+              <div key={'h' + h.id} className="ac-chatitem hist">
+                <button className="ci-main" onClick={() => openAiHistoryItem(h)}>
+                  <span className="ci-title">{(h.response?.title as string) || humanPrompt(h.prompt).slice(0, 36)}</span>
+                </button>
+                <details className="ci-more" onClick={(e) => e.stopPropagation()}>
+                  <summary aria-label="History options">{'\u22EE'}</summary>
+                  <div className="ci-menu">
+                    <button className="danger" onClick={() => void deleteAiHistory(h.id)}>Delete</button>
+                  </div>
+                </details>
+              </div>
             ))}
           </section>
         )}
@@ -929,19 +963,16 @@ export default function AiTutorPage() {
     <main className="ac-chat">
       <div className="ac-mobilebar">
         <button onClick={() => setSidebarOpen(true)} aria-label="Conversations">{'\u2630'}</button>
-        <span className="mb-title">{'\u2726'} AI Coach</span>
+        <span className="mb-title"><IconBot size={16} /> AI Coach</span>
         <button onClick={() => setCtxOpen(true)} aria-label="Study context">{'\uD83D\uDCCA'}</button>
       </div>
 
       {messages.length === 0 ? (
         <div className="ac-welcome">
           <div className="ac-logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3c.6 3.9 2.8 6.4 7 7-4.2.6-6.4 3.1-7 7-.6-3.9-2.8-6.4-7-7 4.2-.6 6.4-3.1 7-7z" />
-              <path d="M19 3c.2 1.4 1 2.3 2.4 2.5-1.4.2-2.2 1.1-2.4 2.5-.2-1.4-1-2.3-2.4-2.5C18 5.3 18.8 4.4 19 3z" />
-            </svg>
+            <IconBot size={34} />
           </div>
-          <h2>FocusFlow AI</h2>
+          <h2>FLOX AI</h2>
           <p className="ac-hi">Hey {userName} {'\uD83D\uDC4B'}</p>
           <p className="ac-q">What would you like to work on today?</p>
           <div className="ac-cards">
@@ -964,7 +995,7 @@ export default function AiTutorPage() {
               <div key={m.id} className="ac-row coach">
                 <div className="ac-card">
                   <header className="ac-brand">
-                    {'\u2726'} FocusFlow AI
+                    <IconBot size={14} /> FLOX AI
                     {m.mode === 'plan' && <em>{'\uD83D\uDCC5'} PLAN</em>}
                     {m.mode === 'exam' && <em>{'\uD83C\uDF93'} EXAM PREP</em>}
                     {m.mode === 'learn' && <em>{'\uD83E\uDDE0'} LEARN MODE</em>}
@@ -1085,7 +1116,7 @@ export default function AiTutorPage() {
           ref={taRef}
           rows={1}
           value={input}
-          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FocusFlow AI anything about your studies...'}
+          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX AI anything about your studies...'}
           onChange={(e) => { setInput(e.target.value); autoResize() }}
           onKeyDown={onComposerKeyDown}
           disabled={sending}

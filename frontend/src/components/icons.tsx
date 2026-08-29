@@ -137,6 +137,21 @@ export function IconOrbit(props: IconProps) {
   )
 }
 
+export function IconBot(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <rect x="4" y="7" width="16" height="12" rx="3" />
+      <circle cx="9" cy="13" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="13" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 3v4" />
+      <path d="M9 4h6" />
+      <path d="M2 11v5" />
+      <path d="M22 11v5" />
+    </svg>
+  )
+}
+
 export function IconChevron(props: IconProps) {
   const p = base(props)
   return (
