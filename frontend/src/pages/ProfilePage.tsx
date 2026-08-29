@@ -331,11 +331,6 @@ export default function ProfilePage() {
       className="pf-page"
       title="Profile"
       subtitle={subtitle}
-      actions={
-        <div className="pf-hero-actions">
-          <button className="ghost-action" onClick={logout} type="button">Logout</button>
-        </div>
-      }
     >
       {error && <div className="dc-alert">{error}</div>}
 
@@ -388,8 +383,6 @@ export default function ProfilePage() {
           {/* 3. Study Goals + Signature Streak Card */}
           <div className="pf-duo">
             <section className="pf-card">
-              <header className="pf-card-head">
-              </header>
               <dl className="pf-goal-list">
                 <div className="pf-goal-row">
                   <dt>Daily Study Goal</dt>
@@ -439,8 +432,6 @@ export default function ProfilePage() {
 
           {/* 4. Achievements */}
           <section className="pf-card">
-            <header className="pf-card-head">
-            </header>
             <div className="pf-achievements-grid">
               {achievements.map((a) => (
                 <div className={`pf-achievement ${a.unlocked ? 'unlocked' : ''}`} key={a.title} title={a.hint}>
@@ -454,8 +445,6 @@ export default function ProfilePage() {
 
           {/* 5. Study Overview */}
           <section className="pf-card">
-            <header className="pf-card-head">
-            </header>
             <table className="pf-overview-table">
               <thead>
                 <tr>
@@ -501,8 +490,6 @@ export default function ProfilePage() {
           {/* 6. Favorite Subjects + Learning Profile */}
           <div className="pf-duo">
             <section className="pf-card">
-              <header className="pf-card-head">
-              </header>
               {favoriteSubjects.length ? (
                 <ul className="pf-subject-list">
                   {favoriteSubjects.map((s) => (
@@ -526,8 +513,6 @@ export default function ProfilePage() {
             </section>
 
             <section className="pf-card">
-              <header className="pf-card-head">
-              </header>
               <dl className="pf-goal-list">
                 <div className="pf-goal-row">
                   <dt>Preferred Study Time</dt>
@@ -551,6 +536,15 @@ export default function ProfilePage() {
               </button>
             </section>
           </div>
+
+          {/* 7. Logout */}
+          <section className="pf-card pf-logout-card">
+            <div className="pf-logout-copy">
+              <strong>Logout</strong>
+              <span>Sign out of Flow AI on this device.</span>
+            </div>
+            <button className="danger-button" onClick={logout} type="button">Logout</button>
+          </section>
         </>
       )}
 

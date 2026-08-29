@@ -6,6 +6,7 @@ import PageShell from '../components/PageShell'
 import { IconAnalytics, IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile } from '../hooks/useUserProfile'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -513,6 +514,7 @@ export default function AiTutorPage() {
         message: text + (attText ? '\n\n' + attText : ''),
         context: { page: '/ai-tutor', mode: 'chat', hasAttachment: atts.length > 0 },
       })
+      notifyStudyActivity()
       appendMsgs([{ id: uid(), role: 'coach', text: data.reply, chips: data.suggestions?.slice(0, 3), mode: 'chat' }])
     } catch (err) {
       appendMsgs([{ id: uid(), role: 'coach', text: 'I am having trouble connecting right now. Please try again.', mode: 'chat' }])
@@ -678,6 +680,7 @@ export default function AiTutorPage() {
     setGenBusy(true)
     try {
       const { data } = await api.post<QuizShape>('/quiz/generate/', { topic, difficulty: 'medium', count: 10 })
+      notifyStudyActivity()
       appendMsgs([
         {
           id: uid(),
@@ -713,6 +716,7 @@ export default function AiTutorPage() {
             status: 'todo',
           })
         }
+        notifyStudyActivity()
         toast.success(msg.plan.length + ' sessions added to your calendar.')
       } catch (err) { toast.error(getErrorMessage(err)) }
       return
@@ -731,6 +735,7 @@ export default function AiTutorPage() {
             status: 'todo',
           })
         }
+        notifyStudyActivity()
         toast.success(plan.days.length + '-day exam plan added.')
       } catch (err) { toast.error(getErrorMessage(err)) }
     }

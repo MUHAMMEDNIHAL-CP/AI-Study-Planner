@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { clearAuthTokens, isAuthenticated } from '../lib/auth'
 import { initials, useUserProfile } from '../hooks/useUserProfile'
+import { onStudyActivity } from '../lib/studyActivity'
 import {
   IconBot,
   IconCalendar,
@@ -77,12 +78,21 @@ export default function Navigation() {
   const [streakData, setStreakData] = useState<StreakData | null>(null)
   const authed = isAuthenticated()
 
-  useEffect(() => {
+  const refreshStreak = useCallback(() => {
     if (!authed) return
     api.get<StreakData>('/study/dashboard/')
       .then(({ data }) => setStreakData(data))
       .catch(() => setStreakData(null))
   }, [authed])
+
+  useEffect(() => {
+    refreshStreak()
+  }, [refreshStreak])
+
+  useEffect(() => {
+    const unsubscribe = onStudyActivity(() => refreshStreak())
+    return unsubscribe
+  }, [refreshStreak])
 
   function logout() {
     clearAuthTokens()

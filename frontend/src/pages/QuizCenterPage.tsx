@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -347,6 +348,7 @@ export default function QuizCenterPage() {
         count: cqCount,
         ...payloadExtra,
       })
+      notifyStudyActivity()
       if (cqSource !== 'exam') setExamMeta(null)
       beginQuiz(data)
       setGenOpen(false)
@@ -364,6 +366,7 @@ export default function QuizCenterPage() {
         count: 10,
         source: 'subject',
       })
+      notifyStudyActivity()
       setExamMeta(null)
       beginQuiz(data)
       toast.success('Quiz ready \u2014 good luck!')

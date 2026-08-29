@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -350,6 +351,7 @@ export default function NotesPage() {
         await api.patch('/notes/' + editId + '/', payload)
       } else {
         const { data } = await api.post<Note>('/notes/', payload)
+        notifyStudyActivity()
         setEditId(data.id)
         setNotes((prev) => [data, ...prev])
       }
@@ -445,6 +447,7 @@ export default function NotesPage() {
         message: TOOL_PROMPTS[key] + '\n\nNote content:\n' + ctx.slice(0, 6000),
         context: { page: '/notes', mode: key },
       })
+      notifyStudyActivity()
       setAiPanel({ open: true, mode: 'result', tool: key, text: data.reply ?? 'No result generated.', loading: false })
     } catch (err) {
       setAiPanel({ open: true, mode: 'result', tool: key, text: '', loading: false })
@@ -464,6 +467,7 @@ export default function NotesPage() {
         message: q + '\n\nUse this note as context:\n' + ctx.slice(0, 6000),
         context: { page: '/notes', mode: 'ask' },
       })
+      notifyStudyActivity()
       setAiPanel({ open: true, mode: 'chat', text: data.reply ?? 'No answer generated.', loading: false })
     } catch (err) {
       setAiPanel({ open: true, mode: 'chat', text: '', loading: false })
@@ -519,6 +523,7 @@ export default function NotesPage() {
     setQuizBusy(true)
     try {
       await api.post('/quiz/generate/', { topic: src, difficulty: quizDifficulty, count: Number(quizCount) })
+      notifyStudyActivity()
       toast.success(src + ' \u00B7 ' + quizCount + ' questions ready!')
       setQuizOpen(false)
       navigate('/quiz')

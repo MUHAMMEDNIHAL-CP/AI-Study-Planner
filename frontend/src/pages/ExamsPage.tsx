@@ -3,7 +3,7 @@ import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { api, getErrorMessage } from '../lib/api'
-
+import { notifyStudyActivity } from '../lib/studyActivity'
 type Exam = {
   id: number
   subject: number | null
@@ -190,6 +190,7 @@ export default function ExamsPage() {
         notes: formNotes.trim(),
         modules: formModules.filter(Boolean).map((name) => ({ name, completed: false })),
       })
+      notifyStudyActivity()
       toast.success('Exam created')
       resetForm()
       setShowCreateModal(false)

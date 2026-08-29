@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Subject = { id: number; name: string; color?: string }
 type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; started_at: string; mood?: string }
@@ -350,6 +351,7 @@ export default function FocusModePage() {
         message: text,
         context: { page: '/focus', mode: 'focus-help', subject: subjectName, topic },
       })
+      notifyStudyActivity()
       setAiMessages((prev) => [...prev, { role: 'ai', text: data.reply }])
     } catch (err) {
       setAiMessages((prev) => [...prev, { role: 'ai', text: 'I could not connect right now. Your timer is still running — try again in a moment.' }])
@@ -371,6 +373,7 @@ export default function FocusModePage() {
         notes: reviewNote || 'Focus session',
         date: new Date().toISOString().slice(0, 10),
       })
+      notifyStudyActivity()
       const { data } = await api.get<FocusSession[]>('/productivity/focus-sessions/')
       setSessions(data)
       toast.success('📊 Progress updated — great work!')

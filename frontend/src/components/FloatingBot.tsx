@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useUserProfile, initials } from '../hooks/useUserProfile'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 type ChatMessage = {
   id: string
@@ -164,6 +165,7 @@ export default function FloatingBot() {
         message: text.trim(),
         context: { page: currentPath },
       })
+      notifyStudyActivity()
 
       const botMsg: ChatMessage = {
         id: 'bot-' + Date.now(),

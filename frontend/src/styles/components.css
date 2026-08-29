@@ -2513,7 +2513,7 @@ select {
 }
 
 .page-shell-user {
-  padding: 5px 6px 5px 14px;
+  padding: 4px 6px 4px 6px;
   border: 1px solid var(--line);
   border-radius: 20px;
 }
@@ -3234,8 +3234,16 @@ button.st-row:hover,
 .pf-card {
   background: var(--glass);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 18px;
   padding: 24px;
+  box-shadow: 0 14px 40px -30px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 46px -28px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Header card ── */
@@ -3244,7 +3252,9 @@ button.st-row:hover,
   align-items: center;
   gap: 26px;
   margin-bottom: 20px;
-  background: var(--gradient-surface);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(255, 107, 74, 0.08), transparent 52%),
+    var(--gradient-surface);
   box-shadow: var(--shadow);
 }
 
@@ -3263,7 +3273,9 @@ button.st-row:hover,
   font-size: 2.3rem;
   font-weight: 900;
   letter-spacing: 0.02em;
-  box-shadow: 0 18px 42px rgba(255, 107, 74, 0.18);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent),
+    0 18px 42px rgba(255, 107, 74, 0.18);
 }
 
 .pf-header-info {
@@ -3324,20 +3336,40 @@ button.st-row:hover,
   margin-bottom: 20px;
 }
 
+.pf-stat-flame { --pf-c: var(--accent); }
+.pf-stat-time { --pf-c: var(--cyan); }
+.pf-stat-tasks { --pf-c: var(--mint); }
+.pf-stat-sessions { --pf-c: var(--violet); }
+
 .pf-stat-card {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 18px 20px;
+  gap: 2px;
+  padding: 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 18px;
   background: var(--glass);
+  box-shadow: 0 10px 26px -22px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--pf-c, var(--accent)) 40%, var(--border));
+  box-shadow: 0 20px 40px -24px color-mix(in srgb, var(--pf-c, var(--accent)) 55%, transparent);
 }
 
 .pf-stat-icon {
-  font-size: 1.25rem;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--pf-c, var(--accent)) 13%, transparent);
+  color: var(--pf-c, var(--accent));
+  font-size: 1.2rem;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
 .pf-stat-card strong {
@@ -3354,11 +3386,6 @@ button.st-row:hover,
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
-.pf-stat-flame .pf-stat-icon { color: var(--accent); }
-.pf-stat-time .pf-stat-icon { color: var(--cyan); }
-.pf-stat-tasks .pf-stat-icon { color: var(--mint); }
-.pf-stat-sessions .pf-stat-icon { color: var(--violet); }
 
 /* ── Shared card pieces ── */
 .pf-duo {
@@ -3388,11 +3415,7 @@ button.st-row:hover,
   justify-content: space-between;
   gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-[data-theme='light'] .pf-goal-row {
-  border-bottom-color: rgba(15, 23, 42, 0.07);
+  border-bottom: 1px solid var(--border);
 }
 
 .pf-goal-row:last-child {
@@ -3421,6 +3444,42 @@ button.st-row:hover,
   font-size: 0.88rem;
 }
 
+.pf-logout-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.pf-logout-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 100% 0%, rgba(255, 107, 107, 0.09), transparent 55%);
+}
+
+.pf-logout-card > * { position: relative; }
+
+.pf-logout-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pf-logout-copy strong { font-size: 0.98rem; font-weight: 800; }
+.pf-logout-copy span { color: var(--text-dim); font-size: 0.82rem; }
+
+.pf-logout-card .danger-button {
+  min-height: 46px;
+  border-radius: 999px;
+  padding: 0 24px;
+}
+
 /* ── Signature streak card ── */
 .pf-streak-card {
   display: flex;
@@ -3439,6 +3498,10 @@ button.st-row:hover,
   letter-spacing: -0.03em;
   line-height: 1;
   margin-bottom: 4px;
+  background: linear-gradient(90deg, var(--amber), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .pf-streak-block strong {
@@ -3508,6 +3571,12 @@ button.st-row:hover,
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
   text-align: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-achievement:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
 }
 
 .pf-achievement-icon {
@@ -3534,6 +3603,7 @@ button.st-row:hover,
 .pf-achievement.unlocked {
   border-color: color-mix(in srgb, var(--mint) 40%, transparent);
   background: color-mix(in srgb, var(--mint) 9%, transparent);
+  box-shadow: 0 12px 26px -20px color-mix(in srgb, var(--mint) 60%, transparent);
 }
 
 .pf-achievement.unlocked .pf-achievement-icon {
@@ -3819,6 +3889,34 @@ button.st-row:hover,
   min-height: 46px;
   padding: 0 20px;
   font-size: 0.9rem;
+}
+
+/* ── Profile responsive ── */
+@media (max-width: 900px) {
+  .pf-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .pf-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .pf-avatar span {
+    width: 88px;
+    height: 88px;
+    font-size: 1.7rem;
+  }
+
+  .pf-header-info h2 { font-size: 1.35rem; }
+  .pf-card { padding: 18px 16px; }
+  .pf-duo { grid-template-columns: 1fr; }
+  .pf-stat-card { padding: 14px 16px; }
+  .pf-field-row { grid-template-columns: 1fr; }
+  .pf-logout-card .danger-button { width: 100%; }
 }
 
 /* ── Responsive ── */
@@ -4439,11 +4537,11 @@ button.bn-drawer-row {
 /* Hide floating bot above bottom nav on mobile */
 @media (max-width: 1200px) {
   .floating-bot-btn {
-    bottom: 76px !important;
+    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
   }
 
   .floating-bot-panel {
-    bottom: 80px !important;
+    bottom: calc(142px + env(safe-area-inset-bottom)) !important;
   }
 }
 

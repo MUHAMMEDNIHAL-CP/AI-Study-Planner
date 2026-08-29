@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── API shapes ────────────────────────────────────────────── */
 
@@ -245,6 +246,7 @@ export default function DashboardPage() {
     setTasks((c) => c.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
     try {
       await api.patch(`/study/tasks/${task.id}/`, { status: next })
+      if (next === 'done') notifyStudyActivity()
       const { data } = await api.get<DashboardSummary>('/study/dashboard/')
       setDashboard(data)
     } catch (err) {
@@ -261,6 +263,7 @@ export default function DashboardPage() {
     setNewTaskTitle('')
     try {
       const { data: created } = await api.post<ApiTask>('/study/tasks/', { title, status: 'todo', priority: 'medium' })
+      notifyStudyActivity()
       setTasks((c) => [...c, created])
     } catch (err) {
       setError(getErrorMessage(err))

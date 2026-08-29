@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Task = {
   id: number
@@ -144,6 +145,7 @@ export default function TasksPage() {
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
     try {
       await api.patch(`/study/tasks/${task.id}/`, { status: next })
+      if (next === 'done') notifyStudyActivity()
     } catch (err) {
       toast.error(getErrorMessage(err))
       void loadAll()
@@ -161,6 +163,7 @@ export default function TasksPage() {
         priority: formPriority,
         description: formDescription.trim(),
       })
+      notifyStudyActivity()
       toast.success('Task created')
       resetForm()
       setShowModal(false)

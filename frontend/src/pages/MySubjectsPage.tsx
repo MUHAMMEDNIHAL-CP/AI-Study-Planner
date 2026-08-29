@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Subject = {
   id: number; name: string; subject_code: string; teacher: string; color: string
@@ -59,6 +60,7 @@ export default function MySubjectsPage() {
         color: fColor,         weekly_goal_hours: Number(fGoal) || 5, weak_topics: fWeak.trim(),
         target_grade: fGrade.trim(),
       })
+      notifyStudyActivity()
       toast.success('Subject created'); resetForm(); setShowModal(false); await load()
     } catch (err) { toast.error(getErrorMessage(err)) }
   }

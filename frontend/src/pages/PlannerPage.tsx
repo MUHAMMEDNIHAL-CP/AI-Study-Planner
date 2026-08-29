@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconPlanner, IconSpark } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Subject = {
   id: number
@@ -335,6 +336,7 @@ export default function PlannerPage() {
         priority: sessionPriority,
         status: 'todo',
       })
+      notifyStudyActivity()
       toast.success('Study session created')
       setModal(null)
       resetSessionForm()
@@ -357,6 +359,7 @@ export default function PlannerPage() {
         exam_date: aiExamDate,
         goal: `Focus on ${weakSubj?.name || 'weak areas'}, leverage ${strongSubj?.name || 'strong subjects'}`,
       })
+      notifyStudyActivity()
       setPlan(data)
       toast.success('AI plan generated')
       setModal(null)

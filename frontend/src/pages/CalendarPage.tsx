@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -511,8 +512,10 @@ export default function CalendarPage() {
             priority: 'medium',
             status: 'todo',
           })
+          notifyStudyActivity()
         } else if (form.type === 'exam') {
           await api.post('/study/exams/', { title, subject: form.subject ? Number(form.subject) : null, date: form.date, priority: 'medium' })
+          notifyStudyActivity()
         } else {
           const subj = subjects.find((s) => String(s.id) === form.subject)
           const entry: CustomEvent = { id: `c${Date.now()}`, type: form.type, title, subjectName: subj?.name, date: form.date, time: form.time, minutes: Number(form.duration) || 30 }
@@ -599,6 +602,7 @@ export default function CalendarPage() {
           status: 'todo',
         })
       }
+      notifyStudyActivity()
       const { data } = await api.get<Task[]>('/study/tasks/')
       setTasks(data)
       toast.success(`Added ${aiSlots.length} study sessions.`)
