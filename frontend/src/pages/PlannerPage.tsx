@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconPlanner, IconSpark } from '../components/icons'
@@ -162,6 +162,15 @@ function priorityColor(priority?: string): string {
   if (priority === 'high') return '#ef4444'
   if (priority === 'low') return '#3b82f6'
   return '#f59e0b'
+}
+
+function getSubjectColorByName(name: string, subjects: Subject[]): string {
+  const idx = subjects.findIndex((s) => s.name.toLowerCase() === name.toLowerCase())
+  return SUBJECT_COLORS[Math.max(0, idx) % SUBJECT_COLORS.length]
+}
+
+function subjectInitial(text: string, fallback = '•'): string {
+  return (text.trim().charAt(0) || fallback).toUpperCase()
 }
 
 export default function PlannerPage() {
@@ -373,51 +382,57 @@ export default function PlannerPage() {
       title="Plan Your Study"
       subtitle="Build your schedule."
     >
-      <div className="pl-actions">
-        <button className="pl-action-btn" onClick={() => { resetSessionForm(); setModal('session') }} type="button">
-          <IconPlanner size={16} /> + Create Session
-        </button>
-        <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
-          <IconSpark size={16} /> AI Generate
-        </button>
-      </div>
+      <div className="pl-toolbar">
+        <div className="pl-toolbar-left">
+          <div className="pl-view-toggle">
+            {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
+              <button
+                key={mode}
+                className={`pl-view-btn ${viewMode === mode ? 'pl-view-active' : ''}`}
+                onClick={() => setViewMode(mode)}
+                type="button"
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
 
-      <div className="pl-view-toggle">
-        {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
-          <button
-            key={mode}
-            className={`pl-view-btn ${viewMode === mode ? 'pl-view-active' : ''}`}
-            onClick={() => setViewMode(mode)}
-            type="button"
-          >
-            {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      <div className="cal-nav planner-cal-nav">
-        <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, -1, viewMode))} type="button">&#8249;</button>
-        <div className="cal-nav-center">
-          <span className="cal-nav-title">
-            {viewMode === 'day' && formatFullDate(selectedDate)}
-            {viewMode === 'week' && `${shortDate(weekStart)} – ${shortDate(weekEnd)}`}
-            {viewMode === 'month' && calendarInfo.label}
-          </span>
-          <button className="cal-today-btn" onClick={() => setSelectedDate(toLocalDateInput())} type="button">Today</button>
+          <div className="cal-nav planner-cal-nav">
+            <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, -1, viewMode))} type="button" aria-label="Previous">&#8249;</button>
+            <div className="cal-nav-center">
+              <span className="cal-nav-title">
+                {viewMode === 'day' && formatFullDate(selectedDate)}
+                {viewMode === 'week' && `${shortDate(weekStart)} – ${shortDate(weekEnd)}`}
+                {viewMode === 'month' && calendarInfo.label}
+              </span>
+              <button className="cal-today-btn" onClick={() => setSelectedDate(toLocalDateInput())} type="button">Today</button>
+            </div>
+            <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, 1, viewMode))} type="button" aria-label="Next">&#8250;</button>
+          </div>
         </div>
-        <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, 1, viewMode))} type="button">&#8250;</button>
+
+        <div className="pl-actions">
+          <button className="pl-action-btn" onClick={() => { resetSessionForm(); setModal('session') }} type="button">
+            <IconPlanner size={16} /> Create Session
+          </button>
+          <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
+            <IconSpark size={16} /> AI Generate
+          </button>
+        </div>
       </div>
 
       {planBlocks.length > 0 && (
         <div className="pl-card pl-plan-card">
           <div className="pl-plan-header">
             <IconSpark size={18} />
+            <h2 className="pl-plan-title">AI Study Plan</h2>
           </div>
           {plan && <p className="pl-plan-tip">{plan.focus_tip}</p>}
           <div className="pl-plan-list">
             {planBlocks.map((block, i) => (
-              <div key={`${block.time}-${i}`} className="pl-plan-block">
+              <div key={`${block.time}-${i}`} className="pl-plan-block" style={{ '--pl-color': getSubjectColorByName(block.subject, subjects) } as CSSProperties}>
                 <span className="pl-plan-time">{block.time}</span>
+                <span className="pl-plan-dot" />
                 <span className="pl-plan-subject">{block.subject}</span>
                 <span className="pl-plan-dur">{minutesLabel(block.duration_minutes)}</span>
                 <span className="pl-plan-task">{block.task}</span>
@@ -442,21 +457,19 @@ export default function PlannerPage() {
                       {hourTasks.length === 0 ? (
                         <div className="pl-timeline-empty" />
                       ) : (
-                        hourTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="pl-timeline-task"
-                            style={{ borderLeftColor: getSubjectColor(task.subject, subjects) }}
-                          >
-                            <div className="pl-timeline-task-info">
-                              <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
-                              <span className="pl-timeline-task-title">{task.title}</span>
+                        hourTasks.map((task) => {
+                          const color = getSubjectColor(task.subject, subjects)
+                          return (
+                            <div key={task.id} className="pl-timeline-task" style={{ '--pl-color': color } as CSSProperties}>
+                              <span className="pl-avatar" style={{ '--pl-color': color } as CSSProperties}>{subjectInitial(task.subject_name || task.title, 'S')}</span>
+                              <div className="pl-timeline-task-info">
+                                <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
+                                <span className="pl-timeline-task-title">{task.title}</span>
+                              </div>
+                              <span className="pl-timeline-task-dur">{minutesLabel(task.duration_minutes)}</span>
                             </div>
-                            <span className="pl-timeline-task-dur" style={{ background: getSubjectColor(task.subject, subjects) + '22', color: getSubjectColor(task.subject, subjects) }}>
-                              {minutesLabel(task.duration_minutes)}
-                            </span>
-                          </div>
-                        ))
+                          )
+                        })
                       )}
                     </div>
                   </div>
@@ -464,7 +477,8 @@ export default function PlannerPage() {
               })}
             </div>
             <div className="pl-day-summary">
-              {dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''} planned · {dayHours.toFixed(1)} hours
+              <span className="pl-chip">{dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''}</span>
+              <span className="pl-chip">{dayHours.toFixed(1)} hours planned</span>
             </div>
           </div>
 
@@ -477,14 +491,16 @@ export default function PlannerPage() {
                 <div className="pl-exam-list">
                   {upcomingExams.map((exam) => {
                     const days = daysUntil(exam.date)
+                    const color = getSubjectColor(exam.subject, subjects)
                     return (
-                      <div key={exam.id} className="pl-exam-item">
+                      <div key={exam.id} className="pl-exam-item" style={{ '--pl-color': color } as CSSProperties}>
+                        <span className="pl-avatar" style={{ '--pl-color': color } as CSSProperties}>{subjectInitial(exam.title)}</span>
                         <div className="pl-exam-info">
                           <span className="pl-exam-name">{exam.title}</span>
                           <span className="pl-exam-meta">{exam.subject_name || 'General'} · {shortDate(exam.date)}</span>
                         </div>
                         <span className={`pl-exam-badge ${days <= 3 ? 'pl-badge-urgent' : days <= 7 ? 'pl-badge-warn' : 'pl-badge-ok'}`}>
-                          {days}
+                          {days}d
                         </span>
                       </div>
                     )
@@ -498,12 +514,12 @@ export default function PlannerPage() {
               <div className="pl-stats-list">
                 {[
                   { label: 'Sessions', value: weekSessions.length },
-                  { label: 'Total hours', value: `${weekHours.toFixed(1)}h` },
-                  { label: 'Completion', value: `${completionRate}%` },
+                  { label: 'Hours', value: `${weekHours.toFixed(1)}h` },
+                  { label: 'Done', value: `${completionRate}%` },
                 ].map((stat) => (
-                  <div key={stat.label} className="pl-stat-row">
-                    <span className="pl-stat-label">{stat.label}</span>
+                  <div key={stat.label} className="pl-stat-tile">
                     <span className="pl-stat-value">{stat.value}</span>
+                    <span className="pl-stat-label">{stat.label}</span>
                   </div>
                 ))}
               </div>
@@ -531,7 +547,7 @@ export default function PlannerPage() {
                       <div className="pl-week-empty" />
                     ) : (
                       dayTasks.map((task) => (
-                        <div key={task.id} className="pl-week-task" style={{ borderLeftColor: getSubjectColor(task.subject, subjects), background: getSubjectColor(task.subject, subjects) + '14' }}>
+                        <div key={task.id} className="pl-week-task" style={{ '--pl-color': getSubjectColor(task.subject, subjects) } as CSSProperties}>
                           <span className="pl-week-task-name">{task.subject_name || 'Study'}</span>
                           <span className="pl-week-task-title">{task.title}</span>
                         </div>

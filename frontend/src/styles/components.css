@@ -4398,3 +4398,142 @@ button.bn-drawer-row {
     bottom: 80px !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Study Planner polish (pl-*)
+   ════════════════════════════════════════════════════════════ */
+
+/* Toolbar alignment */
+.pl-toolbar { align-items: center; }
+.pl-toolbar-left {
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.pl-actions { flex-shrink: 0; }
+.pl-view-toggle { align-items: center; }
+.pl-view-btn { height: 34px; padding: 0 16px; }
+.planner-cal-nav { align-items: center; }
+.cal-nav-btn { width: 34px; height: 34px; }
+.cal-today-btn { height: 34px; padding: 0 13px; }
+.cal-nav-center { gap: 10px; }
+
+/* Scrollable daily schedule */
+.pl-timeline-grid {
+  max-height: 430px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 40%, transparent) transparent;
+}
+.pl-timeline-grid::-webkit-scrollbar { width: 8px; }
+.pl-timeline-grid::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 999px;
+}
+.pl-timeline-grid::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.pl-timeline-grid::-webkit-scrollbar-track { background: transparent; }
+
+/* ════════════════════════════════════════════════════════════
+   Shared modal polish (Tasks / Exams / Planner / Subjects)
+   ════════════════════════════════════════════════════════════ */
+
+/* Field alignment */
+.cal-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cal-modal-field label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.cal-modal-field input,
+.cal-modal-field select,
+.cal-modal-field textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cal-modal-field input:focus,
+.cal-modal-field select:focus,
+.cal-modal-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.cal-modal-field select option {
+  color: var(--text);
+  background: var(--bg);
+}
+.cal-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Modal header */
+.zq-modal-head { margin-bottom: 2px; }
+.zq-modal-head h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.zq-modal-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.zq-modal-close:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+/* Modal CTA buttons — match app-wide accent gradient */
+.cal-modal-create,
+.cal-modal-actions > button.cal-save,
+.cal-modal-actions > button.cal-startfocus {
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #f97316);
+  color: #fff;
+  box-shadow: 0 10px 26px -10px rgba(255, 107, 74, 0.7);
+}
+.cal-modal-create:hover:not(:disabled),
+.cal-modal-actions > button.cal-save:hover:not(:disabled),
+.cal-modal-actions > button.cal-startfocus:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: none;
+  box-shadow: 0 14px 30px -10px rgba(255, 107, 74, 0.75);
+}
+.cal-modal-actions {
+  align-items: center;
+  margin-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .cal-modal-row { grid-template-columns: 1fr; }
+}

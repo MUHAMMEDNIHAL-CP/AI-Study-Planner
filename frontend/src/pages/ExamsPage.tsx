@@ -48,7 +48,7 @@ type ExamDetail = {
   tomorrow_plan: { sessions: number; minutes: number }
 }
 
-type Subject = { id: number; name: string }
+type Subject = { id: number; name: string; color: string }
 
 function toLocalDateInput(date = new Date()): string {
   const offset = date.getTimezoneOffset() * 60_000
@@ -236,164 +236,83 @@ export default function ExamsPage() {
   }
 
   if (view === 'detail' && selectedExamId) {
+    const detailColor = examDetail?.subject?.color ?? '#a78bfa'
     return (
       <PageShell title="Exam Detail" subtitle="">
         <div style={{ marginBottom: 16 }}>
-          <button className="ghost-action" onClick={backToList} type="button">
-            &#8249; Back to Exams
+          <button className="ms-back" onClick={backToList} type="button">
+            &#8592; Back to Exams
           </button>
         </div>
 
         {detailLoading ? (
-          <div className="page-card" style={{ padding: 60, textAlign: 'center', opacity: 0.6 }}>
-            Loading exam details...
-          </div>
+          <div className="ex-center">Loading exam details...</div>
         ) : !examDetail ? (
-          <div className="page-card" style={{ padding: 60, textAlign: 'center' }}>
-            Exam not found.
-          </div>
+          <div className="ex-center">Exam not found.</div>
         ) : (
-          <>
-            <div className="page-card" style={{ padding: '1.5rem', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div className="ex-detail" style={{ '--ex-color': detailColor, '--sub-color': detailColor } as React.CSSProperties}>
+            <div className="ex-hero">
+              <div className="ex-hero-left">
+                <span className="ms-dot-lg" style={{ background: detailColor, boxShadow: `0 0 16px ${detailColor}55` }} />
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {examDetail.subject && (
-                      <span
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          background: examDetail.subject.color,
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>{examDetail.title}</h2>
+                  <h2>{examDetail.title}</h2>
+                  <div className="ex-hero-meta">
+                    {examDetail.subject && <span className="ex-hero-subject">{examDetail.subject.name}</span>}
+                    <span className="tk-priority" style={{ background: priorityBadgeStyle(examDetail.priority).bg, color: priorityBadgeStyle(examDetail.priority).color, borderColor: priorityBadgeStyle(examDetail.priority).bg }}>{examDetail.priority}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-                    {examDetail.subject && (
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{examDetail.subject.name}</span>
-                    )}
-                    <span
-                      style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '3px 10px',
-                        borderRadius: 8,
-                        background: priorityBadgeStyle(examDetail.priority).bg,
-                        color: priorityBadgeStyle(examDetail.priority).color,
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      {examDetail.priority}
-                    </span>
-                  </div>
-                  <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
-                    {fullDate(examDetail.date)}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div
-                    style={{
-                      fontSize: '2.5rem',
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      ...(() => {
-                        const badge = daysLeftBadgeColor(examDetail.days_left)
-                        return { color: badge.color }
-                      })(),
-                    }}
-                  >
-                    {examDetail.days_left}
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>days left</span>
+                  <p className="ex-hero-date">{fullDate(examDetail.date)}</p>
                 </div>
               </div>
-
-              <div style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Preparation</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{examDetail.preparation_pct}%</span>
-                </div>
-                <div className="streak-bar" style={{ height: 10 }}>
-                  <i style={{ width: `${examDetail.preparation_pct}%` }} />
-                </div>
-              </div>
-
-              {examDetail.notes && (
-                <p style={{ marginTop: 14, fontSize: '0.85rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                  {examDetail.notes}
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-              <div className="page-card" style={{ padding: '1.25rem' }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{examDetail.today_plan.sessions}</div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                  sessions &middot; {examDetail.today_plan.minutes} min
-                </div>
-              </div>
-              <div className="page-card" style={{ padding: '1.25rem' }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 4 }}>{examDetail.tomorrow_plan.sessions}</div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                  sessions &middot; {examDetail.tomorrow_plan.minutes} min
-                </div>
+              <div className="ex-hero-days">
+                <div className="ex-hero-num" style={{ color: daysLeftBadgeColor(examDetail.days_left).color }}>{examDetail.days_left}</div>
+                <span className="ex-hero-label">days left</span>
               </div>
             </div>
 
-            <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div className="ex-card ex-card-block">
+              <div className="ex-block-head">
+                <span className="ex-card-title">Preparation</span>
+                <span className="ex-pct-label">{examDetail.preparation_pct}%</span>
+              </div>
+              <div className="ex-progress-track">
+                <div className="ex-progress-fill" style={{ width: `${examDetail.preparation_pct}%`, background: `linear-gradient(90deg, ${detailColor}, var(--cyan))` }} />
+              </div>
+              {examDetail.notes && <p className="ex-notes">{examDetail.notes}</p>}
+            </div>
+
+            <div className="ex-plan-grid">
+              <div className="ex-card ex-plan">
+                <span className="ex-card-title">Today</span>
+                <strong className="ex-plan-num">{examDetail.today_plan.sessions}</strong>
+                <span className="ex-plan-sub">sessions &middot; {examDetail.today_plan.minutes} min</span>
+              </div>
+              <div className="ex-card ex-plan">
+                <span className="ex-card-title">Tomorrow</span>
+                <strong className="ex-plan-num">{examDetail.tomorrow_plan.sessions}</strong>
+                <span className="ex-plan-sub">sessions &middot; {examDetail.tomorrow_plan.minutes} min</span>
+              </div>
+            </div>
+
+            <div className="ex-card ex-card-block">
+              <div className="ex-block-head">
+                <span className="ex-card-title">Modules</span>
                 <button className="ghost-action" onClick={() => setShowEditModules(!showEditModules)} type="button" style={{ fontSize: '0.78rem', padding: '4px 12px' }}>
                   {showEditModules ? 'Done' : 'Edit'}
                 </button>
               </div>
               {examDetail.modules.length === 0 ? (
-                <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>No modules added.</p>
+                <p className="ex-empty-text">No modules added.</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="ex-modules">
                   {examDetail.modules.map((mod, i) => (
                     <div
                       key={`${mod.name}-${i}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        background: 'rgba(255,255,255,0.03)',
-                        cursor: showEditModules ? 'pointer' : 'default',
-                      }}
+                      className={`ex-module ${mod.completed ? 'ex-module-done' : ''}`}
                       onClick={showEditModules ? () => void toggleModule(i) : undefined}
+                      style={{ cursor: showEditModules ? 'pointer' : 'default' }}
                     >
-                      <span
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: 6,
-                          border: mod.completed ? 'none' : '2px solid var(--line)',
-                          background: mod.completed ? 'linear-gradient(135deg, var(--purple), var(--cyan))' : 'transparent',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: '#fff',
-                          fontSize: '0.72rem',
-                          fontWeight: 900,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {mod.completed ? '✓' : ''}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.88rem',
-                          fontWeight: 500,
-                          textDecoration: mod.completed ? 'line-through' : 'none',
-                          opacity: mod.completed ? 0.6 : 1,
-                        }}
-                      >
-                        {mod.name}
-                      </span>
+                      <span className={`ex-mod-check ${mod.completed ? 'ex-mod-check-done' : ''}`}>{mod.completed ? '✓' : ''}</span>
+                      <span className="ex-mod-name">{mod.name}</span>
                     </div>
                   ))}
                 </div>
@@ -401,68 +320,34 @@ export default function ExamsPage() {
             </div>
 
             {examDetail.weak_areas.length > 0 && (
-              <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              <div className="ex-card ex-card-block">
+                <span className="ex-card-title">Weak Areas</span>
+                <div className="ex-weak-tags">
                   {examDetail.weak_areas.map((area) => (
-                    <span
-                      key={area}
-                      style={{
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        padding: '4px 12px',
-                        borderRadius: 8,
-                        background: 'rgba(239,68,68,0.12)',
-                        color: '#fca5a5',
-                      }}
-                    >
-                      {area}
-                    </span>
+                    <span key={area} className="ex-weak-tag">{area}</span>
                   ))}
                 </div>
               </div>
             )}
 
             {examDetail.upcoming_sessions.length > 0 && (
-              <div className="page-card" style={{ padding: '1.25rem', marginBottom: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              <div className="ex-card ex-card-block">
+                <span className="ex-card-title">Upcoming Sessions</span>
+                <div className="ex-sessions">
                   {examDetail.upcoming_sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: 8,
-                        background: 'rgba(255,255,255,0.03)',
-                      }}
-                    >
+                    <div key={session.id} className="ex-session">
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{session.title}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                          {shortDate(session.due_date)} &middot; {session.duration_minutes} min
-                        </div>
+                        <div className="ex-session-title">{session.title}</div>
+                        <div className="ex-session-sub">{shortDate(session.due_date)} &middot; {session.duration_minutes} min</div>
                       </div>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: 8,
-                          background: priorityBadgeStyle(session.priority).bg,
-                          color: priorityBadgeStyle(session.priority).color,
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {session.priority}
-                      </span>
+                      <span className="tk-priority" style={{ background: priorityBadgeStyle(session.priority).bg, color: priorityBadgeStyle(session.priority).color, borderColor: priorityBadgeStyle(session.priority).bg }}>{session.priority}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div className="ex-delete-row">
               {confirmDeleteId === examDetail.id ? (
                 <>
                   <button className="ghost-action" onClick={() => setConfirmDeleteId(null)} type="button">
@@ -487,7 +372,7 @@ export default function ExamsPage() {
                 </button>
               )}
             </div>
-          </>
+          </div>
         )}
       </PageShell>
     )
@@ -497,34 +382,25 @@ export default function ExamsPage() {
     <PageShell
       title="Exam Preparation"
       subtitle="Track your exam readiness and plan your preparation."
+      actions={
+        <button className="ms-add-btn" onClick={() => { resetForm(); setShowCreateModal(true) }} type="button">+ Add Exam</button>
+      }
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-        <div className="page-card" style={{ padding: '1.1rem' }}>
-          <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: 6, minHeight: 30 }}>
-            {nearestExam ? nearestExam.title : 'No exams'}
-          </div>
-          {nearestExam && (
-            <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>
-              {shortDate(nearestExam.date)}
-            </div>
-          )}
+      <div className="ex-stats">
+        <div className="ex-stat ex-stat-wide" style={{ '--ex-color': nearestExam ? (subjects.find((s) => s.id === nearestExam.subject)?.color ?? '#a78bfa') : '#a78bfa' } as React.CSSProperties}>
+          <span className="ex-stat-label">Nearest Exam</span>
+          <strong className="ex-stat-title">{nearestExam ? nearestExam.title : 'No exams'}</strong>
+          <span className="ex-stat-sub">{nearestExam ? shortDate(nearestExam.date) : 'Add an exam to get started'}</span>
         </div>
-        <div className="page-card" style={{ padding: '1.1rem' }}>
-          <div
-            style={{
-              fontSize: '1.8rem',
-              fontWeight: 800,
-              marginTop: 4,
-              ...(nearestExam ? daysLeftBadgeColor(nearestExam.days_left) : { color: 'var(--muted)' }),
-            }}
-          >
-            {nearestExam ? nearestExam.days_left : '—'}
-          </div>
+        <div className="ex-stat">
+          <span className="ex-stat-label">Days Left</span>
+          <strong className="ex-stat-num" style={nearestExam ? daysLeftBadgeColor(nearestExam.days_left) : { color: 'var(--muted)' }}>{nearestExam ? nearestExam.days_left : '—'}</strong>
         </div>
-        <div className="page-card" style={{ padding: '1.1rem' }}>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>{avgPrep}%</div>
-          <div className="streak-bar" style={{ marginTop: 8 }}>
-            <i style={{ width: `${avgPrep}%` }} />
+        <div className="ex-stat">
+          <span className="ex-stat-label">Avg Prep</span>
+          <strong className="ex-stat-num">{avgPrep}%</strong>
+          <div className="ex-stat-track">
+            <div className="ex-stat-fill" style={{ width: `${avgPrep}%` }} />
           </div>
         </div>
       </div>
@@ -537,98 +413,53 @@ export default function ExamsPage() {
           onAction={() => { resetForm(); setShowCreateModal(true) }}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="ex-list">
           {exams.map((exam) => {
             const badge = daysLeftBadgeColor(exam.days_left)
+            const sub = subjects.find((s) => s.id === exam.subject)
+            const color = sub?.color ?? '#a78bfa'
             return (
-              <div className="page-card" key={exam.id} style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {exam.subject_name && (
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: 'var(--purple)',
-                            flexShrink: 0,
-                          }}
-                        />
-                      )}
-                      <strong style={{ fontSize: '1rem' }}>{exam.title}</strong>
-                      {exam.subject_name && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{exam.subject_name}</span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{shortDate(exam.date)}</span>
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: 8,
-                          background: badge.bg,
-                          color: badge.color,
-                        }}
-                      >
-                        {exam.days_left}d left
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: 8,
-                          background: priorityBadgeStyle(exam.priority).bg,
-                          color: priorityBadgeStyle(exam.priority).color,
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {exam.priority}
-                      </span>
-                    </div>
+              <div key={exam.id} className="ex-card" style={{ '--ex-color': color, '--sub-color': color } as React.CSSProperties}>
+                <div className="ex-card-head">
+                  <span className="ms-avatar" style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
+                    {(exam.title.trim().charAt(0) || '•').toUpperCase()}
+                  </span>
+                  <div className="ex-card-main">
+                    <h3 className="ex-card-name">{exam.title}</h3>
+                    <span className="ex-card-subject">{exam.subject_name || 'No subject'}</span>
                   </div>
-                  <button className="ghost-action" onClick={() => openViewExam(exam.id)} type="button" style={{ fontSize: '0.82rem', flexShrink: 0 }}>
-                    View Exam
-                  </button>
+                  <span className="ex-days-badge" style={{ background: badge.bg, color: badge.color }}>
+                    {exam.days_left}d
+                  </span>
                 </div>
 
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Preparation</span>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{exam.preparation_pct}%</span>
+                <div className="ex-card-meta">
+                  <span className="ex-card-date">{shortDate(exam.date)}</span>
+                  <span className="tk-priority" style={{ background: priorityBadgeStyle(exam.priority).bg, color: priorityBadgeStyle(exam.priority).color, borderColor: priorityBadgeStyle(exam.priority).bg }}>{exam.priority}</span>
+                </div>
+
+                <div className="ex-progress-row">
+                  <div className="ex-progress-track">
+                    <div className="ex-progress-fill" style={{ width: `${exam.preparation_pct}%`, background: `linear-gradient(90deg, ${color}, var(--cyan))` }} />
                   </div>
-                  <div className="streak-bar">
-                    <i style={{ width: `${exam.preparation_pct}%` }} />
-                  </div>
+                  <span className="ex-progress-pct">{exam.preparation_pct}%</span>
                 </div>
 
                 {exam.modules.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  <div className="ex-mod-chips">
                     {exam.modules.slice(0, 5).map((mod, i) => (
-                      <span
-                        key={`${mod.name}-${i}`}
-                        style={{
-                          fontSize: '0.72rem',
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          background: mod.completed ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)',
-                          color: mod.completed ? '#86efac' : 'var(--muted)',
-                          fontWeight: 500,
-                        }}
-                      >
+                      <span key={`${mod.name}-${i}`} className={`ex-mod-chip ${mod.completed ? 'ex-mod-chip-done' : ''}`}>
                         {mod.completed ? '✓' : '○'} {mod.name}
                       </span>
                     ))}
-                    {exam.modules.length > 5 && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)', padding: '3px 6px' }}>
-                        +{exam.modules.length - 5} more
-                      </span>
-                    )}
+                    {exam.modules.length > 5 && <span className="ex-mod-more">+{exam.modules.length - 5} more</span>}
                   </div>
                 )}
+
+                <div className="ex-card-foot">
+                  <span className="ex-mod-count">{exam.modules.length} module{exam.modules.length === 1 ? '' : 's'}</span>
+                  <button className="ms-view-btn" onClick={() => openViewExam(exam.id)} type="button">View Exam <span className="ms-view-arrow">→</span></button>
+                </div>
               </div>
             )
           })}

@@ -18,7 +18,7 @@ type Task = {
   updated_at: string
 }
 
-type Subject = { id: number; name: string }
+type Subject = { id: number; name: string; color: string }
 
 type TabKey = 'today' | 'upcoming' | 'all' | 'completed' | 'overdue'
 
@@ -132,6 +132,17 @@ export default function TasksPage() {
     }
   }, [tasks, activeTab])
 
+  const tabCounts = useMemo(() => {
+    const count = (pred: (t: Task) => boolean) => tasks.filter(pred).length
+    return {
+      today: count((t) => isToday(t.due_date)),
+      upcoming: count((t) => isFuture(t.due_date) && t.status !== 'done'),
+      all: tasks.length,
+      completed: count((t) => t.status === 'done'),
+      overdue: count((t) => isPast(t.due_date) && t.status !== 'done'),
+    }
+  }, [tasks])
+
   async function toggleTask(task: Task) {
     const next = task.status === 'done' ? 'todo' : 'done'
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
@@ -184,199 +195,93 @@ export default function TasksPage() {
   }
 
   return (
-    <PageShell
+<PageShell
       title="Tasks"
       subtitle="Organize your study work. Filter by today, upcoming, or overdue to stay on track."
+      actions={
+        <button className="ms-add-btn" onClick={() => setShowModal(true)} type="button">+ Add Task</button>
+      }
     >
-      <div className="page-card" style={{ padding: '6px 10px', marginBottom: 0, display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+      <div className="tk-tabs">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             type="button"
-            style={{
-              padding: '10px 20px',
-              borderRadius: 10,
-              border: 'none',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: activeTab === tab.key ? 'linear-gradient(135deg, var(--purple), var(--cyan))' : 'transparent',
-              color: activeTab === tab.key ? '#21105c' : 'var(--muted)',
-              transition: 'all 0.15s',
-            }}
+            className={`tk-tab ${activeTab === tab.key ? 'tk-tab-active' : ''}`}
           >
             {tab.label}
-            {tab.key === 'overdue' && filteredTasks.length > 0 && activeTab !== 'overdue' ? null : null}
+            <span className="tk-tab-count">{tabCounts[tab.key]}</span>
           </button>
         ))}
       </div>
 
       <div style={{ marginTop: 16 }}>
         {loading ? (
-          <div className="page-card" style={{ textAlign: 'center', padding: 60 }}>
-            Loading tasks...
+          <div className="tk-empty">
+            <p>Loading tasks...</p>
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="page-card" style={{ textAlign: 'center', padding: 60 }}>
-            <h2 style={{ margin: '8px 0' }}>
-              {activeTab === 'overdue' ? 'All caught up!' : 'Nothing here yet'}
-            </h2>
-            <p style={{ color: 'var(--muted)' }}>
+          <div className="tk-empty">
+            <h2>{activeTab === 'overdue' ? 'All caught up!' : 'Nothing here yet'}</h2>
+            <p>
               {activeTab === 'overdue'
                 ? 'Great job staying on top of things.'
                 : 'Add a task to start tracking your study work.'}
             </p>
+            <button className="ms-add-btn" onClick={() => setShowModal(true)} type="button">+ Add Task</button>
           </div>
         ) : (
-          <div className="page-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ display: 'grid' }}>
-              {filteredTasks.map((task) => {
-                const done = task.status === 'done'
-                const ps = priorityStyles(task.priority)
-                const overdue = isPast(task.due_date) && !done
+          <div className="tk-list">
+            {filteredTasks.map((task) => {
+              const done = task.status === 'done'
+              const sub = subjects.find((s) => s.id === task.subject)
+              const ps = priorityStyles(task.priority)
+              const overdue = isPast(task.due_date) && !done
 
-                return (
-                  <div
-                    key={task.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'auto 1fr auto',
-                      gap: 14,
-                      alignItems: 'center',
-                      padding: '16px 24px',
-                      borderBottom: '1px solid var(--line)',
-                      opacity: done ? 0.5 : 1,
-                    }}
+              return (
+                <div
+                  key={task.id}
+                  className={`tk-item ${done ? 'tk-item-done' : ''} ${overdue ? 'tk-item-overdue' : ''} ${confirmDeleteId === task.id ? 'tk-item-delete' : ''}`}
+                  style={{ '--tk-color': sub?.color ?? '#a78bfa' } as React.CSSProperties}
+                >
+                  {task.subject_name && <div className="tk-ace" aria-hidden="true" />}
+                  <button
+                    className={`tk-check ${done ? 'tk-check-done' : ''}`}
+                    onClick={() => void toggleTask(task)}
+                    type="button"
+                    aria-label={done ? 'Mark as todo' : 'Mark as done'}
                   >
-                    <button
-                      onClick={() => void toggleTask(task)}
-                      type="button"
-                      aria-label={done ? 'Mark as todo' : 'Mark as done'}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        border: done ? 'none' : '2px solid var(--line)',
-                        background: done ? 'linear-gradient(135deg, var(--purple), var(--cyan))' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'grid',
-                        placeItems: 'center',
-                        color: '#fff',
-                        fontSize: '0.72rem',
-                        fontWeight: 900,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {done ? '✓' : ''}
-                    </button>
+                    {done ? '✓' : ''}
+                  </button>
 
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <strong
-                          style={{
-                            fontSize: '0.92rem',
-                            textDecoration: done ? 'line-through' : 'none',
-                          }}
-                        >
-                          {task.title}
-                        </strong>
-                        {task.subject_name && (
-                          <span
-                            style={{
-                              fontSize: '0.68rem',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                              background: 'rgba(203, 182, 255, 0.1)',
-                              color: '#cb89ff',
-                            }}
-                          >
-                            {task.subject_name}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                        <span
-                          style={{
-                            fontSize: '0.76rem',
-                            color: overdue ? '#fca5a5' : 'var(--muted)',
-                            fontWeight: overdue ? 700 : 400,
-                          }}
-                        >
-                          {shortDate(task.due_date)}
-                        </span>
-                        <span style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>
-                          {minutesLabel(task.duration_minutes)}
-                        </span>
-                      </div>
+                  <div className="tk-main">
+                    <div className="tk-title-row">
+                      <strong className="tk-title">{task.title}</strong>
+                      {task.subject_name && <span className="tk-subject-chip">{task.subject_name}</span>}
+                      {overdue && <span className="tk-overdue-badge">overdue</span>}
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: 8,
-                          background: ps.bg,
-                          color: ps.color,
-                          border: `1px solid ${ps.border}`,
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {task.priority}
-                      </span>
-                      {confirmDeleteId === task.id ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            type="button"
-                            style={{
-                              fontSize: '0.72rem',
-                              padding: '4px 10px',
-                              borderRadius: 6,
-                              border: '1px solid var(--line)',
-                              background: 'transparent',
-                              color: 'var(--muted)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            No
-                          </button>
-                          <button
-                            onClick={() => void handleDelete(task.id)}
-                            type="button"
-                            className="danger-button"
-                            style={{ minHeight: 0, padding: '4px 10px', fontSize: '0.72rem', borderRadius: 6 }}
-                          >
-                            Yes
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(task.id)}
-                          type="button"
-                          title="Delete task"
-                          style={{
-                            fontSize: '0.72rem',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            border: '1px solid var(--line)',
-                            background: 'transparent',
-                            color: 'var(--muted)',
-                            cursor: 'pointer',
-                            opacity: 0.5,
-                          }}
-                        >
-                          Delete
-                        </button>
-                      )}
+                    <div className="tk-meta">
+                      <span className={overdue ? 'tk-meta-date tk-date-overdue' : 'tk-meta-date'}>{shortDate(task.due_date)}</span>
+                      <span className="tk-meta-sep">•</span>
+                      <span className="tk-meta-dur">{minutesLabel(task.duration_minutes)}</span>
                     </div>
                   </div>
-                )
-              })}
-            </div>
+
+                  <div className="tk-actions">
+                    <span className="tk-priority" style={{ background: ps.bg, color: ps.color, borderColor: ps.border }}>{task.priority}</span>
+                    {confirmDeleteId === task.id ? (
+                      <div className="tk-confirm">
+                        <button className="tk-btn" onClick={() => setConfirmDeleteId(null)} type="button">No</button>
+                        <button className="danger-button" onClick={() => void handleDelete(task.id)} type="button" style={{ minHeight: 0, padding: '5px 12px', fontSize: '0.72rem', borderRadius: 8 }}>Yes</button>
+                      </div>
+                    ) : (
+                      <button className="tk-delete" onClick={() => setConfirmDeleteId(task.id)} type="button" title="Delete task">Delete</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

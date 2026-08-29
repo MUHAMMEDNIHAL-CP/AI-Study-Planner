@@ -601,6 +601,12 @@ export default function FocusModePage() {
       {phase === 'break' && breakScreen}
       {phase === 'complete' && complete}
 
+      <div
+        className={'fm-scrim' + (studyOpen || aiOpen ? ' show' : '')}
+        onClick={() => { setStudyOpen(false); setAiOpen(false) }}
+        aria-hidden={!studyOpen && !aiOpen}
+      />
+
       <aside className={'fm-study' + (studyOpen ? ' open' : '')} aria-hidden={!studyOpen}>
         <header>
           <span>{'\uD83D\uDCD6'} Study Material</span>
