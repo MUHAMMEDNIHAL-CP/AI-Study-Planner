@@ -113,38 +113,43 @@ export default function BottomNav() {
       </nav>
 
       {moreOpen && (
-        <div className="bn-sheet-backdrop" onClick={() => setMoreOpen(false)}>
-          <div className="bn-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="bn-sheet-handle" onClick={() => setMoreOpen(false)}>
-              <span />
-            </div>
-            <div className="bn-sheet-head">
-              <h3>More</h3>
-              <p>Everything in FocusFlow AI</p>
+        <div className="bn-drawer-backdrop" onClick={() => setMoreOpen(false)}>
+          <div className="bn-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="bn-drawer-head">
+              <div>
+                <h3>More</h3>
+                <p>Navigate anywhere</p>
+              </div>
+              <button className="bn-drawer-close" onClick={() => setMoreOpen(false)} type="button">
+                &#10005;
+              </button>
             </div>
 
-            <div className="bn-sheet-scroll">
-              <span className="bn-sheet-section">Study</span>
-              <div className="bn-sheet-grid">
+            <div className="bn-drawer-scroll">
+              <span className="bn-drawer-section">Study</span>
+              <div className="bn-drawer-list">
                 {MORE_ITEMS.filter((i) => i.section === 'study').map((item) => (
-                  <Link key={item.to} to={item.to} className="bn-sheet-card">
-                    <span className="bn-sheet-card-icon"><item.icon size={22} /></span>
-                    <span className="bn-sheet-card-label">{item.label}</span>
+                  <Link key={item.to} to={item.to} className="bn-drawer-row">
+                    <span className="bn-drawer-row-icon"><item.icon size={19} /></span>
+                    <span className="bn-drawer-row-label">{item.label}</span>
+                    <span className="bn-drawer-row-arrow">{'\u203A'}</span>
                   </Link>
                 ))}
               </div>
 
-              <span className="bn-sheet-section">Account</span>
-              <div className="bn-sheet-grid bn-sheet-grid-single">
+              <span className="bn-drawer-section">Account</span>
+              <div className="bn-drawer-list">
                 {MORE_ITEMS.filter((i) => i.section === 'account').map((item) => (
-                  <Link key={item.to} to={item.to} className="bn-sheet-card">
-                    <span className="bn-sheet-card-icon"><item.icon size={22} /></span>
-                    <span className="bn-sheet-card-label">{item.label}</span>
+                  <Link key={item.to} to={item.to} className="bn-drawer-row">
+                    <span className="bn-drawer-row-icon"><item.icon size={19} /></span>
+                    <span className="bn-drawer-row-label">{item.label}</span>
+                    <span className="bn-drawer-row-arrow">{'\u203A'}</span>
                   </Link>
                 ))}
-                <button className="bn-sheet-card bn-sheet-logout" onClick={logout} type="button">
-                  <span className="bn-sheet-card-icon"><IconLogout size={22} /></span>
-                  <span className="bn-sheet-card-label">Logout</span>
+                <button className="bn-drawer-row bn-drawer-logout" onClick={logout} type="button">
+                  <span className="bn-drawer-row-icon"><IconLogout size={19} /></span>
+                  <span className="bn-drawer-row-label">Logout</span>
+                  <span className="bn-drawer-row-arrow">{'\u203A'}</span>
                 </button>
               </div>
             </div>

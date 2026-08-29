@@ -3906,6 +3906,16 @@ button.st-row:hover,
   }
 }
 
+/* AI Coach is a full-screen, single-column app on mobile. The page-shell's
+   large bottom padding (added for scrolling pages to clear the fixed bottom
+   nav) shrinks the chat and leaves a big empty gap under the composer.
+   Let the chat fill the available height so it sits flush above the nav. */
+@media (max-width: 1000px) {
+  .ai-coach-page.flow-page {
+    padding-bottom: 0;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════
    BRAND THEME UNIFICATION
    Every primary button across all pages uses --gradient-brand
@@ -4208,19 +4218,21 @@ button.st-row:hover,
 
 /* ── More Bottom Sheet ── */
 
-.bn-sheet-backdrop {
+.bn-drawer-backdrop {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(8, 10, 14, 0.55);
+  background: rgba(8, 10, 14, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-end;
   animation: bnFadeIn 0.18s ease-out;
 }
 
-[data-theme='light'] .bn-sheet-backdrop {
-  background: rgba(30, 40, 50, 0.3);
+[data-theme='light'] .bn-drawer-backdrop {
+  background: rgba(30, 40, 50, 0.25);
 }
 
 @keyframes bnFadeIn {
@@ -4228,137 +4240,151 @@ button.st-row:hover,
   to { opacity: 1; }
 }
 
-.bn-sheet {
-  width: 100%;
-  max-width: 480px;
-  max-height: 80vh;
+.bn-drawer {
+  width: min(320px, 82vw);
+  height: 100%;
   background: var(--panel-2);
-  border-top-left-radius: 22px;
-  border-top-right-radius: 22px;
-  border: 1px solid var(--border);
-  border-bottom: none;
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  animation: bnSlideUp 0.26s cubic-bezier(0.32, 0.72, 0, 1);
-  overflow: hidden;
+  animation: bnDrawerSlide 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.18);
 }
 
-@keyframes bnSlideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+[data-theme='light'] .bn-drawer {
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.08);
 }
 
-.bn-sheet-handle {
+@keyframes bnDrawerSlide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.bn-drawer-head {
   display: flex;
-  justify-content: center;
-  padding: 10px 0 4px;
-  cursor: pointer;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.bn-sheet-handle span {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-}
-
-.bn-sheet-head {
-  padding: 8px 22px 14px;
-}
-
-.bn-sheet-head h3 {
-  font-size: 1.1rem;
+.bn-drawer-head h3 {
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--text);
   margin: 0;
 }
 
-.bn-sheet-head p {
-  font-size: 0.74rem;
+.bn-drawer-head p {
+  font-size: 0.72rem;
   color: var(--text-dim);
-  margin: 2px 0 0;
+  margin: 3px 0 0;
 }
 
-.bn-sheet-scroll {
+.bn-drawer-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.bn-drawer-close:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.bn-drawer-scroll {
+  flex: 1;
   overflow-y: auto;
-  padding: 0 22px 24px;
+  padding: 8px 12px 24px;
 }
 
-.bn-sheet-section {
+.bn-drawer-section {
   display: block;
   font-size: 0.6rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin: 14px 0 8px;
+  padding: 12px 8px 6px;
 }
 
-.bn-sheet-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+.bn-drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.bn-sheet-grid-single {
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.bn-sheet-card {
+.bn-drawer-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--glass);
+  padding: 11px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
   color: var(--text);
   text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: background 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 
-button.bn-sheet-card {
+button.bn-drawer-row {
   font-family: inherit;
+  width: 100%;
+  text-align: left;
 }
 
-.bn-sheet-card:hover {
-  border-color: var(--accent);
-  background: rgba(255, 107, 74, 0.06);
+.bn-drawer-row:hover,
+.bn-drawer-row:active {
+  background: var(--glass);
 }
 
-.bn-sheet-card-icon {
-  width: 34px;
-  height: 34px;
+.bn-drawer-row-icon {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--bg-subtle);
   color: var(--text-dim);
   flex-shrink: 0;
 }
 
-.bn-sheet-card-label {
+.bn-drawer-row-label {
+  flex: 1;
   line-height: 1.2;
 }
 
-.bn-sheet-logout {
-  border-color: rgba(255, 107, 107, 0.25);
+.bn-drawer-row-arrow {
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  font-weight: 300;
+  opacity: 0.5;
+}
+
+.bn-drawer-logout {
   color: var(--danger);
 }
 
-.bn-sheet-logout .bn-sheet-card-icon {
+.bn-drawer-logout .bn-drawer-row-icon {
   background: rgba(255, 107, 107, 0.1);
   color: var(--danger);
 }
 
-.bn-sheet-logout:hover {
-  border-color: rgba(255, 107, 107, 0.5);
+.bn-drawer-logout:hover {
   background: rgba(255, 107, 107, 0.06);
 }
 

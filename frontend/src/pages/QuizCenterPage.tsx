@@ -150,6 +150,7 @@ export default function QuizCenterPage() {
   const [cqCount, setCqCount] = useState(10)
   const [cqDifficulty, setCqDifficulty] = useState('medium')
   const [generating, setGenerating] = useState(false)
+  const [genOpen, setGenOpen] = useState(false)
 
   /* active quiz */
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
@@ -319,8 +320,8 @@ export default function QuizCenterPage() {
     }
   }
 
-  function scrollToGenerator() {
-    document.getElementById('zq-generator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function openGenerator() {
+    setGenOpen(true)
   }
 
   async function generateQuiz() {
@@ -352,6 +353,7 @@ export default function QuizCenterPage() {
       })
       if (cqSource !== 'exam') setExamMeta(null)
       beginQuiz(data)
+      setGenOpen(false)
       toast.success('Quiz ready \u2014 good luck!')
     } catch (err) { toast.error(getErrorMessage(err)) }
     finally { setGenerating(false) }
@@ -550,17 +552,20 @@ export default function QuizCenterPage() {
 
   const activeView = activeQuiz && currentQuestion && (
     <div className="zq-take">
-      <header className="zt-top">
-        <button className="zt-exit" onClick={exitQuiz} type="button">{'\u2190'} Exit</button>
-        <span className="zt-title">{activeQuiz.topic}</span>
-        <span className="zt-count">{currentQ + 1}/{activeQuiz.questions.length}</span>
-      </header>
       <div className="zt-progress">
         <i style={{ width: Math.round(((currentQ + 1) / activeQuiz.questions.length) * 100) + '%' }} />
       </div>
 
+      <header className="zt-top">
+        <button className="zt-exit" onClick={exitQuiz} type="button">{'\u2190'} Exit</button>
+        <div className="zt-top-center">
+          <span className="zt-title">{activeQuiz.topic}</span>
+          <span className="zt-count">Question {currentQ + 1} of {activeQuiz.questions.length}</span>
+        </div>
+        <div className="zt-timer-pill">{fmtTime(elapsed)}</div>
+      </header>
+
       <main className="zt-body" key={currentQuestion.id}>
-        <span className="zt-kicker">Question {currentQ + 1}</span>
         <h2 className="zt-question">{currentQuestion.question}</h2>
 
         <div className="zt-options">
@@ -583,20 +588,29 @@ export default function QuizCenterPage() {
           })}
         </div>
 
-        <div className="zt-hintrow">
+        <div className="zt-bottom-row">
           <button className="zt-hintbtn" onClick={toggleHint} type="button">
-            {'\uD83D\uDCA1'} Hint
+            {'\uD83D\uDCA1'} {openHint ? 'Hide Hint' : 'Hint'}
           </button>
-          {openHint && (
-            <div className="zt-hintbox">
-              {hints[currentQuestion.id]?.loading ? (
-                <div className="ac-typing"><span /><span /><span /></div>
-              ) : (
-                hints[currentQuestion.id]?.text ?? 'Think it through step by step.'
-              )}
-            </div>
-          )}
+          <button
+            className="zt-nextbtn"
+            disabled={answers[currentQuestion.id] === undefined}
+            onClick={() => void advanceOrSubmit()}
+            type="button"
+          >
+            {isLast ? 'See Results \u2192' : 'Next Question \u2192'}
+          </button>
         </div>
+
+        {openHint && (
+          <div className="zt-hintbox">
+            {hints[currentQuestion.id]?.loading ? (
+              <div className="ac-typing"><span /><span /><span /></div>
+            ) : (
+              hints[currentQuestion.id]?.text ?? 'Think it through step by step.'
+            )}
+          </div>
+        )}
 
         {feedbackQid === currentQuestion.id && answers[currentQuestion.id] !== undefined && (
           (() => {
@@ -604,8 +618,11 @@ export default function QuizCenterPage() {
             const good = chosenIdx === currentQuestion.answer_index
             return (
               <div className={'zt-feedback ' + (good ? 'good' : 'bad')}>
-                <strong>{good ? '\u2713 Correct!' : 'Not quite.'}</strong>
-                <p>{currentQuestion.explanation}</p>
+                <div className="zt-fb-header">
+                  <span className="zt-fb-icon">{good ? '\u2713' : '\u2717'}</span>
+                  <strong>{good ? 'Correct!' : 'Not quite.'}</strong>
+                </div>
+                <p className="zt-fb-explain">{currentQuestion.explanation}</p>
                 <div className="zt-fb-boxes">
                   <div className="zt-fb-box">
                     <span>Your Answer</span>
@@ -613,14 +630,11 @@ export default function QuizCenterPage() {
                   </div>
                   {!good && (
                     <div className="zt-fb-box right">
-                      <span>Correct concept</span>
+                      <span>Correct Answer</span>
                       <b>{currentQuestion.options[currentQuestion.answer_index]}</b>
                     </div>
                   )}
                 </div>
-                <button className="zt-nextbtn" onClick={() => void advanceOrSubmit()} type="button">
-                  {isLast ? 'See Results \u2192' : 'Next Question \u2192'}
-                </button>
               </div>
             )
           })()
@@ -632,20 +646,27 @@ export default function QuizCenterPage() {
   const resultView = view === 'result' && displayQuiz && quizResult && (
     <div className="zr-wrap">
       <div className="zr-hero">
-        <span className="zr-emoji">{'\uD83C\uDF89'}</span>
+        <div className="zr-ring" style={{ '--pct': resultPct + '%' } as React.CSSProperties}>
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" className="zr-ring-bg" />
+            <circle cx="60" cy="60" r="52" className="zr-ring-fill" stroke={accColor(resultPct)} style={{ strokeDashoffset: 326.7 - (326.7 * resultPct) / 100 }} />
+          </svg>
+          <div className="zr-ring-text">
+            <span className="zr-pct" style={{ color: accColor(resultPct) }}>{resultPct}%</span>
+            <span className="zr-frac">{quizResult.score}/{quizResult.total}</span>
+          </div>
+        </div>
         <h2>Quiz Complete</h2>
-        <div className="zr-pct" style={{ color: accColor(resultPct) }}>{resultPct}%</div>
-        <div className="zr-frac">{quizResult.score} / {quizResult.total}</div>
         <div className="zr-statgrid">
-          <div><span>Correct</span><b className="ok">{quizResult.score}</b></div>
-          <div><span>Incorrect</span><b className="no">{quizResult.total - quizResult.score}</b></div>
-          <div><span>Time</span><b>{fmtTime(elapsed)}</b></div>
+          <div className="zr-stat"><b className="ok">{quizResult.score}</b><span>Correct</span></div>
+          <div className="zr-stat"><b className="no">{quizResult.total - quizResult.score}</b><span>Wrong</span></div>
+          <div className="zr-stat"><b>{fmtTime(elapsed)}</b><span>Time</span></div>
         </div>
       </div>
 
       {analysis.performance.length > 0 && (
-        <section className="zr-perf">
-          <span className="zq-mini-label">PERFORMANCE</span>
+        <section className="zr-section">
+          <span className="zr-section-label">PERFORMANCE</span>
           {analysis.performance.map((p) => (
             <div key={p.concept} className="zp-row">
               <span className="zp-name">{p.concept}</span>
@@ -656,31 +677,34 @@ export default function QuizCenterPage() {
         </section>
       )}
 
-      <section className="zr-ai">
-        <header className="zrai-head">{'\u2726'} FOCUSFLOW AI</header>
+      <section className="zr-section zr-ai">
+        <span className="zr-section-label">{'\u2726'} AI ANALYSIS</span>
         {aiLoading ? (
           <div className="zr-ai-loading"><div className="ac-typing"><span /><span /><span /></div></div>
         ) : (
           <>
             {analysis.strong.length > 0 && (
-              <ul className="zrai-list">
-                {analysis.strong.map((s) => <li key={s} className="ok">{'\u2713'} {s}</li>)}
-              </ul>
+              <div className="zr-ai-group">
+                <span className="zr-ai-sub">Strong areas</span>
+                <ul className="zrai-list">
+                  {analysis.strong.map((s) => <li key={s} className="ok">{'\u2713'} {s}</li>)}
+                </ul>
+              </div>
             )}
             {analysis.weak.length > 0 && (
-              <>
-                <span className="zrai-sub">Needs revision:</span>
+              <div className="zr-ai-group">
+                <span className="zr-ai-sub">Needs revision</span>
                 <ul className="zrai-list">
                   {analysis.weak.map((w) => <li key={w} className="warn">{'\u26A0'} {w}</li>)}
                 </ul>
-              </>
+              </div>
             )}
             {(analysis.recommendation || aiText) && <p className="zrai-rec">{analysis.recommendation || aiText}</p>}
           </>
         )}
         {analysis.weak.length > 0 ? (
           <button
-            className="zrai-action"
+            className="zr-action-btn"
             disabled={generating}
             onClick={() => void practiceWeakTopic(analysis.weak[0])}
             type="button"
@@ -688,23 +712,27 @@ export default function QuizCenterPage() {
             {generating ? 'Preparing...' : 'Practice ' + analysis.weak[0] + ' \u2192'}
           </button>
         ) : (
-          <button className="zrai-action" onClick={() => navigate('/focus')} type="button">Start Revision</button>
+          <button className="zr-action-btn" onClick={() => navigate('/focus')} type="button">Start Revision</button>
         )}
       </section>
 
       {examMeta && (
-        <div className="zr-readiness">
-          <span className="zq-mini-label">EXAM READINESS {'\u00B7'} {examMeta.title.toUpperCase()}</span>
-          <p>Before: <b>{examMeta.before}%</b>{'\u2003'}After: <b className="ok">{readinessAfter}%</b> {'\u2B50'}</p>
+        <div className="zr-section">
+          <span className="zr-section-label">EXAM READINESS {'\u00B7'} {examMeta.title}</span>
+          <div className="zr-readiness-row">
+            <span>Before: <b>{examMeta.before}%</b></span>
+            <span className="zr-readiness-arrow">{'\u2192'}</span>
+            <span>After: <b className="ok">{readinessAfter}%</b></span>
+          </div>
         </div>
       )}
 
       <div className="zr-actions">
-        <button className="zq-back-btn" onClick={() => setShowReview((p) => !p)} type="button">
+        <button className="zr-action-btn outline" onClick={() => setShowReview((p) => !p)} type="button">
           {showReview ? 'Hide Answers' : 'Review Answers'}
         </button>
-        <button className="zr-retry" onClick={tryAgain} type="button">Try Again</button>
-        <button className="zq-back-btn" onClick={exitQuiz} type="button">Done</button>
+        <button className="zr-action-btn" onClick={tryAgain} type="button">Try Again</button>
+        <button className="zr-action-btn outline" onClick={exitQuiz} type="button">Done</button>
       </div>
 
       {showReview && (
@@ -717,8 +745,8 @@ export default function QuizCenterPage() {
                 <div className="zri-head">
                   <span className="zri-num">{i + 1}</span>
                   <span className={'zri-badge ' + (isCorrect ? 'ok' : 'no')}>{isCorrect ? '\u2713' : '\u2717'}</span>
+                  <p className="zri-q">{qq.question}</p>
                 </div>
-                <p className="zri-q">{qq.question}</p>
                 <div className="zri-opts">
                   {qq.options.map((opt, oi) => {
                     const isAnswer = oi === qq.answer_index
@@ -750,77 +778,6 @@ export default function QuizCenterPage() {
       </div>
 
       <section>
-        <h2 className="zq-section-title">START A QUIZ</h2>
-        <div className="qz-gen-card" id="zq-generator">
-          <header className="qz-gen-head">
-            <span className="qz-gen-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
-            <p className="qz-gen-sub">Create a personalized quiz from your subjects, notes, weak topics or exams.</p>
-          </header>
-
-          <div className="qz-gen-grid">
-            <label className="qz-field">
-              <span>Subject</span>
-              <select value={cqSubject} onChange={(e) => pickSubject(e.target.value)}>
-                <option value="">No subject</option>
-                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
-
-            <label className="qz-field">
-              <span>Topic</span>
-              <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
-                {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-                <option value="__custom">Custom topic...</option>
-              </select>
-            </label>
-
-            <label className="qz-field">
-              <span>Questions</span>
-              <select value={cqCount} onChange={(e) => setCqCount(Number(e.target.value))}>
-                {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} Questions</option>)}
-              </select>
-            </label>
-
-            <label className="qz-field">
-              <span>Difficulty</span>
-              <select value={cqDifficulty} onChange={(e) => setCqDifficulty(e.target.value)}>
-                {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
-              </select>
-            </label>
-          </div>
-
-          {cqTopic === '__custom' && (
-            <input
-              className="qz-custom-input"
-              placeholder="e.g. Constructors & Destructors"
-              value={cqCustomTopic}
-              onChange={(e) => setCqCustomTopic(e.target.value)}
-            />
-          )}
-
-          <div className="qz-source-row">
-            <span className="qz-source-label">Source:</span>
-            {SOURCES.map((src) => (
-              <button
-                key={src.key}
-                className={'qz-source' + (cqSource === src.key ? ' on' : '')}
-                onClick={() => handleSource(src.key)}
-                type="button"
-              >
-                <i className="qz-radio" />{src.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="qz-gen-actions">
-            <button className="qz-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
-              {generating ? 'Generating...' : 'Generate Quiz \u2192'}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section>
         <h2 className="zq-section-title">YOUR SUBJECTS</h2>
         {subjects.length > 0 ? (
           <div className="qz-subjects-grid">
@@ -828,16 +785,19 @@ export default function QuizCenterPage() {
               const st = subjectStats.get(s.id)
               return (
                 <article key={s.id} className="qz-subject-card">
-                  <header className="qz-sc-top">
+                  <div className="qz-sc-left">
                     <span className="qz-sc-icon">{SUBJECT_ICONS[i % SUBJECT_ICONS.length]}</span>
-                    <strong className="qz-sc-name">{s.name}</strong>
-                  </header>
-                  <div className="qz-sc-meta">
-                    <span><b>{st?.quizzes ?? 0}</b> quizzes</span>
-                    <span><b style={{ color: accColor(st?.accuracy ?? 0) }}>{st?.accuracy ?? 0}%</b> accuracy</span>
+                    <div>
+                      <strong className="qz-sc-name">{s.name}</strong>
+                      <div className="qz-sc-meta">
+                        <span><b>{st?.quizzes ?? 0}</b> quizzes</span>
+                        <span className="qz-sc-dot" />
+                        <span><b style={{ color: accColor(st?.accuracy ?? 0) }}>{st?.accuracy ?? 0}%</b> avg</span>
+                      </div>
+                    </div>
                   </div>
                   <button className="qz-sc-btn" disabled={generating} onClick={() => void startSubjectQuiz(s)} type="button">
-                    Start Quiz {'\u2192'}
+                    {'\u25B6'} Quiz
                   </button>
                 </article>
               )
@@ -856,11 +816,14 @@ export default function QuizCenterPage() {
               const pct = qq.score !== null ? Math.round((qq.score / qq.total_questions) * 100) : null
               return (
                 <button key={qq.id} className="zh-row" onClick={() => viewHistoryItem(qq)} type="button">
-                  <span className="zh-topic">{qq.topic}</span>
-                  <span className="zh-score">{qq.score !== null ? qq.score + '/' + qq.total_questions : qq.total_questions + 'Q'}</span>
-                  <span className="zh-pct" style={{ color: pct !== null ? accColor(pct) : undefined }}>{pct !== null ? pct + '%' : '\u2014'}</span>
-                  <span className="zh-date">{friendlyDate(qq.created_at)}</span>
-                  <span className="zh-review">Review {'\u2192'}</span>
+                  <div className="zh-info">
+                    <span className="zh-topic">{qq.topic}</span>
+                    <span className="zh-date">{friendlyDate(qq.created_at)}</span>
+                  </div>
+                  <div className="zh-right">
+                    <span className="zh-pct" style={{ color: pct !== null ? accColor(pct) : undefined }}>{pct !== null ? pct + '%' : '\u2014'}</span>
+                    <span className="zh-score">{qq.score !== null ? qq.score + '/' + qq.total_questions : ''}</span>
+                  </div>
                 </button>
               )
             })}
@@ -889,13 +852,92 @@ export default function QuizCenterPage() {
       subtitle="Test your knowledge and discover what to improve."
       actions={
         view === 'dashboard' ? (
-          <button className="zq-create-btn" onClick={scrollToGenerator} type="button">{'\uFF0B'} Create Quiz</button>
+          <button className="zq-create-btn" onClick={openGenerator} type="button">{'\uFF0B'} Create Quiz</button>
         ) : null
       }
     >
       {view === 'dashboard' && dashboardView}
       {view === 'active' && activeView}
       {view === 'result' && resultView}
+
+      {genOpen && (
+        <div className="qz-modal-backdrop" onClick={() => setGenOpen(false)}>
+          <div className="qz-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="qz-modal-head">
+              <div>
+                <span className="qz-gen-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
+                <h3>Create a Quiz</h3>
+                <p>Pick a subject or topic, choose your settings, and let AI test your knowledge.</p>
+              </div>
+              <button className="qz-modal-close" onClick={() => setGenOpen(false)} type="button">&#10005;</button>
+            </div>
+
+            <div className="qz-modal-body">
+              <div className="qz-gen-grid">
+                <label className="qz-field">
+                  <span>Subject</span>
+                  <select value={cqSubject} onChange={(e) => pickSubject(e.target.value)}>
+                    <option value="">No subject</option>
+                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </label>
+
+                <label className="qz-field">
+                  <span>Topic</span>
+                  <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
+                    {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                    <option value="__custom">Custom topic...</option>
+                  </select>
+                </label>
+
+                <label className="qz-field">
+                  <span>Questions</span>
+                  <select value={cqCount} onChange={(e) => setCqCount(Number(e.target.value))}>
+                    {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} Questions</option>)}
+                  </select>
+                </label>
+
+                <label className="qz-field">
+                  <span>Difficulty</span>
+                  <select value={cqDifficulty} onChange={(e) => setCqDifficulty(e.target.value)}>
+                    {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {cqTopic === '__custom' && (
+                <input
+                  className="qz-custom-input"
+                  placeholder="e.g. Constructors & Destructors"
+                  value={cqCustomTopic}
+                  onChange={(e) => setCqCustomTopic(e.target.value)}
+                />
+              )}
+
+              <div className="qz-source-row">
+                <span className="qz-source-label">Source</span>
+                {SOURCES.map((src) => (
+                  <button
+                    key={src.key}
+                    className={'qz-source' + (cqSource === src.key ? ' on' : '')}
+                    onClick={() => handleSource(src.key)}
+                    type="button"
+                  >
+                    <i className="qz-radio" />{src.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="qz-modal-foot">
+              <button className="qz-cancel-btn" onClick={() => setGenOpen(false)} type="button">Cancel</button>
+              <button className="qz-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
+                {generating ? 'Generating...' : 'Generate Quiz \u2192'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   )
 }

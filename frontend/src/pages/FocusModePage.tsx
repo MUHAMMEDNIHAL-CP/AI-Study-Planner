@@ -388,8 +388,6 @@ export default function FocusModePage() {
     }
   }
 
-  const durLabel = customMin ? customMin + ' min' : DURATIONS[durationIdx].label
-
   const setup = (
     <div className="fm-setup">
       <header className="fm-top">

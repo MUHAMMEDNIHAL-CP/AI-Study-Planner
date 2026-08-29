@@ -935,7 +935,12 @@ export default function AiTutorPage() {
 
       {messages.length === 0 ? (
         <div className="ac-welcome">
-          <div className="ac-logo">{'\u2726'}</div>
+          <div className="ac-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3c.6 3.9 2.8 6.4 7 7-4.2.6-6.4 3.1-7 7-.6-3.9-2.8-6.4-7-7 4.2-.6 6.4-3.1 7-7z" />
+              <path d="M19 3c.2 1.4 1 2.3 2.4 2.5-1.4.2-2.2 1.1-2.4 2.5-.2-1.4-1-2.3-2.4-2.5C18 5.3 18.8 4.4 19 3z" />
+            </svg>
+          </div>
           <h2>FocusFlow AI</h2>
           <p className="ac-hi">Hey {userName} {'\uD83D\uDC4B'}</p>
           <p className="ac-q">What would you like to work on today?</p>

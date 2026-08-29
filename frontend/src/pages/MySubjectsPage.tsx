@@ -80,6 +80,11 @@ export default function MySubjectsPage() {
       className="ms-page"
       title="My Subjects"
       subtitle="Track every subject, monitor topic progress, and keep an eye on weak areas."
+      actions={
+        !loading && !detail ? (
+          <button className="ms-add-btn" onClick={() => { resetForm(); setShowModal(true) }} type="button">+ Add Subject</button>
+        ) : undefined
+      }
     >
       {loading ? <div className="ms-loading">Loading subjects...</div>
       : subjects.length === 0 ? (
@@ -189,8 +194,11 @@ export default function MySubjectsPage() {
             const weakList = sub.weak_topics ? sub.weak_topics.split(',').map((w) => w.trim()) : []
             return (
               <div key={sub.id} className="ms-card ms-card-subject" style={{ '--sub-color': sub.color } as React.CSSProperties}>
+                <div className="ms-card-aura" aria-hidden="true" />
                 <div className="ms-card-top">
-                  <span className="ms-dot" style={{ background: sub.color }} />
+                  <span className="ms-avatar" style={{ background: `linear-gradient(135deg, ${sub.color}, ${sub.color}99)` }}>
+                    {(sub.name.trim().charAt(0) || '•').toUpperCase()}
+                  </span>
                   <span className="ms-code">{sub.subject_code}</span>
                 </div>
                 <h3 className="ms-card-name">{sub.name}</h3>
@@ -205,12 +213,14 @@ export default function MySubjectsPage() {
                   <span>{sub.topics_completed} / {sub.total_topics} topics</span>
                   {remaining > 0 && <span className="ms-remaining">{remaining} remaining</span>}
                 </div>
-                {weakList.length > 0 && (
-                  <div className="ms-card-weak">
-                    <span>Next:</span> <strong>{weakList[0]}</strong>
-                  </div>
-                )}
-                <button className="ms-view-btn" onClick={() => void openDetail(sub.id)} type="button">View Subject →</button>
+                <div className="ms-card-footer">
+                  {weakList.length > 0 && (
+                    <div className="ms-card-weak">
+                      <span>Next:</span> <strong>{weakList[0]}</strong>
+                    </div>
+                  )}
+                  <button className="ms-view-btn" onClick={() => void openDetail(sub.id)} type="button">View Subject <span className="ms-view-arrow">→</span></button>
+                </div>
               </div>
             )
           })}
