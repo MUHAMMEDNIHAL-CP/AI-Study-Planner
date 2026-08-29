@@ -30,7 +30,6 @@ export default function MySubjectsPage() {
   const [fColor, setFColor] = useState(COLORS[0])
   const [fGoal, setFGoal] = useState('5')
   const [fWeak, setFWeak] = useState('')
-  const [fTopics, setFTopics] = useState('20')
   const [fGrade, setFGrade] = useState('')
 
   const load = useCallback(async () => {
@@ -57,8 +56,8 @@ export default function MySubjectsPage() {
     try {
       await api.post('/study/subjects/', {
         name: fName.trim(), subject_code: fCode.trim(), teacher: fTeacher.trim(),
-        color: fColor, weekly_goal_hours: Number(fGoal) || 5, weak_topics: fWeak.trim(),
-        total_topics: Number(fTopics) || 0, target_grade: fGrade.trim(),
+        color: fColor,         weekly_goal_hours: Number(fGoal) || 5, weak_topics: fWeak.trim(),
+        target_grade: fGrade.trim(),
       })
       toast.success('Subject created'); resetForm(); setShowModal(false); await load()
     } catch (err) { toast.error(getErrorMessage(err)) }
@@ -71,7 +70,7 @@ export default function MySubjectsPage() {
     } catch (err) { toast.error(getErrorMessage(err)) }
   }
 
-  function resetForm() { setFName(''); setFCode(''); setFTeacher(''); setFColor(COLORS[0]); setFGoal('5'); setFWeak(''); setFTopics('20'); setFGrade('') }
+  function resetForm() { setFName(''); setFCode(''); setFTeacher(''); setFColor(COLORS[0]); setFGoal('5'); setFWeak(''); setFGrade('') }
 
   const detail = subjects.find((s) => s.id === detailId)
 
@@ -247,7 +246,6 @@ export default function MySubjectsPage() {
               </div>
               <div className="cal-modal-field"><label>Target Grade</label><input placeholder="A" value={fGrade} onChange={(e) => setFGrade(e.target.value)} /></div>
               <div className="cal-modal-field"><label>Weekly Goal (hrs)</label><input min="0" step="0.5" type="number" value={fGoal} onChange={(e) => setFGoal(e.target.value)} /></div>
-              <div className="cal-modal-field"><label>Total Topics</label><input min="0" type="number" value={fTopics} onChange={(e) => setFTopics(e.target.value)} /></div>
               <div className="cal-modal-field"><label>Weak Topics</label><input placeholder="Inheritance, Polymorphism, ..." value={fWeak} onChange={(e) => setFWeak(e.target.value)} /></div>
               <div className="cal-modal-actions">
                 <button type="button" className="cal-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>

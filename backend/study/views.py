@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from ai.gemini import generate_json
 from ai.models import AIHistory
-from productivity.models import ProductivityLog
+from productivity.models import ProductivityLog, record_study_activity
 
 from .models import Exam, StudyTask, Subject
 from .serializers import ExamSerializer, StudyTaskSerializer, SubjectSerializer
@@ -24,6 +24,7 @@ class OwnedQuerysetMixin:
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        record_study_activity(self.request.user)
 
 
 class SubjectListCreateView(OwnedQuerysetMixin, generics.ListCreateAPIView):
@@ -294,6 +295,7 @@ class GeneratePlanView(APIView):
             response=response,
             provider=response["provider"],
         )
+        record_study_activity(request.user)
         return Response(response, status=status.HTTP_201_CREATED)
 
 

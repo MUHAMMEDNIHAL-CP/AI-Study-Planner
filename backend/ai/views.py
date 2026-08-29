@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from .gemini import generate_json, gemini_configured, sanitize_prompt
 from .models import AIHistory
 from .serializers import AIHistorySerializer
+from productivity.models import record_study_activity
 
 
 class AIThrottle(ScopedRateThrottle):
@@ -90,6 +91,7 @@ class TutorView(APIView):
             response=answer,
             provider=provider,
         )
+        record_study_activity(request.user)
         return Response({"history_id": history.id, "provider": provider, **answer}, status=status.HTTP_201_CREATED)
 
 
@@ -141,6 +143,7 @@ class FocusCoachView(APIView):
             response=response,
             provider=response["provider"],
         )
+        record_study_activity(request.user)
         return Response({"history_id": history.id, **response}, status=status.HTTP_201_CREATED)
 
 
@@ -202,6 +205,7 @@ class ExplainTopicView(APIView):
             response=response,
             provider=response["provider"],
         )
+        record_study_activity(request.user)
         return Response({"history_id": history.id, **response}, status=status.HTTP_201_CREATED)
 
 

@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent } from
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { IconBot } from '../components/icons'
+import { IconAnalytics, IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile } from '../hooks/useUserProfile'
 
@@ -99,12 +99,10 @@ const CHATS_KEY = 'FLOX.ai.chats.v1'
 /* ── Constants ─────────────────────────────────────────────── */
 
 const QUICK_CARDS: Array<{ key: QuickKey; icon: string; label: string }> = [
-  { key: 'plan', icon: '\uD83D\uDCC5', label: 'Plan my day' },
+  { key: 'plan', icon: '\uD83D\uDCC5', label: 'What should I study?' },
   { key: 'exam', icon: '\uD83C\uDF93', label: 'Prepare for exam' },
   { key: 'learn', icon: '\uD83E\uDDE0', label: 'Explain a topic' },
   { key: 'practice', icon: '\uD83D\uDCDD', label: 'Quiz me' },
-  { key: 'analyze', icon: '\uD83D\uDCCA', label: 'Analyze progress' },
-  { key: 'revise', icon: '\uD83D\uDD04', label: 'Help me revise' },
 ]
 
 const INPUT_CHIPS: Array<{ key: QuickKey; icon: string; label: string }> = [
@@ -374,6 +372,11 @@ export default function AiTutorPage() {
 
   const activeChat = useMemo(() => chats.find((c) => c.id === activeId) ?? null, [chats, activeId])
   const messages = activeChat?.messages ?? []
+
+  useEffect(() => {
+    document.body.classList.add('ai-coach-page-active')
+    return () => document.body.classList.remove('ai-coach-page-active')
+  }, [])
 
   const nextExam = exams[0] ?? null
 
@@ -902,12 +905,6 @@ export default function AiTutorPage() {
     </aside>
   )
 
-  const recommendText = weakTopicStat
-    ? 'Revise ' + weakTopicStat.topic + ' today \u2014 your accuracy there is ' + weakTopicStat.acc + '%.'
-    : weakSubject
-      ? 'Focus on ' + weakSubject.name + ' today to lift your completion rate.'
-      : 'Keep your streak going with a quick review session.'
-
   const contextPanel = (
     <aside className={'ac-context' + (ctxOpen ? ' sheet-open' : '')}>
       <div className="ac-sheet-head">
@@ -951,11 +948,6 @@ export default function AiTutorPage() {
         </div>
       )}
 
-      <div className="ac-reco">
-        <span className="ac-reco-label">{'\u2726'} AI RECOMMENDS</span>
-        <p>{recommendText}</p>
-        <button onClick={() => navigate('/focus')}>Start 50 min Session</button>
-      </div>
     </aside>
   )
 
@@ -964,13 +956,17 @@ export default function AiTutorPage() {
       <div className="ac-mobilebar">
         <button onClick={() => setSidebarOpen(true)} aria-label="Conversations">{'\u2630'}</button>
         <span className="mb-title"><IconBot size={16} /> AI Coach</span>
-        <button onClick={() => setCtxOpen(true)} aria-label="Study context">{'\uD83D\uDCCA'}</button>
+        <button onClick={() => setCtxOpen(true)} aria-label="Study context" className="ac-ctxbtn">
+          <IconAnalytics size={18} /> <span>Context</span>
+        </button>
       </div>
 
       {messages.length === 0 ? (
         <div className="ac-welcome">
-          <div className="ac-logo" aria-hidden="true">
-            <IconBot size={34} />
+          <div className="ac-orb" aria-hidden="true">
+            <span className="ac-orb-core" />
+            <span className="ac-orb-ring" />
+            <span className="ac-orb-pulse" />
           </div>
           <h2>FLOX AI</h2>
           <p className="ac-hi">Hey {userName} {'\uD83D\uDC4B'}</p>
@@ -1116,7 +1112,7 @@ export default function AiTutorPage() {
           ref={taRef}
           rows={1}
           value={input}
-          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX AI anything about your studies...'}
+          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX anything\u2026'}
           onChange={(e) => { setInput(e.target.value); autoResize() }}
           onKeyDown={onComposerKeyDown}
           disabled={sending}

@@ -1751,34 +1751,68 @@ h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   text-align: center;
-  padding: 28px 20px;
+  padding: 28px 20px 40px;
   overflow-y: auto;
 }
 
-.ac-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.ac-orb {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
   line-height: 0;
-  color: #fff;
-  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.35), transparent 55%),
-    linear-gradient(135deg, #ff8a5c, #ff5e3a);
-  box-shadow: 0 10px 30px rgba(255, 94, 58, 0.35);
-  margin-bottom: 16px;
-  animation: acFloat 3.2s ease-in-out infinite;
+  margin-bottom: 18px;
 }
 
-.ac-logo svg { display: block; }
-
-@keyframes acFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+.ac-orb-core {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #ffd0bd, #ff8a5c 45%, #ff5e3a 100%);
+  box-shadow:
+    0 0 0 4px rgba(255, 138, 92, 0.18),
+    0 0 28px rgba(255, 94, 58, 0.55),
+    inset 0 0 12px rgba(255, 255, 255, 0.4);
+  animation: acOrbIdle 3.4s ease-in-out infinite;
 }
+
+.ac-orb-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 138, 92, 0.5);
+  animation: acOrbRing 3.4s ease-in-out infinite;
+}
+
+.ac-orb-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 107, 74, 0.4), transparent 62%);
+  animation: acOrbPulse 3.4s ease-in-out infinite;
+}
+
+@keyframes acOrbIdle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.03); }
+}
+
+@keyframes acOrbRing {
+  0%, 100% { transform: scale(0.92); opacity: 0.35; }
+  50% { transform: scale(1.05); opacity: 0.85; }
+}
+
+@keyframes acOrbPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.ac-orb.thinking .ac-orb-core { animation: acOrbSpin 1.6s linear infinite; }
+
+@keyframes acOrbSpin { to { transform: rotate(360deg); } }
 
 .ac-welcome h2 {
   margin: 0 0 6px;
@@ -1822,11 +1856,12 @@ h3 {
 
 .ac-msgs {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 18px 8px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   scrollbar-width: thin;
 }
 
@@ -1836,23 +1871,25 @@ h3 {
 
 .ac-userbubble {
   max-width: min(78%, 480px);
-  background: linear-gradient(135deg, #ff8a5c, #ff5e3a);
-  color: #fff;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
   padding: 10px 15px;
-  border-radius: 16px 16px 4px 16px;
-  font-size: 13.5px;
+  border-radius: 18px 18px 4px 18px;
+  font-size: 13.8px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 4px 14px rgba(255, 94, 58, 0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .ac-card {
-  max-width: min(88%, 560px);
-  background: var(--glass);
+  max-width: min(94%, 640px);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 4px 16px 16px 16px;
-  padding: 12px 15px 13px;
+  padding: 12px 16px 14px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
 }
 
 .ac-brand {
@@ -2141,11 +2178,11 @@ h3 {
 
 .ac-composer {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   margin: 12px 16px 16px;
-  padding: 8px 10px;
-  background: var(--glass);
+  padding: 6px 8px;
+  background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 26px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -2431,7 +2468,7 @@ h3 {
 
   .ai-coach-page .ac-layout {
     grid-template-columns: 1fr;
-    height: calc(100svh - 118px - env(safe-area-inset-bottom));
+    height: calc(100svh - 118px - 64px - env(safe-area-inset-bottom));
     min-height: 440px;
     gap: 0;
   }
@@ -2460,13 +2497,12 @@ h3 {
   .ac-mobilebar button:hover { background: var(--glass); }
   .mb-title { font-weight: 800; font-size: 14.5px; }
 
-  /* Full-bleed chat column on mobile: drop the boxed border/radius so the
-     header, messages and composer run edge-to-edge (matching the sidelong
-     full-screen app layout) instead of floating as a rounded card. */
+  /* Full-bleed chat column on mobile: drop the boxed border/radius but keep a
+     solid chat surface (like ChatGPT/Gemini) so messages show clearly. */
   .ac-chat {
     border: none;
     border-radius: 0;
-    background: transparent;
+    background: var(--panel);
   }
   .ac-mobilebar {
     background: var(--panel);
@@ -2485,6 +2521,19 @@ h3 {
   .ac-mobilebar button {
     padding: 6px 10px;
     flex: 0 0 38px;
+  }
+  .ac-mobilebar .ac-ctxbtn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+  .ac-mobilebar .ac-ctxbtn span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
   }
 
   .ac-sidebar,
@@ -2537,8 +2586,18 @@ h3 {
   .ac-userbubble { max-width: 88%; }
   .ac-card { max-width: 94%; }
 
-  .ac-msgs { padding: 14px 12px 6px; }
+  .ac-msgs { padding: 14px 12px 8px; }
   .ac-composer { margin: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
+
+  /* Keep the AI home tidy on small screens: room for the orb, cards and the
+     insight card, and let it scroll from the top (safe center). */
+  .ac-welcome { padding-bottom: 150px; }
+  .ac-orb { margin-top: 22px; }
+
+  /* Clean, compact input on mobile: hide the mic control and let the
+     placeholder breathe across the full width (+ Ask FLOX AI... >). */
+  .ac-composer .ac-round.mic { display: none; }
+  .ac-composer textarea { font-size: 14px; padding: 8px 2px; }
 
   /* Keep every element flush to the same 12px gutter so bubbles,
      chips, attachments and the composer all line up on mobile. */
@@ -2549,6 +2608,9 @@ h3 {
 @media (max-width: 480px) {
   .ac-cards { grid-template-columns: 1fr; }
 }
+
+/* The AI Coach is its own full experience — no floating assistant button. */
+body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 
 /* ════════════════════════════════════════════════════════════
@@ -15311,6 +15373,17 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   font-size: 0.95rem;
 }
 
+/* My Subjects — page alignment polish */
+.ms-page .page-shell-hero {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.ms-page .ms-add-btn {
+  margin: 0;
+}
+
 @media (max-width: 900px) {
   .ms-detail-grid { grid-template-columns: 1fr; }
   .ms-detail-hero { flex-direction: column; text-align: center; }
@@ -15601,6 +15674,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   text-align: center;
   padding: 60px 20px;
   color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
 }
 
 .tk-empty h2 { margin: 8px 0; color: var(--text); }
@@ -16165,7 +16241,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 .pl-view-toggle {
   display: inline-flex;
   gap: 3px;
-  margin-bottom: 16px;
+  margin-bottom: 0px;
   background: var(--card-bg, rgba(255,255,255,0.05));
   border-radius: 10px;
   padding: 3px;
@@ -18631,8 +18707,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   height: 40px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent), #f97316);
-  color: #fff;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8A3D 55%, #76C7BE 100%);  color: #fff;
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
@@ -19169,7 +19244,8 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   position: relative;
 }
 .pl-plan-block {
-  display: flex;
+  display: grid;
+  grid-template-columns: 54px 9px minmax(110px, auto) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -19200,6 +19276,10 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 .pl-plan-subject {
   font-weight: 700;
   font-size: 0.88rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pl-plan-dur {
   font-size: 0.72rem;
@@ -19214,8 +19294,10 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 .pl-plan-task {
   font-size: 0.82rem;
   color: var(--muted);
-  flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Priority buttons */
@@ -19286,7 +19368,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .pl-month-cell { min-height: 40px; font-size: 0.8rem; }
   .pl-stat-tile { padding: 12px 6px; }
   .pl-stat-value { font-size: 1.3rem; }
-  .pl-plan-block { flex-wrap: wrap; gap: 6px; }
+  .pl-plan-block { grid-template-columns: 54px 9px minmax(110px, auto) auto 1fr; gap: 8px; padding: 8px 10px; }
   .pl-plan-time { min-width: auto; }
   .pl-exam-item { padding: 9px 10px; }
   .pl-exam-name { font-size: 0.96rem; }

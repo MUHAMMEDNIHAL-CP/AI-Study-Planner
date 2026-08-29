@@ -9,7 +9,7 @@ type NoteLite = { id: number; title: string; content: string }
 
 type Phase = 'setup' | 'running' | 'paused' | 'break' | 'complete'
 
-type SoundId = 'none' | 'rain' | 'brown' | 'white' | 'lofi'
+type SoundId = 'none' | 'rain' | 'brown' | 'lofi'
 
 const DURATIONS = [
   { label: '25 min', seconds: 25 * 60 },
@@ -28,7 +28,6 @@ const SOUNDS: Array<{ id: SoundId; label: string }> = [
   { id: 'none', label: 'Off' },
   { id: 'rain', label: 'Rain' },
   { id: 'brown', label: 'Brown Noise' },
-  { id: 'white', label: 'White Noise' },
   { id: 'lofi', label: 'Lo-fi' },
 ]
 

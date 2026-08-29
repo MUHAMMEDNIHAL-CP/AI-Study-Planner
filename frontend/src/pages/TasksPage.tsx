@@ -20,14 +20,13 @@ type Task = {
 
 type Subject = { id: number; name: string; color: string }
 
-type TabKey = 'today' | 'upcoming' | 'all' | 'completed' | 'overdue'
+type TabKey = 'today' | 'upcoming' | 'all' | 'completed'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'today', label: 'Today' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'all', label: 'All' },
   { key: 'completed', label: 'Completed' },
-  { key: 'overdue', label: 'Overdue' },
 ]
 
 function toLocalDateInput(date = new Date()) {
@@ -72,7 +71,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabKey>('today')
+  const [activeTab, setActiveTab] = useState<TabKey>('all')
   const [showModal, setShowModal] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
@@ -125,8 +124,6 @@ export default function TasksPage() {
         return sorted.filter((t) => isFuture(t.due_date) && t.status !== 'done')
       case 'completed':
         return sorted.filter((t) => t.status === 'done')
-      case 'overdue':
-        return sorted.filter((t) => isPast(t.due_date) && t.status !== 'done')
       default:
         return sorted
     }
@@ -139,7 +136,6 @@ export default function TasksPage() {
       upcoming: count((t) => isFuture(t.due_date) && t.status !== 'done'),
       all: tasks.length,
       completed: count((t) => t.status === 'done'),
-      overdue: count((t) => isPast(t.due_date) && t.status !== 'done'),
     }
   }, [tasks])
 
@@ -223,12 +219,8 @@ export default function TasksPage() {
           </div>
         ) : filteredTasks.length === 0 ? (
           <div className="tk-empty">
-            <h2>{activeTab === 'overdue' ? 'All caught up!' : 'Nothing here yet'}</h2>
-            <p>
-              {activeTab === 'overdue'
-                ? 'Great job staying on top of things.'
-                : 'Add a task to start tracking your study work.'}
-            </p>
+            <h2>Nothing here yet</h2>
+            <p>Add a task to start tracking your study work.</p>
             <button className="ms-add-btn" onClick={() => setShowModal(true)} type="button">+ Add Task</button>
           </div>
         ) : (

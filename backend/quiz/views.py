@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 
 from ai.gemini import generate_json
 from ai.models import AIHistory
+from productivity.models import record_study_activity
 
 from .models import Quiz
 from .serializers import QuizSerializer
@@ -96,6 +97,7 @@ class QuizGenerateView(APIView):
         )
         data = QuizSerializer(quiz).data
         data["provider"] = provider
+        record_study_activity(request.user)
         return Response(data, status=status.HTTP_201_CREATED)
 
 

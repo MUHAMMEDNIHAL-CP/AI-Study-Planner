@@ -519,12 +519,18 @@ export default function SettingsPage() {
             <span className="st-section-label">Sounds</span>
             <div className="st-rows">
               <ToggleRow on={preferences.studySounds} onToggle={() => update('studySounds', !preferences.studySounds)} title="Study Sounds" />
-              <SelectRow
-                onChange={(v) => update('defaultSound', v)}
-                options={SOUND_OPTIONS}
-                title="Default Sound"
-                value={preferences.defaultSound}
-              />
+            </div>
+            <div className="st-sound-picker">
+              {SOUND_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  className={'st-sound-chip' + (preferences.defaultSound === s.value ? ' active' : '')}
+                  onClick={() => update('defaultSound', s.value)}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
             <Divider />
             <span className="st-section-label">While Focusing</span>
@@ -623,8 +629,6 @@ export default function SettingsPage() {
                 <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
             </div>
-            <Divider />
-            <button className="st-logout" onClick={logout} type="button">Log Out</button>
           </>
         )
 
@@ -845,6 +849,10 @@ export default function SettingsPage() {
               </div>
             </div>
           ))}
+
+          <div className="st-logout-wrap">
+            <button className="st-logout" onClick={logout} type="button">Log Out</button>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
@@ -133,7 +132,6 @@ type HintState = { text: string; loading: boolean }
 
 export default function QuizCenterPage() {
 
-  const navigate = useNavigate()
   const [view, setView] = useState<QuizView>('dashboard')
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [exams, setExams] = useState<Exam[]>([])
@@ -165,8 +163,6 @@ export default function QuizCenterPage() {
   /* result */
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
   const [analysis, setAnalysis] = useState<AiAnalysis>(EMPTY_ANALYSIS)
-  const [aiText, setAiText] = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
   const [showReview, setShowReview] = useState(false)
   const [examMeta, setExamMeta] = useState<{ title: string; before: number } | null>(null)
 
@@ -375,21 +371,6 @@ export default function QuizCenterPage() {
     finally { setGenerating(false) }
   }
 
-  async function practiceWeakTopic(name: string) {
-    setGenerating(true)
-    try {
-      const { data } = await api.post<Quiz>('/quiz/generate/', {
-        topic: name,
-        difficulty: 'medium',
-        count: 10,
-        source: 'weak_topics',
-      })
-      setExamMeta(null)
-      beginQuiz(data)
-    } catch (err) { toast.error(getErrorMessage(err)) }
-    finally { setGenerating(false) }
-  }
-
   /* ── Active quiz flow ── */
 
   const currentQuestion = activeQuiz?.questions[currentQ] ?? null
@@ -453,9 +434,7 @@ export default function QuizCenterPage() {
   /* ── AI analysis ── */
 
   async function buildAnalysis(quiz: Quiz, result: QuizResult) {
-    setAiLoading(true)
     setAnalysis(EMPTY_ANALYSIS)
-    setAiText('')
     const wrongQs = result.results.filter((r) => !r.correct)
     const rightQs = result.results.filter((r) => r.correct)
     try {
@@ -476,11 +455,7 @@ export default function QuizCenterPage() {
       })
       const parsed = normalizeAnalysis(extractJsonObject(data.reply ?? ''))
       if (parsed) setAnalysis(parsed)
-      else setAiText((data.reply ?? '').replace(/```[\s\S]*?```/g, '').trim() || 'Nice work! Keep practicing to sharpen your weak areas.')
-    } catch {
-      const pct = Math.round((result.score / result.total) * 100)
-      setAiText(pct >= 80 ? 'Excellent! You have a solid grip on ' + quiz.topic + '.' : 'Solid effort. Review your missed questions and run a short revision session on ' + quiz.topic + '.')
-    } finally { setAiLoading(false) }
+    } catch { /* keep empty analysis */ }
   }
 
   /* ── Result actions ── */
@@ -489,7 +464,6 @@ export default function QuizCenterPage() {
     if (!activeQuiz) return
     setQuizResult(null)
     setAnalysis(EMPTY_ANALYSIS)
-    setAiText('')
     resetActive()
     setView('active')
   }
@@ -505,20 +479,16 @@ export default function QuizCenterPage() {
       results: q.questions.map((qq) => ({ id: qq.id, correct: false, explanation: qq.explanation, answer_index: qq.answer_index })),
     })
     setAnalysis(EMPTY_ANALYSIS)
-    setAiText('')
     setShowReview(true)
     setExamMeta(null)
     setView('result')
     if (q.score !== null) {
-      setAiLoading(false)
       void buildAnalysisFromStored(q)
     }
   }
 
   async function buildAnalysisFromStored(quiz: Quiz) {
-    setAiLoading(true)
     setAnalysis(EMPTY_ANALYSIS)
-    setAiText('')
     try {
       const pct = Math.round(((quiz.score ?? 0) / quiz.total_questions) * 100)
       const { data } = await api.post<{ reply?: string }>('/ai/chat/', {
@@ -529,9 +499,7 @@ export default function QuizCenterPage() {
       })
       const parsed = normalizeAnalysis(extractJsonObject(data.reply ?? ''))
       if (parsed) setAnalysis(parsed)
-      else setAiText('Past performance on ' + quiz.topic + ': ' + pct + '%.')
-    } catch { setAiText('AI analysis unavailable for past quizzes.') }
-    finally { setAiLoading(false) }
+    } catch { /* keep empty analysis */ }
   }
 
   function exitQuiz() {
@@ -676,45 +644,6 @@ export default function QuizCenterPage() {
           ))}
         </section>
       )}
-
-      <section className="zr-section zr-ai">
-        <span className="zr-section-label">{'\u2726'} AI ANALYSIS</span>
-        {aiLoading ? (
-          <div className="zr-ai-loading"><div className="ac-typing"><span /><span /><span /></div></div>
-        ) : (
-          <>
-            {analysis.strong.length > 0 && (
-              <div className="zr-ai-group">
-                <span className="zr-ai-sub">Strong areas</span>
-                <ul className="zrai-list">
-                  {analysis.strong.map((s) => <li key={s} className="ok">{'\u2713'} {s}</li>)}
-                </ul>
-              </div>
-            )}
-            {analysis.weak.length > 0 && (
-              <div className="zr-ai-group">
-                <span className="zr-ai-sub">Needs revision</span>
-                <ul className="zrai-list">
-                  {analysis.weak.map((w) => <li key={w} className="warn">{'\u26A0'} {w}</li>)}
-                </ul>
-              </div>
-            )}
-            {(analysis.recommendation || aiText) && <p className="zrai-rec">{analysis.recommendation || aiText}</p>}
-          </>
-        )}
-        {analysis.weak.length > 0 ? (
-          <button
-            className="zr-action-btn"
-            disabled={generating}
-            onClick={() => void practiceWeakTopic(analysis.weak[0])}
-            type="button"
-          >
-            {generating ? 'Preparing...' : 'Practice ' + analysis.weak[0] + ' \u2192'}
-          </button>
-        ) : (
-          <button className="zr-action-btn" onClick={() => navigate('/focus')} type="button">Start Revision</button>
-        )}
-      </section>
 
       {examMeta && (
         <div className="zr-section">
