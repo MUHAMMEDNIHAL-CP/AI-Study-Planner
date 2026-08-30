@@ -18543,9 +18543,10 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .au-eye {
   position: absolute;
+  top: 0;
+  bottom: 0;
   right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-block: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
