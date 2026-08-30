@@ -219,6 +219,16 @@ h3 {
   color: #fecaca !important;
 }
 
+[data-theme='light'] .danger-button {
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #b91c1c !important;
+}
+
+[data-theme='light'] .danger-button:hover {
+  background: rgba(220, 38, 38, 0.18) !important;
+}
+
 /* Sidebar */
 .sidebar {
   position: fixed;

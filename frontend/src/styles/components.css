@@ -3236,6 +3236,7 @@ button.st-row:hover,
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 24px;
+  margin-top: 10px;
   box-shadow: 0 14px 40px -30px rgba(0, 0, 0, 0.45);
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -3901,8 +3902,14 @@ button.st-row:hover,
 @media (max-width: 700px) {
   .pf-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
     gap: 18px;
+  }
+
+  .pf-header-info {
+    align-items: center;
+    width: 100%;
   }
 
   .pf-avatar span {
@@ -3934,7 +3941,7 @@ button.st-row:hover,
   .pf-header {
     flex-direction: column;
     text-align: center;
-    padding: 26px 18px;
+    padding: 24px 18px 22px;
   }
 
   .pf-header-info {
