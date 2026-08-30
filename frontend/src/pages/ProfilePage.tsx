@@ -243,7 +243,7 @@ export default function ProfilePage() {
   )
   const avatar = userInitials(displayName)
   const prof = profile?.profile
-  const handle = profile ? `@${profile.username}` : ''
+  const handle = profile?.email ? profile.email : ''
 
   // ── Lifetime + recent totals (computed from productivity logs) ──
   const totals = useMemo(() => {
@@ -353,6 +353,9 @@ export default function ProfilePage() {
               )}
               {prof?.college && <span className="pf-college">{prof.college}</span>}
               {prof?.bio && <p className="pf-bio">{prof.bio}</p>}
+              <button className="ghost-action pf-header-edit" onClick={() => setModal('profile')} type="button">
+                Edit Profile
+              </button>
             </div>
           </section>
 
