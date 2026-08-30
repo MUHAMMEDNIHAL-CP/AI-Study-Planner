@@ -101,8 +101,6 @@ class MeView(APIView):
                 errors["email"] = "This email address is already in use."
 
         if errors:
-            with open("_patch_debug.log", "a") as _f:
-                _f.write(f"USER={user.pk} DATA={dict(request.data)} ERRORS={errors}\n")
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
         user.username = username
