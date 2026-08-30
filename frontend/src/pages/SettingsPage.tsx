@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { api, getErrorMessage } from '../lib/api'
 import { applyTheme, getTheme, type ThemeMode } from '../lib/theme'
 import { clearAuthTokens } from '../lib/auth'
+import { notifyProfileUpdated } from '../hooks/useUserProfile'
 import PageShell from '../components/PageShell'
 
 /* ── Local preferences ─────────────────────────────────────── */
@@ -305,13 +306,12 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>(() => getTheme())
 
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
   const [dailyGoal, setDailyGoal] = useState(4)
   const [preferredStudyTime, setPreferredStudyTime] = useState('evening')
   const [coachingStyle, setCoachingStyle] = useState('balanced')
   const [currentStreak, setCurrentStreak] = useState(0)
   const [, setSavingProfile] = useState(false)
-  const [editField, setEditField] = useState<'email' | 'username' | null>(null)
+  const [editField, setEditField] = useState<'email' | null>(null)
   const [editValue, setEditValue] = useState('')
 
   useEffect(() => {
@@ -323,7 +323,6 @@ export default function SettingsPage() {
       if (!active) return
       if (meRes?.data) {
         setEmail(meRes.data.email ?? '')
-        setUsername(meRes.data.username ?? '')
         setDailyGoal(meRes.data.profile?.daily_study_goal ?? 4)
         setPreferredStudyTime(meRes.data.profile?.preferred_study_time ?? 'evening')
         setCoachingStyle(meRes.data.profile?.coaching_style ?? 'balanced')
@@ -346,10 +345,10 @@ export default function SettingsPage() {
     try {
       const { data } = await api.patch('/auth/me/', payload)
       setEmail(data.email ?? '')
-      setUsername(data.username ?? '')
       setDailyGoal(data.profile?.daily_study_goal ?? dailyGoal)
       setPreferredStudyTime(data.profile?.preferred_study_time ?? preferredStudyTime)
       setCoachingStyle(data.profile?.coaching_style ?? coachingStyle)
+      notifyProfileUpdated()
       toast.success('Settings saved.')
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -385,8 +384,8 @@ export default function SettingsPage() {
     setTheme(next)
   }
 
-  function startEdit(field: 'email' | 'username') {
-    setEditValue(field === 'email' ? email : username)
+  function startEdit(field: 'email') {
+    setEditValue(field === 'email' ? email : '')
     setEditField(field)
   }
 
@@ -395,7 +394,7 @@ export default function SettingsPage() {
       toast.error('This field cannot be empty.')
       return
     }
-    await patchProfile(editField === 'email' ? { email: editValue.trim() } : { username: editValue.trim() })
+    await patchProfile({ email: editValue.trim() })
     setEditField(null)
   }
 
@@ -607,13 +606,6 @@ export default function SettingsPage() {
                 <span className="st-row-text">
                   <strong>Email</strong>
                   <small>{email || 'Add your email address'}</small>
-                </span>
-                <span aria-hidden className="st-row-chevron">&rsaquo;</span>
-              </button>
-              <button className="st-row st-row-btn" onClick={() => startEdit('username')} type="button">
-                <span className="st-row-text">
-                  <strong>Username</strong>
-                  <small>{username || 'Set your username'}</small>
                 </span>
                 <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
@@ -875,15 +867,15 @@ export default function SettingsPage() {
       {editField && (
         <div className="pf-modal-overlay" onClick={() => setEditField(null)} role="presentation">
           <div className="pf-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <h3>Edit {editField === 'email' ? 'Email' : 'Username'}</h3>
+            <h3>Edit Email</h3>
             <label className="pf-field">
-              <span>{editField === 'email' ? 'Email' : 'Username'}</span>
+              <span>Email</span>
               <input
                 autoFocus
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') saveEdit() }}
-                placeholder={editField === 'email' ? 'you@example.com' : 'your_username'}
-                type={editField === 'email' ? 'email' : 'text'}
+                placeholder="you@example.com"
+                type="email"
                 value={editValue}
               />
             </label>

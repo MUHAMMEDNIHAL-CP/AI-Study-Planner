@@ -5,6 +5,7 @@ import AuthLayout from '../components/AuthLayout'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
 import { socialLogin } from '../lib/socialAuth'
+import { notifyProfileUpdated } from '../hooks/useUserProfile'
 
 type TokenResponse = {
   access: string
@@ -42,7 +43,7 @@ function AppleIcon() {
 
 export default function RegisterPage() {
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -70,9 +71,10 @@ export default function RegisterPage() {
     }
     setLoading(true)
     try {
-      const { data } = await api.post<TokenResponse>('/auth/register/', { username, email, password })
+      const { data } = await api.post<TokenResponse>('/auth/register/', { full_name: fullName, email, password })
       setAuthTokens(data.access, data.refresh)
       toast.success('Account created')
+      notifyProfileUpdated()
       navigate('/welcome')
     } catch (err) {
       setError(getErrorMessage(err))
@@ -87,6 +89,7 @@ export default function RegisterPage() {
     try {
       const result = await socialLogin(provider)
       toast.success(result.is_new ? 'Account created' : 'Logged in')
+      notifyProfileUpdated()
       navigate(result.is_new ? '/welcome' : '/dashboard')
     } catch (err) {
       setError(getErrorMessage(err))
@@ -113,9 +116,9 @@ export default function RegisterPage() {
           <span>Full Name</span>
           <input
             autoComplete="name"
-            placeholder="Muhammed Nihal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Your full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             required
           />
         </label>

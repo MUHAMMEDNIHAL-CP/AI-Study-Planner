@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
+import { notifyProfileUpdated } from '../hooks/useUserProfile'
 import PageShell from '../components/PageShell'
 
 type ProfileData = {
@@ -72,7 +73,6 @@ type ModalKind = 'profile' | 'goals' | 'learning' | null
 
 type IdentityForm = {
   full_name: string
-  username: string
   email: string
   education_level: string
   course: string
@@ -148,7 +148,7 @@ export default function ProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false)
 
   const [identityForm, setIdentityForm] = useState<IdentityForm>({
-    full_name: '', username: '', email: '', education_level: 'college', course: '', semester: 1, college: '', bio: '',
+    full_name: '', email: '', education_level: 'college', course: '', semester: 1, college: '', bio: '',
   })
   const [goalsForm, setGoalsForm] = useState<GoalsForm>({
     daily_study_goal: 4, target_grade: '', main_goal: '', study_goal: '',
@@ -160,7 +160,6 @@ export default function ProfilePage() {
   function fillIdentity(data: UserProfile) {
     setIdentityForm({
       full_name: data.full_name || '',
-      username: data.username,
       email: data.email,
       education_level: data.profile?.education_level || 'college',
       course: data.profile?.course ?? '',
@@ -175,7 +174,6 @@ export default function ProfilePage() {
     try {
       const payload: Record<string, unknown> = {
         full_name: identityForm.full_name,
-        username: identityForm.username,
         email: identityForm.email,
         education_level: identityForm.education_level,
         course: identityForm.course,
@@ -185,6 +183,7 @@ export default function ProfilePage() {
       }
       const { data } = await api.patch<UserProfile>('/auth/me/', payload)
       setProfile(data)
+      notifyProfileUpdated()
       setModal(null)
     } catch {
       // keep the modal open so the user can retry
@@ -607,43 +606,39 @@ export default function ProfilePage() {
               Full Name
               <input
                 onChange={(e) => setIdentityForm((c) => ({ ...c, full_name: e.target.value }))}
-                placeholder="Muhammed Nihal"
+                placeholder="Name"
                 value={identityForm.full_name}
               />
             </label>
-            <div className="pf-field-row">
-              <label className="pf-field">
-                Username
-                <input
-                  onChange={(e) => setIdentityForm((c) => ({ ...c, username: e.target.value }))}
-                  placeholder="muhdnihalcp"
-                  value={identityForm.username}
-                />
-              </label>
-              <label className="pf-field">
-                Email
-                <input
-                  onChange={(e) => setIdentityForm((c) => ({ ...c, email: e.target.value }))}
-                  type="email"
-                  value={identityForm.email}
-                />
-              </label>
-            </div>
+            <label className="pf-field">
+              Email
+              <input
+                onChange={(e) => setIdentityForm((c) => ({ ...c, email: e.target.value }))}
+                type="email"
+                value={identityForm.email}
+              />
+            </label>
             <label className="pf-field">
               I&apos;m a...
-              <div
-                className="pf-level-toggle"
-                onChange={(e) => {
-                  const val = (e.target as HTMLInputElement).value
-                  setIdentityForm((c) => ({ ...c, education_level: val }))
-                }}
-              >
+              <div className="pf-level-toggle">
                 <label>
-                  <input type="radio" name="education_level" value="college" checked={identityForm.education_level !== 'high_school'} />
+                  <input
+                    type="radio"
+                    name="education_level"
+                    value="college"
+                    checked={identityForm.education_level !== 'high_school'}
+                    onChange={() => setIdentityForm((c) => ({ ...c, education_level: 'college' }))}
+                  />
                   <span>{'\uD83C\uDF93'} College / University</span>
                 </label>
                 <label>
-                  <input type="radio" name="education_level" value="high_school" checked={identityForm.education_level === 'high_school'} />
+                  <input
+                    type="radio"
+                    name="education_level"
+                    value="high_school"
+                    checked={identityForm.education_level === 'high_school'}
+                    onChange={() => setIdentityForm((c) => ({ ...c, education_level: 'high_school' }))}
+                  />
                   <span>{'\uD83C\uDFEB'} High School</span>
                 </label>
               </div>

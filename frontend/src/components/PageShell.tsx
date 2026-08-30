@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useUserProfile, initials } from '../hooks/useUserProfile'
+import { useUserProfile, displayName, initials } from '../hooks/useUserProfile'
 import { getTheme, toggleTheme, type ThemeMode } from '../lib/theme'
 import { IconMoon, IconSettings, IconSun } from './icons'
 
@@ -22,8 +22,8 @@ export default function PageShell({
   className = '',
 }: PageShellProps) {
   const profile = useUserProfile()
-  const displayName = profile?.username ?? 'Flox AI'
-  const avatar = initials(displayName)
+  const name = displayName(profile)
+  const avatar = initials(name)
   const [currentTime, setCurrentTime] = useState(() => new Date())
   const [theme, setTheme] = useState<ThemeMode>(() => getTheme())
 
@@ -69,7 +69,7 @@ export default function PageShell({
             <IconSettings size={18} />
           </Link>
           <Link className="page-shell-user" to="/profile">
-            <span>{displayName}</span>
+            <span>{name}</span>
             <b>{avatar}</b>
           </Link>
         </div>

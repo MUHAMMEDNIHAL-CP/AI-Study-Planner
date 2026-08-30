@@ -80,15 +80,9 @@ class MeView(APIView):
 
     def patch(self, request):
         user = request.user
-        username = (request.data.get("username") or "").strip()
         email = (request.data.get("email") or "").strip()
         full_name = (request.data.get("full_name") or "").strip()
         errors = {}
-
-        if not username:
-            errors["username"] = "Username is required."
-        elif User.objects.exclude(pk=user.pk).filter(username__iexact=username).exists():
-            errors["username"] = "This username is already in use."
 
         if not email:
             errors["email"] = "Email address is required."
@@ -103,11 +97,10 @@ class MeView(APIView):
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user.username = username
         user.email = email
         if full_name:
             user.first_name = full_name
-        user.save(update_fields=["username", "email", "first_name"])
+        user.save(update_fields=["email", "first_name"])
 
         profile_fields = (
             "bio", "education_level", "college", "course", "semester", "study_goal",

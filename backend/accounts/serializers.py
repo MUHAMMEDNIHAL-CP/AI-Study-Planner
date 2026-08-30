@@ -40,19 +40,34 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+class RegisterSerializer(serializers.Serializer):
+    full_name = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
 
-    class Meta:
-        model = User
-        fields = ("username", "email", "password")
+    def validate_email(self, value):
+        email = (value or "").strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return email
 
     def create(self, validated_data):
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
+        from django.utils.text import slugify
+
+        email = validated_data["email"].lower()
+        full_name = (validated_data.get("full_name") or "").strip()
+        base = slugify(email.split("@")[0]) or "user"
+        username = base
+        suffix = 1
+        while User.objects.filter(username__iexact=username).exists():
+            username = f"{base}{suffix}"
+            suffix += 1
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=validated_data["password"],
+            first_name=full_name,
+        )
         Profile.objects.create(user=user)
         return user
 
@@ -64,26 +79,23 @@ class SocialLoginSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    credential = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        credential = attrs.get("credential", "").strip()
+        email = (attrs.get("email") or "").strip().lower()
         password = attrs.get("password")
 
-        if not credential:
-            raise serializers.ValidationError({"credential": "Enter your username or email."})
+        if not email:
+            raise serializers.ValidationError({"email": "Enter your email."})
 
-        # Accept either a username or an email address.
-        request_user = User.objects.filter(
-            username__iexact=credential
-        ).first() or User.objects.filter(email__iexact=credential).first()
+        request_user = User.objects.filter(email__iexact=email).first()
 
         if not request_user:
-            raise serializers.ValidationError("Invalid credentials.")
+            raise serializers.ValidationError("Invalid email or password.")
 
         if not request_user.check_password(password):
-            raise serializers.ValidationError("Invalid credentials.")
+            raise serializers.ValidationError("Invalid email or password.")
 
         attrs["user"] = request_user
         return attrs

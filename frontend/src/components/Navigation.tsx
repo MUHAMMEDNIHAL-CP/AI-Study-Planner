@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { clearAuthTokens, isAuthenticated } from '../lib/auth'
-import { initials, useUserProfile } from '../hooks/useUserProfile'
+import { displayName, initials, useUserProfile } from '../hooks/useUserProfile'
 import { onStudyActivity } from '../lib/studyActivity'
 import {
   IconBot,
@@ -101,7 +101,7 @@ export default function Navigation() {
 
   if (!authed) return null
 
-  const name = profile?.username ?? 'Scholar'
+  const name = displayName(profile)
   const avatar = initials(name)
   const currentStreak = streakData?.current_streak ?? 0
   const milestone = streakData?.next_milestone

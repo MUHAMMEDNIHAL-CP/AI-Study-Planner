@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
+import { notifyProfileUpdated } from '../hooks/useUserProfile'
 
 const GOALS = [2, 3, 4, 5]
 const TIMES = [
@@ -31,9 +32,8 @@ export default function OnboardingPage() {
     setSaving(true)
     const isCollege = level === 'college'
     try {
-      const { data } = await api.get<{ username: string; email: string }>('/auth/me/')
+      const { data } = await api.get<{ email: string }>('/auth/me/')
       await api.patch('/auth/me/', {
-        username: data.username,
         email: data.email,
         education_level: level,
         course: isCollege ? course.trim() : grade.trim(),
@@ -42,6 +42,7 @@ export default function OnboardingPage() {
         preferred_study_time: time,
       })
       toast.success("You're all set \u2014 welcome aboard!")
+      notifyProfileUpdated()
       navigate('/dashboard')
     } catch (err) {
       toast.error(getErrorMessage(err))

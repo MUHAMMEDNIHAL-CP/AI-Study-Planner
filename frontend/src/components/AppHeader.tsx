@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { useUserProfile, initials } from '../hooks/useUserProfile'
+import { useUserProfile, displayName, initials } from '../hooks/useUserProfile'
 
 type AppHeaderProps = {
   /** Optional content rendered between the clock and the user chip (e.g. a search box). */
@@ -14,8 +14,8 @@ type AppHeaderProps = {
  */
 export default function AppHeader({ children, className = '' }: AppHeaderProps) {
   const profile = useUserProfile()
-  const displayName = profile?.username ?? 'Scholar'
-  const avatar = initials(displayName)
+  const name = displayName(profile)
+  const avatar = initials(name)
   const [currentTime, setCurrentTime] = useState(() => new Date())
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function AppHeader({ children, className = '' }: AppHeaderProps) 
       {children}
 
       <div className="flow-user">
-        <span className="flow-user-name">{displayName}</span>
+        <span className="flow-user-name">{name}</span>
         <b>{avatar}</b>
       </div>
     </header>

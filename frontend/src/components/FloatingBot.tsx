@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { useUserProfile, initials } from '../hooks/useUserProfile'
+import { useUserProfile, firstName, initials } from '../hooks/useUserProfile'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -112,7 +112,7 @@ export default function FloatingBot() {
   const location = useLocation()
   const navigate = useNavigate()
   const profile = useUserProfile()
-  const name = profile?.username?.split(/\s+/)[0] || 'there'
+  const name = firstName(profile) || 'there'
 
   const currentPath = location.pathname
   const quickActions = pageQuickActions[currentPath] || defaultQuickActions

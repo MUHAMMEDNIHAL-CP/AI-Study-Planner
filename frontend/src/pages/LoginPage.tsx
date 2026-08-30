@@ -5,6 +5,7 @@ import AuthLayout from '../components/AuthLayout'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'
 import { socialLogin } from '../lib/socialAuth'
+import { notifyProfileUpdated } from '../hooks/useUserProfile'
 
 type TokenResponse = {
   access: string
@@ -42,7 +43,7 @@ export function AppleIcon() {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [credential, setCredential] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,10 +55,11 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const payload = { credential: credential.trim(), password }
+      const payload = { email: email.trim(), password }
       const { data } = await api.post<TokenResponse>('/auth/login/', payload)
       setAuthTokens(data.access, data.refresh)
       toast.success('Logged in')
+      notifyProfileUpdated()
       navigate('/dashboard')
     } catch (err) {
       setError(getErrorMessage(err))
@@ -72,6 +74,7 @@ export default function LoginPage() {
     try {
       const result = await socialLogin(provider)
       toast.success(result.is_new ? 'Account created' : 'Logged in')
+      notifyProfileUpdated()
       navigate(result.is_new ? '/welcome' : '/dashboard')
     } catch (err) {
       setError(getErrorMessage(err))
@@ -97,11 +100,11 @@ export default function LoginPage() {
         <label className="au-field">
           <span>Email</span>
           <input
-            autoComplete="username"
+            autoComplete="email"
             placeholder="you@example.com"
-            type="text"
-            value={credential}
-            onChange={(e) => setCredential(e.target.value)}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </label>

@@ -47,6 +47,7 @@ type QuizItem = {
 
 type MeInfo = {
   username: string
+  full_name?: string
   profile?: {
     daily_study_goal?: number
     preferred_study_time?: string
@@ -455,7 +456,7 @@ export default function ProgressPage() {
 
   /* ── AI insight ── */
 
-  const firstName = (me?.username ?? 'there').split(' ')[0]
+  const firstName = ((me?.full_name || me?.username) ?? 'there').split(/\s+/)[0]
   const topImprovedTopic = useMemo(() => {
     const withTwoAttempts = topicStats.filter((t) => t.count >= 2)
     return withTwoAttempts.sort((a, b) => b.accuracy - a.accuracy)[0] ?? null

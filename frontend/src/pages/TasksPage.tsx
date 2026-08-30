@@ -284,7 +284,7 @@ export default function TasksPage() {
       {showModal && (
         <div
           className="cal-modal-overlay"
-          onClick={() => setShowModal(false)}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
         >
           <section

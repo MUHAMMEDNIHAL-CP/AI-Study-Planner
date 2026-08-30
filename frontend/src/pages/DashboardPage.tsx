@@ -122,14 +122,14 @@ export default function DashboardPage() {
     async function load() {
       try {
         const [profileRes, dashRes, subjRes, taskRes, sessRes] = await Promise.all([
-          api.get<{ username: string; profile?: { education_level: string; course: string; college: string; semester: number } }>('/auth/me/'),
+          api.get<{ full_name?: string; username?: string; profile?: { education_level: string; course: string; college: string; semester: number } }>('/auth/me/'),
           api.get<DashboardSummary>('/study/dashboard/'),
           api.get<ApiSubject[]>('/study/subjects/'),
           api.get<ApiTask[]>('/study/tasks/'),
           api.get<FocusSession[]>('/productivity/focus-sessions/').catch(() => ({ data: [] as FocusSession[] })),
         ])
         if (!active) return
-        setFirstName(profileRes.data.username.split(/\s+/)[0] || 'Scholar')
+        setFirstName((profileRes.data.full_name || profileRes.data.username || 'Scholar').split(/\s+/)[0])
         setEducationLabel(buildEducationLabel(profileRes.data.profile))
         setDashboard(dashRes.data)
         setSubjects(subjRes.data)

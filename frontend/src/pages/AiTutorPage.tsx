@@ -5,7 +5,7 @@ import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconAnalytics, IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
-import { useUserProfile } from '../hooks/useUserProfile'
+import { useUserProfile, firstName } from '../hooks/useUserProfile'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -309,7 +309,7 @@ function QuizRunner({ quiz }: { quiz: QuizShape }) {
 export default function AiTutorPage() {
   const profile = useUserProfile()
   const navigate = useNavigate()
-  const userName = profile?.username?.split(/\s+/)[0] || 'there'
+  const userName = firstName(profile) || 'there'
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [exams, setExams] = useState<ExamLite[]>([])
