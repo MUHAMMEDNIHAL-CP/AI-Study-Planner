@@ -478,6 +478,26 @@ export default function PlannerPage() {
                   </div>
                 )
               })}
+              {todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === null).length > 0 && (
+                <div className="pl-timeline-row">
+                  <span className="pl-timeline-hour">Other</span>
+                  <div className="pl-timeline-cell">
+                    {todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === null).map((task) => {
+                      const color = getSubjectColor(task.subject, subjects)
+                      return (
+                        <div key={task.id} className="pl-timeline-task" style={{ '--pl-color': color } as CSSProperties}>
+                          <span className="pl-avatar" style={{ '--pl-color': color } as CSSProperties}>{subjectInitial(task.subject_name || task.title, 'S')}</span>
+                          <div className="pl-timeline-task-info">
+                            <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
+                            <span className="pl-timeline-task-title">{task.title}</span>
+                          </div>
+                          <span className="pl-timeline-task-dur">{minutesLabel(task.duration_minutes)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="pl-day-summary">
               <span className="pl-chip">{dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''}</span>

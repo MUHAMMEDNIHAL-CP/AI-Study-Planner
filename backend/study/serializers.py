@@ -54,3 +54,31 @@ class StudyTaskSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "subject_name"]
+
+    def update(self, instance, validated_data):
+        old_status = instance.status
+        new_status = validated_data.get("status", instance.status)
+
+        if new_status != old_status and new_status == "done" and old_status != "done":
+            self._adjust_completed_tasks(instance, +1)
+        elif new_status != old_status and old_status == "done" and new_status != "done":
+            self._adjust_completed_tasks(instance, -1)
+
+        return super().update(instance, validated_data)
+
+    @staticmethod
+    def _adjust_completed_tasks(task, delta):
+        from django.utils import timezone
+        from productivity.models import ProductivityLog
+
+        day = timezone.localdate()
+        try:
+            log = ProductivityLog.objects.get(user=task.user, date=day)
+        except ProductivityLog.DoesNotExist:
+            if delta > 0:
+                ProductivityLog.objects.create(user=task.user, date=day, completed_tasks=1)
+            return
+        new_value = max(0, log.completed_tasks + delta)
+        if log.completed_tasks != new_value:
+            log.completed_tasks = new_value
+            log.save(update_fields=["completed_tasks"])

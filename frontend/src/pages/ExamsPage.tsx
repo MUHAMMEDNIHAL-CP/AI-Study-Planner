@@ -78,9 +78,9 @@ function daysLeftBadgeColor(days: number): { bg: string; color: string } {
 }
 
 function priorityBadgeStyle(priority: string): { bg: string; color: string } {
-  if (priority === 'high') return { bg: 'rgba(251,113,133,0.15)', color: '#fca5a5' }
-  if (priority === 'low') return { bg: 'rgba(74,222,128,0.12)', color: '#86efac' }
-  return { bg: 'rgba(251,191,36,0.12)', color: '#fde68a' }
+  if (priority === 'high') return { bg: 'rgba(244,63,94,0.14)', color: '#fb7185' }
+  if (priority === 'low') return { bg: 'rgba(16,185,129,0.13)', color: '#34d399' }
+  return { bg: 'rgba(245,158,11,0.14)', color: '#fbbf24' }
 }
 
 export default function ExamsPage() {

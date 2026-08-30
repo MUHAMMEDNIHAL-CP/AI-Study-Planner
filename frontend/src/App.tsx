@@ -21,7 +21,16 @@ function AppFrame() {
       </main>
       {authed && <FloatingBot />}
       {authed && <BottomNav />}
-      <ToastContainer position="top-right" theme="dark" />
+      <ToastContainer
+        position="top-right"
+        theme="dark"
+        autoClose={2500}
+        hideProgressBar
+        closeOnClick
+        pauseOnHover={false}
+        newestOnTop
+        limit={3}
+      />
     </>
   )
 }

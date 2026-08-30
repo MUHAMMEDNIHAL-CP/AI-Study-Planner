@@ -84,23 +84,33 @@ class MeView(APIView):
         full_name = (request.data.get("full_name") or "").strip()
         errors = {}
 
-        if not email:
-            errors["email"] = "Email address is required."
-        else:
-            try:
-                validate_email(email)
-            except ValidationError:
-                errors["email"] = "Enter a valid email address."
-            if User.objects.exclude(pk=user.pk).filter(email__iexact=email).exists():
-                errors["email"] = "This email address is already in use."
+        # Email is only required/validated when the caller is actually trying to
+        # change it. Profile-only updates (e.g. daily_study_goal) must not fail.
+        fields = set(request.data)
+        changing_email = "email" in fields
+        if changing_email:
+            if not email:
+                errors["email"] = "Email address is required."
+            else:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors["email"] = "Enter a valid email address."
+                if User.objects.exclude(pk=user.pk).filter(email__iexact=email).exists():
+                    errors["email"] = "This email address is already in use."
 
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user.email = email
+        update_fields = []
+        if changing_email:
+            user.email = email
+            update_fields.append("email")
         if full_name:
             user.first_name = full_name
-        user.save(update_fields=["email", "first_name"])
+            update_fields.append("first_name")
+        if update_fields:
+            user.save(update_fields=update_fields)
 
         profile_fields = (
             "bio", "education_level", "college", "course", "semester", "study_goal",

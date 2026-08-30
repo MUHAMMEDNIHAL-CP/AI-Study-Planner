@@ -42,6 +42,11 @@ def _endpoints():
         return []
     configured = os.getenv("GEMINI_MODELS") or os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     models = [model.strip() for model in configured.split(",") if model.strip()]
+    # Prioritize the lightweight flash-lite model first for lower latency, then
+    # fall back to the other configured models if it fails or is unavailable.
+    fast_models = [model for model in models if "flash-lite" in model]
+    other_models = [model for model in models if "flash-lite" not in model]
+    models = fast_models + other_models
     if "gemini-3.1-flash-lite" not in models:
         models.append("gemini-3.1-flash-lite")
     # Keep the API key in a header (x-goog-api-key) rather than the URL query

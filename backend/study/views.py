@@ -1,3 +1,5 @@
+import logging
+import threading
 from datetime import timedelta
 
 from django.db import models
@@ -14,6 +16,47 @@ from productivity.models import ProductivityLog, record_study_activity
 from .models import Exam, StudyTask, Subject
 from .serializers import ExamSerializer, StudyTaskSerializer, SubjectSerializer
 from .streak import compute_streak_stats
+
+logger = logging.getLogger("flox.study")
+
+
+def _fmt_time(minutes: int) -> str:
+    """Format a minute-of-day value as HH:MM (e.g. 570 -> '09:30')."""
+    minutes = int(minutes) % (24 * 60)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def _normalize_plan_blocks(plan, subjects, fallback_minutes=50):
+    """Validate and repair AI-generated plan blocks so the UI always gets
+    well-formed, consistent entries with a real start time."""
+    subjects = [str(s) for s in subjects] or ["Core subject", "Revision", "Practice"]
+    normalized = []
+    start_min = 9 * 60
+    for index, block in enumerate(plan if isinstance(plan, list) else []):
+        if not isinstance(block, dict):
+            continue
+        subject = block.get("subject") or subjects[index % len(subjects)]
+        if subject not in subjects:
+            subject = subjects[index % len(subjects)]
+        try:
+            duration = int(block.get("duration_minutes") or fallback_minutes)
+        except (TypeError, ValueError):
+            duration = fallback_minutes
+        if duration <= 0:
+            duration = fallback_minutes
+        time_value = block.get("time")
+        if not time_value or str(time_value).lower().startswith("session"):
+            time_value = _fmt_time(start_min)
+        normalized.append(
+            {
+                "time": str(time_value),
+                "subject": subject,
+                "duration_minutes": duration,
+                "task": str(block.get("task") or "Concept study + active recall"),
+            }
+        )
+        start_min += duration
+    return normalized
 
 
 class OwnedQuerysetMixin:
@@ -252,11 +295,12 @@ class GeneratePlanView(APIView):
         block_minutes = 50 if daily_hours >= 2 else 35
         blocks = max(1, int((daily_hours * 60) // block_minutes))
         plan = []
+        start_min = 9 * 60
         for index in range(blocks):
             subject = subjects[index % len(subjects)]
             plan.append(
                 {
-                    "time": f"Session {index + 1}",
+                    "time": _fmt_time(start_min + index * block_minutes),
                     "subject": subject,
                     "duration_minutes": block_minutes,
                     "task": "Revise weak topics" if index == 0 and weak_topics else "Concept study + active recall",
@@ -277,18 +321,8 @@ class GeneratePlanView(APIView):
             ],
             "focus_tip": "Use 50/10 focus cycles and finish each session by writing one next action.",
         }
-        gemini_response = generate_json(
-            "You are Flox AI, a study planner for students. Return strict JSON with keys: "
-            "goal string, exam_date string, daily_hours number, plan array, revision_schedule array, focus_tip string. "
-            "Each plan item must contain time, subject, duration_minutes, task. "
-            "Build a practical hourly active-recall timetable with spaced revision and breaks. "
-            f"Subjects: {subjects}. Weak topics: {weak_topics}. Daily hours: {daily_hours}. "
-            f"Exam date: {exam_date}. Goal: {goal}."
-        )
-        if isinstance(gemini_response, dict) and isinstance(gemini_response.get("plan"), list):
-            response = {**gemini_response, "provider": "gemini"}
 
-        AIHistory.objects.create(
+        history = AIHistory.objects.create(
             user=request.user,
             feature="planner",
             prompt=f"Build me a study plan. Goal: {goal}. Exam date: {exam_date}. Daily hours: {daily_hours}. Subjects: {', '.join(subjects)}.",
@@ -296,6 +330,34 @@ class GeneratePlanView(APIView):
             provider=response["provider"],
         )
         record_study_activity(request.user)
+
+        # Ask the fast model first with a short timeout so the response stays
+        # snappy. If it returns a valid, well-formed plan we use it directly for
+        # accuracy; otherwise we keep the instant mock fallback above.
+        try:
+            gemini_response = generate_json(
+                "You are Flox AI, a study planner for students. Return strict JSON with keys: "
+                "goal string, exam_date string, daily_hours number, plan array, revision_schedule array, focus_tip string. "
+                "Each plan item must contain time, subject, duration_minutes, task. "
+                "Build a practical hourly active-recall timetable with spaced revision and breaks. "
+                f"Subjects: {subjects}. Weak topics: {weak_topics}. Daily hours: {daily_hours}. "
+                f"Exam date: {exam_date}. Goal: {goal}.",
+                timeout=8,
+            )
+            valid_plan = (
+                isinstance(gemini_response, dict)
+                and isinstance(gemini_response.get("plan"), list)
+                and len(gemini_response["plan"]) > 0
+            )
+            if valid_plan:
+                gemini_response["plan"] = _normalize_plan_blocks(gemini_response["plan"], subjects, block_minutes)
+                response = {**gemini_response, "provider": "gemini"}
+                history.response = response
+                history.provider = "gemini"
+                history.save(update_fields=["response", "provider"])
+        except Exception:
+            logger.exception("Gemini plan generation failed; using fallback plan")
+
         return Response(response, status=status.HTTP_201_CREATED)
 
 

@@ -11,6 +11,184 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── FocusFlow toasts (light, minimal) ────────────────────── */
+html .Toastify__toast-container,
+html .Toastify__toast-container--top-right,
+html .Toastify__toast,
+html .Toastify__toast-body {
+  box-sizing: border-box;
+}
+
+/* container */
+html .Toastify__toast-container {
+  width: auto;
+  padding: 0;
+  z-index: 9999;
+}
+
+html .Toastify__toast-container--top-right {
+  top: 14px;
+  right: 14px;
+  width: 320px;
+  max-width: calc(100vw - 28px);
+}
+
+/* card — light, airy, blends into the page */
+html .Toastify__toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 9px 34px 9px 12px;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+[data-theme='light'] html .Toastify__toast {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(15, 23, 42, 0.09);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] html .Toastify__toast {
+  background: rgba(17, 24, 39, 0.78);
+  border-color: rgba(202, 213, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* body row: icon chip + text + close, all centered */
+html .Toastify__toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+}
+
+html .Toastify__toast-body > div:last-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  text-align: left;
+}
+
+/* icon chip — soft, subtle, no ring */
+html .Toastify__toast-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+html .Toastify__toast-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+}
+
+html .Toastify__toast--success .Toastify__toast-icon {
+  background: rgba(45, 212, 191, 0.14);
+}
+html .Toastify__toast--success .Toastify__toast-icon svg {
+  fill: #10b981;
+}
+
+html .Toastify__toast--error .Toastify__toast-icon {
+  background: rgba(255, 139, 139, 0.13);
+}
+html .Toastify__toast--error .Toastify__toast-icon svg {
+  fill: #f87171;
+}
+
+html .Toastify__toast--info .Toastify__toast-icon,
+html .Toastify__toast--default .Toastify__toast-icon {
+  background: rgba(56, 189, 248, 0.13);
+}
+html .Toastify__toast--info .Toastify__toast-icon svg,
+html .Toastify__toast--default .Toastify__toast-icon svg {
+  fill: #38bdf8;
+}
+
+html .Toastify__toast--warning .Toastify__toast-icon {
+  background: rgba(255, 184, 77, 0.14);
+}
+html .Toastify__toast--warning .Toastify__toast-icon svg {
+  fill: #f59e0b;
+}
+
+/* close button — anchored to the top-right of the card */
+html .Toastify__close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  height: 20px;
+  width: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-dim);
+  background: var(--bg-subtle);
+  opacity: 1;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+html .Toastify__close-button > svg {
+  height: 11px;
+  width: 11px;
+}
+html .Toastify__close-button:hover,
+html .Toastify__close-button:focus {
+  color: var(--text);
+  background: var(--line);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+[data-theme='dark'] html .Toastify__close-button {
+  background: rgba(202, 213, 255, 0.12);
+}
+[data-theme='dark'] html .Toastify__close-button:hover,
+[data-theme='dark'] html .Toastify__close-button:focus {
+  background: rgba(202, 213, 255, 0.22);
+}
+
+html .Toastify__toast-theme--dark {
+  --toastify-text-color-dark: var(--text);
+  --toastify-color-dark: var(--panel);
+}
+
+@media (max-width: 600px) {
+  html .Toastify__toast-container--top-right {
+    top: 10px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+
+  html .Toastify__toast {
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.85rem;
+  }
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: none;
@@ -18805,6 +18983,34 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 }
 
 .ob-skip:hover { color: var(--text); }
+
+.ob-question input,
+.ob-question select {
+  padding: 11px 14px;
+  border-radius: 12px;
+}
+
+/* ── Onboarding responsive ── */
+
+@media (max-width: 600px) {
+  .ob-card {
+    padding: 24px 18px;
+    gap: 18px;
+  }
+  .ob-question {
+    gap: 8px;
+  }
+  .ob-chips {
+    gap: 8px;
+  }
+  .ob-chip {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 9px 12px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
 
 /* ── Auth responsive ── */
 

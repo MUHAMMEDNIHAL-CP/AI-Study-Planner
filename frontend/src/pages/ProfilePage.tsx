@@ -144,7 +144,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalKind>(null)
-  const [saving] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
 
   const [identityForm, setIdentityForm] = useState<IdentityForm>({
@@ -201,6 +201,26 @@ export default function ProfilePage() {
     })
   }
 
+  async function saveGoals() {
+    setSaving(true)
+    try {
+      const payload: Record<string, unknown> = {
+        daily_study_goal: goalsForm.daily_study_goal,
+        target_grade: goalsForm.target_grade,
+        main_goal: goalsForm.main_goal,
+        study_goal: goalsForm.study_goal,
+      }
+      const { data } = await api.patch<UserProfile>('/auth/me/', payload)
+      setProfile(data)
+      notifyProfileUpdated()
+      setModal(null)
+    } catch {
+      // keep the modal open so the user can retry
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function fillLearning(data: UserProfile) {
     setLearningForm({
       preferred_study_time: data.profile?.preferred_study_time ?? 'evening',
@@ -208,6 +228,26 @@ export default function ProfilePage() {
       learning_style: data.profile?.learning_style ?? '',
       coaching_style: data.profile?.coaching_style ?? 'balanced',
     })
+  }
+
+  async function saveLearning() {
+    setSaving(true)
+    try {
+      const payload: Record<string, unknown> = {
+        preferred_study_time: learningForm.preferred_study_time,
+        session_length: learningForm.session_length,
+        learning_style: learningForm.learning_style,
+        coaching_style: learningForm.coaching_style,
+      }
+      const { data } = await api.patch<UserProfile>('/auth/me/', payload)
+      setProfile(data)
+      notifyProfileUpdated()
+      setModal(null)
+    } catch {
+      // keep the modal open so the user can retry
+    } finally {
+      setSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -766,6 +806,9 @@ export default function ProfilePage() {
 
             <footer className="pf-modal-actions">
               <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
+              <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveGoals()} type="button">
+                {saving ? 'Saving...' : 'Save Goals'}
+              </button>
             </footer>
           </div>
         </div>
@@ -827,6 +870,9 @@ export default function ProfilePage() {
 
             <footer className="pf-modal-actions">
               <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
+              <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveLearning()} type="button">
+                {saving ? 'Saving...' : 'Save Learning Profile'}
+              </button>
             </footer>
           </div>
         </div>

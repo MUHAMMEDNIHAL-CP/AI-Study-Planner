@@ -51,9 +51,9 @@ function minutesLabel(minutes: number) {
 }
 
 function priorityStyles(priority: string) {
-  if (priority === 'high') return { bg: 'rgba(251, 113, 133, 0.15)', color: '#fca5a5', border: 'rgba(251, 113, 133, 0.25)' }
-  if (priority === 'low') return { bg: 'rgba(74, 222, 128, 0.12)', color: '#86efac', border: 'rgba(74, 222, 128, 0.2)' }
-  return { bg: 'rgba(251, 191, 36, 0.12)', color: '#fde68a', border: 'rgba(251, 191, 36, 0.2)' }
+  if (priority === 'high') return { bg: 'rgba(244, 63, 94, 0.14)', color: '#fb7185', border: 'rgba(244, 63, 94, 0.35)' }
+  if (priority === 'low') return { bg: 'rgba(16, 185, 129, 0.13)', color: '#34d399', border: 'rgba(16, 185, 129, 0.3)' }
+  return { bg: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.35)' }
 }
 
 function isToday(dateStr: string) {

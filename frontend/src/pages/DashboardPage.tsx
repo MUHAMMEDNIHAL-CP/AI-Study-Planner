@@ -116,13 +116,13 @@ export default function DashboardPage() {
   const [firstName, setFirstName] = useState('Scholar')
   const [educationLabel, setEducationLabel] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
-
+  const [dailyGoalHours, setDailyGoalHours] = useState(4)
   useEffect(() => {
     let active = true
     async function load() {
       try {
         const [profileRes, dashRes, subjRes, taskRes, sessRes] = await Promise.all([
-          api.get<{ full_name?: string; username?: string; profile?: { education_level: string; course: string; college: string; semester: number } }>('/auth/me/'),
+          api.get<{ full_name?: string; username?: string; profile?: { education_level: string; course: string; college: string; semester: number; daily_study_goal: number } }>('/auth/me/'),
           api.get<DashboardSummary>('/study/dashboard/'),
           api.get<ApiSubject[]>('/study/subjects/'),
           api.get<ApiTask[]>('/study/tasks/'),
@@ -131,6 +131,7 @@ export default function DashboardPage() {
         if (!active) return
         setFirstName((profileRes.data.full_name || profileRes.data.username || 'Scholar').split(/\s+/)[0])
         setEducationLabel(buildEducationLabel(profileRes.data.profile))
+        if (profileRes.data.profile?.daily_study_goal) setDailyGoalHours(profileRes.data.profile.daily_study_goal)
         setDashboard(dashRes.data)
         setSubjects(subjRes.data)
         setTasks(taskRes.data)
@@ -169,21 +170,12 @@ export default function DashboardPage() {
     return [...scheduleItems, ...extra].slice(0, 8)
   }, [scheduleItems, dashboard, tasks])
 
-  const goalSessionsTotal = todayTasks.length
-  const goalSessionsDone = todayTasks.filter((t) => t.status === 'done').length
-
-  const dailyGoalMinutes = useMemo(() => {
-    if (subjectsSummary.length) {
-      const avg = subjectsSummary.reduce((s, sub) => s + (sub.weekly_goal_hours || 0), 0) / subjectsSummary.length
-      return Math.max(Math.round((avg * 60) / 7), 240)
-    }
-    return 240
-  }, [subjectsSummary])
+  const dailyGoalMinutes = Math.max(Math.round((dailyGoalHours || 4) * 60), 30)
 
   const mainGoalPct = useMemo(() => {
-    if (goalSessionsTotal > 0) return Math.round((goalSessionsDone / goalSessionsTotal) * 100)
+    if (dailyGoalMinutes <= 0) return 0
     return Math.min(100, Math.round((todayMinutes / dailyGoalMinutes) * 100))
-  }, [goalSessionsTotal, goalSessionsDone, todayMinutes, dailyGoalMinutes])
+  }, [todayMinutes, dailyGoalMinutes])
 
   const nearestExam = useMemo(() => {
     const upcoming = (dashboard?.upcoming_exams ?? []).filter((e) => e.date >= todayInput())
@@ -310,7 +302,7 @@ export default function DashboardPage() {
             <span className="db-progress-pct">{mainGoalPct}%</span>
           </div>
           <div className="db-goal-meta">
-            <span>{goalSessionsDone} of {goalSessionsTotal || dailyGoalMinutes / 60} sessions completed</span>
+            <span>{formatMinutes(todayMinutes)} of {dailyGoalHours}h studied</span>
             <span className="db-goal-remaining">{'\u23F3'} {formatMinutes(Math.max(0, dailyGoalMinutes - todayMinutes))} remaining today</span>
           </div>
         </section>
