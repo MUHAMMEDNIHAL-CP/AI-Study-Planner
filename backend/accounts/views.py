@@ -101,6 +101,8 @@ class MeView(APIView):
                 errors["email"] = "This email address is already in use."
 
         if errors:
+            with open("_patch_debug.log", "a") as _f:
+                _f.write(f"USER={user.pk} DATA={dict(request.data)} ERRORS={errors}\n")
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
         user.username = username
@@ -110,7 +112,7 @@ class MeView(APIView):
         user.save(update_fields=["username", "email", "first_name"])
 
         profile_fields = (
-            "bio", "college", "course", "semester", "study_goal",
+            "bio", "education_level", "college", "course", "semester", "study_goal",
             "daily_study_goal", "target_grade", "main_goal",
             "preferred_study_time", "session_length", "learning_style", "coaching_style",
         )

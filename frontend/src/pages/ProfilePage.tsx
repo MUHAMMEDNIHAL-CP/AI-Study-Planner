@@ -6,6 +6,7 @@ import PageShell from '../components/PageShell'
 
 type ProfileData = {
   bio: string
+  education_level: string
   college: string
   course: string
   semester: number
@@ -73,6 +74,7 @@ type IdentityForm = {
   full_name: string
   username: string
   email: string
+  education_level: string
   course: string
   semester: number
   college: string
@@ -143,9 +145,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalKind>(null)
   const [saving] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
 
   const [identityForm, setIdentityForm] = useState<IdentityForm>({
-    full_name: '', username: '', email: '', course: '', semester: 1, college: '', bio: '',
+    full_name: '', username: '', email: '', education_level: 'college', course: '', semester: 1, college: '', bio: '',
   })
   const [goalsForm, setGoalsForm] = useState<GoalsForm>({
     daily_study_goal: 4, target_grade: '', main_goal: '', study_goal: '',
@@ -159,11 +162,35 @@ export default function ProfilePage() {
       full_name: data.full_name || '',
       username: data.username,
       email: data.email,
+      education_level: data.profile?.education_level || 'college',
       course: data.profile?.course ?? '',
       semester: data.profile?.semester ?? 1,
       college: data.profile?.college ?? '',
       bio: data.profile?.bio ?? '',
     })
+  }
+
+  async function saveIdentity() {
+    setSavingProfile(true)
+    try {
+      const payload: Record<string, unknown> = {
+        full_name: identityForm.full_name,
+        username: identityForm.username,
+        email: identityForm.email,
+        education_level: identityForm.education_level,
+        course: identityForm.course,
+        semester: identityForm.semester,
+        college: identityForm.college,
+        bio: identityForm.bio,
+      }
+      const { data } = await api.patch<UserProfile>('/auth/me/', payload)
+      setProfile(data)
+      setModal(null)
+    } catch {
+      // keep the modal open so the user can retry
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   function fillGoals(data: UserProfile) {
@@ -346,12 +373,25 @@ export default function ProfilePage() {
             <div className="pf-header-info">
               <h2>{displayName}</h2>
               {handle && <span className="pf-handle">{handle}</span>}
-              {(prof?.course || prof?.semester) && (
-                <span className="pf-course">
-                  {[prof?.course, prof?.semester ? `Semester ${prof.semester}` : ''].filter(Boolean).join(' \u00B7 ')}
-                </span>
-              )}
-              {prof?.college && <span className="pf-college">{prof.college}</span>}
+              {prof?.education_level === 'high_school'
+                ? (
+                  <>
+                    {(prof?.course || prof?.college) && (
+                      <span className="pf-course">
+                        {[prof?.course, prof?.college].filter(Boolean).join(' \u00B7 ')}
+                      </span>
+                    )}
+                  </>
+                )
+                : (
+                  <>
+                    {(prof?.course || prof?.semester) && (
+                      <span className="pf-course">
+                        {[prof?.course, prof?.semester ? `Semester ${prof.semester}` : '', prof?.college].filter(Boolean).join(' \u00B7 ')}
+                      </span>
+                    )}
+                  </>
+                )}
               {prof?.bio && <p className="pf-bio">{prof.bio}</p>}
               <button className="ghost-action pf-header-edit" onClick={() => setModal('profile')} type="button">
                 Edit Profile
@@ -590,34 +630,77 @@ export default function ProfilePage() {
               </label>
             </div>
             <label className="pf-field">
-              Course
-              <input
-                onChange={(e) => setIdentityForm((c) => ({ ...c, course: e.target.value }))}
-                placeholder="B.Sc Computer Science"
-                value={identityForm.course}
-              />
+              I&apos;m a...
+              <div
+                className="pf-level-toggle"
+                onChange={(e) => {
+                  const val = (e.target as HTMLInputElement).value
+                  setIdentityForm((c) => ({ ...c, education_level: val }))
+                }}
+              >
+                <label>
+                  <input type="radio" name="education_level" value="college" checked={identityForm.education_level !== 'high_school'} />
+                  <span>{'\uD83C\uDF93'} College / University</span>
+                </label>
+                <label>
+                  <input type="radio" name="education_level" value="high_school" checked={identityForm.education_level === 'high_school'} />
+                  <span>{'\uD83C\uDFEB'} High School</span>
+                </label>
+              </div>
             </label>
-            <div className="pf-field-row">
-              <label className="pf-field">
-                Semester
-                <select
-                  onChange={(e) => setIdentityForm((c) => ({ ...c, semester: Number(e.target.value) }))}
-                  value={identityForm.semester}
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>Semester {n}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="pf-field">
-                College
-                <input
-                  onChange={(e) => setIdentityForm((c) => ({ ...c, college: e.target.value }))}
-                  placeholder="Your College"
-                  value={identityForm.college}
-                />
-              </label>
-            </div>
+
+            {identityForm.education_level === 'high_school' ? (
+              <div className="pf-field-row">
+                <label className="pf-field">
+                  Grade / Class
+                  <input
+                    onChange={(e) => setIdentityForm((c) => ({ ...c, course: e.target.value }))}
+                    placeholder="Grade 10"
+                    value={identityForm.course}
+                  />
+                </label>
+                <label className="pf-field">
+                  School
+                  <input
+                    onChange={(e) => setIdentityForm((c) => ({ ...c, college: e.target.value }))}
+                    placeholder="Your School"
+                    value={identityForm.college}
+                  />
+                </label>
+              </div>
+            ) : (
+              <>
+                <label className="pf-field">
+                  Course
+                  <input
+                    onChange={(e) => setIdentityForm((c) => ({ ...c, course: e.target.value }))}
+                    placeholder="B.Sc Computer Science"
+                    value={identityForm.course}
+                  />
+                </label>
+                <div className="pf-field-row">
+                  <label className="pf-field">
+                    Semester
+                    <select
+                      onChange={(e) => setIdentityForm((c) => ({ ...c, semester: Number(e.target.value) }))}
+                      value={identityForm.semester}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>Semester {n}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="pf-field">
+                    College
+                    <input
+                      onChange={(e) => setIdentityForm((c) => ({ ...c, college: e.target.value }))}
+                      placeholder="Your College"
+                      value={identityForm.college}
+                    />
+                  </label>
+                </div>
+              </>
+            )}
             <label className="pf-field">
               Bio
               <textarea
@@ -629,7 +712,10 @@ export default function ProfilePage() {
             </label>
 
             <footer className="pf-modal-actions">
-              <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
+              <button className="ghost-action" disabled={savingProfile} onClick={() => setModal(null)} type="button">Cancel</button>
+              <button className="au-submit pf-modal-save" disabled={savingProfile} onClick={() => void saveIdentity()} type="button">
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </button>
             </footer>
           </div>
         </div>

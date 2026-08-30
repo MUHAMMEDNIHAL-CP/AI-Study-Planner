@@ -11,7 +11,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = (
-            "bio", "college", "course", "semester", "study_goal",
+            "bio", "education_level", "college", "course", "semester", "study_goal",
             "daily_study_goal", "target_grade", "main_goal",
             "preferred_study_time", "session_length", "learning_style", "coaching_style",
         )

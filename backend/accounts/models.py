@@ -9,6 +9,7 @@ class Profile(models.Model):
         related_name="profile",
     )
     bio = models.TextField(blank=True, default="")
+    education_level = models.CharField(max_length=30, blank=True, default="")
     college = models.CharField(max_length=255, blank=True, default="")
     course = models.CharField(max_length=255, blank=True, default="")
     semester = models.PositiveIntegerField(default=1)

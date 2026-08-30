@@ -48,7 +48,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [agreeTerms, setAgreeTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -65,7 +64,6 @@ export default function RegisterPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!agreeTerms) { toast.warn('Please agree to the Terms of Service first.'); return }
     if (password !== confirmPassword) {
       toast.warn('Passwords do not match.')
       return
@@ -207,11 +205,6 @@ export default function RegisterPage() {
         <button className="au-oauth" disabled={loading} type="button" onClick={() => handleSocial('apple')}>
           <AppleIcon /> Continue with Apple
         </button>
-
-        <label className="au-terms">
-          <input checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} type="checkbox" />
-          <span>I agree to the Terms of Service and Privacy Policy.</span>
-        </label>
 
         <p className="au-switch">
           Already have an account? <Link to="/login">Sign in</Link>

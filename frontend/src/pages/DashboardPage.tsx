@@ -56,6 +56,14 @@ function greeting() {
   return { word: 'evening', emoji: '\uD83C\uDF19' }
 }
 
+function buildEducationLabel(p?: { education_level: string; course: string; college: string; semester: number }) {
+  if (!p) return ''
+  if (p.education_level === 'high_school') {
+    return ['High School', p.course, p.college].filter(Boolean).join(' \u00B7 ')
+  }
+  return ['College', p.course, p.semester ? `Semester ${p.semester}` : ''].filter(Boolean).join(' \u00B7 ')
+}
+
 function todayInput() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -106,6 +114,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null)
   const [firstName, setFirstName] = useState('Scholar')
+  const [educationLabel, setEducationLabel] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
 
   useEffect(() => {
@@ -113,7 +122,7 @@ export default function DashboardPage() {
     async function load() {
       try {
         const [profileRes, dashRes, subjRes, taskRes, sessRes] = await Promise.all([
-          api.get<{ username: string }>('/auth/me/'),
+          api.get<{ username: string; profile?: { education_level: string; course: string; college: string; semester: number } }>('/auth/me/'),
           api.get<DashboardSummary>('/study/dashboard/'),
           api.get<ApiSubject[]>('/study/subjects/'),
           api.get<ApiTask[]>('/study/tasks/'),
@@ -121,6 +130,7 @@ export default function DashboardPage() {
         ])
         if (!active) return
         setFirstName(profileRes.data.username.split(/\s+/)[0] || 'Scholar')
+        setEducationLabel(buildEducationLabel(profileRes.data.profile))
         setDashboard(dashRes.data)
         setSubjects(subjRes.data)
         setTasks(taskRes.data)
@@ -276,7 +286,7 @@ export default function DashboardPage() {
     <PageShell
       className="db-page"
       title={`Good ${hello.word}, ${firstName} ${hello.emoji}`}
-      subtitle={longDate()}
+      subtitle={[longDate(), educationLabel].filter(Boolean).join(' \u00B7 ')}
       badge={
         <span className="db-streak-pill">
           {'\uD83D\uDD25'} {streak} day streak

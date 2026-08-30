@@ -268,7 +268,7 @@ export default function LandingPage() {
             <div className="ln-system-text">
               <span className="ln-system-num">02</span>
               <h3>Focus</h3>
-              <p>One session. One goal. No distractions. Start a session and FocusFlow gets out of your way.</p>
+              <p>One session. One goal. No distractions. Start a session and FLOX AI gets out of your way.</p>
             </div>
           </div>
         </motion.div>

@@ -1048,7 +1048,7 @@ export default function CalendarPage() {
                     <li key={`${s.date}-${s.time}`}>
                       <span className="ai-n">{i + 1}</span>
                       <b>{friendlyDate(s.date)}</b>
-                      <span className="ai-t">{fmtTime12(s.time)} \u00B7 50 min</span>
+                      <span className="ai-t">{fmtTime12(s.time)} {'\u00B7'} 50 min</span>
                     </li>
                   ))}
                 </ul>
