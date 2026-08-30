@@ -136,7 +136,7 @@ export default function LandingPage() {
                 <span className="ln-window-dot red" />
                 <span className="ln-window-dot yellow" />
                 <span className="ln-window-dot green" />
-                <span className="ln-window-url">app.focusflow.ai</span>
+                <span className="ln-window-url">app.flox.ai</span>
               </div>
               <div className="ln-window-body">
                 <div className="ln-sidebar">
@@ -387,7 +387,7 @@ export default function LandingPage() {
           <motion.div className="ln-section-head" {...reveal(0.3)}>
             <span className="ln-eyebrow">{'\uD83C\uDF93'} Exam prep</span>
             <h2>Prepare with a plan</h2>
-            <p>Stop guessing what to revise before an exam. FocusFlow combines your syllabus, progress and study history into a realistic preparation plan.</p>
+            <p>Stop guessing what to revise before an exam. FLOX AI combines your syllabus, progress and study history into a realistic preparation plan.</p>
           </motion.div>
           <motion.div className="ln-exam-card" {...reveal(0.3)}>
             <div className="ln-exam-head">

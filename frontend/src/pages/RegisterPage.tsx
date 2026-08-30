@@ -45,7 +45,9 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +66,10 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     if (!agreeTerms) { toast.warn('Please agree to the Terms of Service first.'); return }
+    if (password !== confirmPassword) {
+      toast.warn('Passwords do not match.')
+      return
+    }
     setLoading(true)
     try {
       const { data } = await api.post<TokenResponse>('/auth/register/', { username, email, password })
@@ -147,6 +153,28 @@ export default function RegisterPage() {
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               <EyeIcon off={showPassword} />
+            </button>
+          </div>
+        </label>
+
+        <label className="au-field">
+          <span>Confirm password</span>
+          <div className="au-input-wrap">
+            <input
+              autoComplete="new-password"
+              placeholder="Re-enter your password"
+              type={showConfirm ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <button
+              className="au-eye"
+              onClick={() => setShowConfirm((v) => !v)}
+              type="button"
+              aria-label={showConfirm ? 'Hide password' : 'Show password'}
+            >
+              <EyeIcon off={showConfirm} />
             </button>
           </div>
         </label>
