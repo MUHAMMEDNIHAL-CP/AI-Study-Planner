@@ -760,15 +760,15 @@ export default function SettingsPage() {
             <div className="st-rows">
               <button
                 className="st-row st-row-btn"
-                onClick={() => window.open('mailto:support@FLOX.ai', '_blank')}
+                onClick={() => navigate('/help')}
                 type="button"
               >
-                <span className="st-row-text"><strong>Help &amp; Support</strong></span>
+                <span className="st-row-text"><strong>Help &amp; Support</strong><small>Get help using FocusFlow AI</small></span>
                 <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
               <button
                 className="st-row st-row-btn"
-                onClick={() => toast.info('Privacy Policy is coming soon.')}
+                onClick={() => navigate('/privacy')}
                 type="button"
               >
                 <span className="st-row-text"><strong>Privacy Policy</strong></span>
@@ -776,7 +776,7 @@ export default function SettingsPage() {
               </button>
               <button
                 className="st-row st-row-btn"
-                onClick={() => toast.info('Terms of Service are coming soon.')}
+                onClick={() => navigate('/terms')}
                 type="button"
               >
                 <span className="st-row-text"><strong>Terms of Service</strong></span>

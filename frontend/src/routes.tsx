@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import LandingPage from './pages/LandingPage'
+import HelpPage from './pages/HelpPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import OnboardingPage from './pages/OnboardingPage'
@@ -51,6 +54,11 @@ export default function AppRoutes() {
       <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
       <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
+
+      {/* Public info pages — accessible with and without an account. */}
+      <Route path="/help" element={<HelpPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/dashboard" element={<DashboardPage />} />

@@ -9,8 +9,15 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ai.gemini import generate_json
+from ai.gemini import QUOTA_EXHAUSTED, generate_json
 from ai.models import AIHistory
+from ai.usage import (
+    daily_limit_response,
+    limited,
+    project_available,
+    quota_unavailable_response,
+    settle_success,
+)
 from productivity.models import ProductivityLog, record_study_activity
 
 from .models import Exam, StudyTask, Subject
@@ -292,6 +299,14 @@ class DashboardView(APIView):
 
 class GeneratePlanView(APIView):
     def post(self, request):
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
         subjects = request.data.get("subjects") or []
         weak_topics = request.data.get("weak_topics") or ""
         daily_hours = max(float(request.data.get("daily_hours") or 2), 0.5)
@@ -347,8 +362,10 @@ class GeneratePlanView(APIView):
         # Ask the fast model first with a short timeout so the response stays
         # snappy. If it returns a valid, well-formed plan we use it directly for
         # accuracy; otherwise we keep the instant mock fallback above.
+        gemini_error = None
+        tokens = 0
         try:
-            gemini_response = generate_json(
+            gemini_response, gemini_error, tokens = generate_json(
                 "You are Flox AI, a study planner for students. Return strict JSON with keys: "
                 "goal string, exam_date string, daily_hours number, plan array, revision_schedule array, focus_tip string. "
                 "Each plan item must contain time, subject, duration_minutes, task. "
@@ -356,6 +373,8 @@ class GeneratePlanView(APIView):
                 f"Subjects: {subjects}. Weak topics: {weak_topics}. Daily hours: {daily_hours}. "
                 f"Exam date: {exam_date}. Goal: {goal}.",
                 timeout=8,
+                return_error=True,
+                return_usage=True,
             )
             valid_plan = (
                 isinstance(gemini_response, dict)
@@ -368,14 +387,30 @@ class GeneratePlanView(APIView):
                 history.response = response
                 history.provider = "gemini"
                 history.save(update_fields=["response", "provider"])
+            elif gemini_error == QUOTA_EXHAUSTED:
+                history.delete()
+                response = None
         except Exception:
             logger.exception("Gemini plan generation failed; using fallback plan")
+
+        if response is None:
+            return quota_unavailable_response()
+
+        settle_success(request.user, tokens=tokens if isinstance(tokens, int) else 0)
 
         return Response(response, status=status.HTTP_201_CREATED)
 
 
 class AdjustTimetableView(APIView):
     def post(self, request):
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
         fatigue = int(request.data.get("fatigue") or 5)
         productivity = int(request.data.get("productivity") or 5)
         screen_time = float(request.data.get("screen_time") or 4)
@@ -416,11 +451,13 @@ class AdjustTimetableView(APIView):
             if should_recover
             else "Your energy is stable. Keep the timetable, but finish each block with two minutes of active recall."
         )
-        gemini_response = generate_json(
+        gemini_response, gemini_error, tokens = generate_json(
             "You are an empathetic academic focus coach. Return strict JSON with keys: "
             "energy_score number, diagnosis string, adjusted_timetable array, changes_made number. "
             "Rewrite only the next exhausting study blocks into wellness slots when fatigue is high. "
-            f"Student data: {gemini_payload}"
+            f"Student data: {gemini_payload}",
+            return_error=True,
+            return_usage=True,
         )
 
         response = gemini_response or {
@@ -437,11 +474,18 @@ class AdjustTimetableView(APIView):
                 "changes_made": replaced_count,
             }
         response["provider"] = "gemini" if response is gemini_response else "mock"
-        AIHistory.objects.create(
+        history = AIHistory.objects.create(
             user=request.user,
             feature="burnout",
             prompt=f"Adjust my timetable. Fatigue: {fatigue}/10. Productivity: {productivity}/10. Screen time: {screen_time}h. Missed tasks: {missed_tasks}.",
             response=response,
             provider=response["provider"],
         )
+        if response["provider"] == "gemini":
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            history.delete()
+            return quota_unavailable_response()
+        else:
+            settle_success(request.user, tokens=0)
         return Response(response, status=status.HTTP_201_CREATED)

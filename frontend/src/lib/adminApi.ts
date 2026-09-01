@@ -146,6 +146,18 @@ export type TasksData = {
   daily_trend: Array<{ date: string; created: number; completed: number }>
 }
 
+export type AIProjectStatus = {
+  requests_used: number
+  requests_limit: number
+  tokens_used: number
+  tokens_limit: number
+  requests_pct: number
+  tokens_pct: number
+  combined_pct: number
+  warning: 'ok' | 'approaching' | 'critical' | 'exhausted'
+  date: string
+}
+
 export type AIData = {
   conversations_today: number
   active_ai_users: number
@@ -154,6 +166,7 @@ export type AIData = {
   feature_breakdown: Array<{ feature: string; count: number; pct: number }>
   provider_breakdown: Array<{ provider: string; count: number }>
   daily_usage: Array<{ date: string; count: number }>
+  project: AIProjectStatus
 }
 
 export type HealthData = {

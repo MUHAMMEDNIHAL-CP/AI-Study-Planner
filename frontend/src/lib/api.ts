@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { clearAuthTokens, getAccessToken, getRefreshToken, hasValidAccessToken, isAuthenticated, setAuthTokens } from './auth'
+import { maybeEmitFloxLimit } from './floxLimits'
 
 function resolveApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL as string | undefined
@@ -80,6 +81,8 @@ api.interceptors.response.use(
         window.location.assign('/login')
       }
     }
+
+    maybeEmitFloxLimit(error)
 
     return Promise.reject(error)
   },

@@ -545,26 +545,17 @@ export default function LandingPage() {
             <div className="ln-footer-cols">
               <div>
                 <h4>Product</h4>
-                <Link to="/">Dashboard</Link>
-                <Link to="/">AI Coach</Link>
-                <Link to="/">Focus Mode</Link>
-                <Link to="/">Quiz</Link>
+                <Link to="/dashboard">Dashboard</Link>
+                <Link to="/focus">Focus Mode</Link>
+                <Link to="/ai-tutor">FLOX AI</Link>
+                <Link to="/quiz">Quiz</Link>
+                <Link to="/progress">Progress</Link>
               </div>
               <div>
-                <h4>Resources</h4>
-                <Link to="/">Help</Link>
-                <Link to="/">Blog</Link>
-                <Link to="/">Guides</Link>
-              </div>
-              <div>
-                <h4>Company</h4>
-                <Link to="/">About</Link>
-                <Link to="/">Contact</Link>
-              </div>
-              <div>
-                <h4>Legal</h4>
-                <Link to="/">Privacy</Link>
-                <Link to="/">Terms</Link>
+                <h4>Support</h4>
+                <Link to="/help">Help &amp; Support</Link>
+                <Link to="/privacy">Privacy Policy</Link>
+                <Link to="/terms">Terms of Service</Link>
               </div>
             </div>
           </div>

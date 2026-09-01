@@ -3,9 +3,21 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .gemini import generate_json, gemini_configured, sanitize_prompt
-from .models import AIHistory
+from django.utils import timezone
+
+from .gemini import QUOTA_EXHAUSTED, generate_json, gemini_configured, sanitize_prompt
+from .models import AIHistory, AIUsage
 from .serializers import AIHistorySerializer
+from .usage import (
+    DAILY_AD_CAP,
+    AD_REWARD,
+    allowance,
+    daily_limit_response,
+    limited,
+    project_available,
+    quota_unavailable_response,
+    settle_success,
+)
 from productivity.models import record_study_activity
 
 
@@ -70,7 +82,16 @@ class TutorView(APIView):
         topic = _clean_text(request.data.get("topic"), "topic", default="the topic", max_chars=500)
 
         fallback = fallback_tutor_answer(mode, topic)
-        gemini_answer, gemini_error = generate_json(
+
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
+        gemini_answer, gemini_error, tokens = generate_json(
             "You are Flox AI, a precise and friendly study tutor. "
             "Return strict JSON only. "
             "For mode explain use keys: title, explanation, next_steps array. "
@@ -78,6 +99,7 @@ class TutorView(APIView):
             "For mode flashcards use keys: title, flashcards array of objects with front and back. "
             f"Mode: {mode}. Topic: {topic}. Student prompt: {prompt or 'No extra prompt'}.",
             return_error=True,
+            return_usage=True,
         )
         answer = gemini_answer if isinstance(gemini_answer, dict) and gemini_answer.get("title") else fallback
         provider = "gemini" if answer is gemini_answer else "mock"
@@ -92,6 +114,15 @@ class TutorView(APIView):
             provider=provider,
         )
         record_study_activity(request.user)
+
+        if provider == "gemini":
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            history.delete()
+            return quota_unavailable_response()
+        else:
+            settle_success(request.user, tokens=0)
+
         return Response({"history_id": history.id, "provider": provider, **answer}, status=status.HTTP_201_CREATED)
 
 
@@ -126,11 +157,21 @@ class FocusCoachView(APIView):
             ],
             "breathing_cue": "Breathe in for 4, hold for 2, breathe out for 6.",
         }
-        gemini_response, gemini_error = generate_json(
+
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
+        gemini_response, gemini_error, tokens = generate_json(
             "You are Flox AI, an empathetic but practical student focus coach. "
             "Return strict JSON with keys: reply string, action_steps array of 3 short steps, breathing_cue string. "
             f"Student message: {prompt}. Current context: fatigue={fatigue}, productivity={productivity}.",
             return_error=True,
+            return_usage=True,
         )
         response = gemini_response if isinstance(gemini_response, dict) and gemini_response.get("reply") else fallback
         response["provider"] = "gemini" if response is gemini_response else "mock"
@@ -144,6 +185,15 @@ class FocusCoachView(APIView):
             provider=response["provider"],
         )
         record_study_activity(request.user)
+
+        if response["provider"] == "gemini":
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            history.delete()
+            return quota_unavailable_response()
+        else:
+            settle_success(request.user, tokens=0)
+
         return Response({"history_id": history.id, **response}, status=status.HTTP_201_CREATED)
 
 
@@ -188,11 +238,21 @@ class ExplainTopicView(APIView):
             ],
             "check_question": f"What is the most important cause-and-effect relationship in {topic}?",
         }
-        gemini_response, gemini_error = generate_json(
+
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
+        gemini_response, gemini_error, tokens = generate_json(
             "You are Flox AI. Explain academic topics clearly for students. "
             "Return strict JSON with keys: topic, level, explanation, analogy, steps array, check_question. "
             f"Topic: {topic}. Level: {level}.",
             return_error=True,
+            return_usage=True,
         )
         response = gemini_response if isinstance(gemini_response, dict) and gemini_response.get("explanation") else fallback
         response["provider"] = "gemini" if response is gemini_response else "mock"
@@ -206,6 +266,15 @@ class ExplainTopicView(APIView):
             provider=response["provider"],
         )
         record_study_activity(request.user)
+
+        if response["provider"] == "gemini":
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            history.delete()
+            return quota_unavailable_response()
+        else:
+            settle_success(request.user, tokens=0)
+
         return Response({"history_id": history.id, **response}, status=status.HTTP_201_CREATED)
 
 
@@ -232,6 +301,48 @@ class AIStatusView(APIView):
             {
                 "gemini_configured": gemini_configured(),
                 "provider": "gemini" if gemini_configured() else "mock",
+                "allowance": allowance(request.user),
+                "project": project_available()[1],
             }
         )
+
+
+class WatchAdView(APIView):
+    """Bank +AD_REWARD ad-earned credits for today's allowance (capped).
+
+    The actual rewarded-ad flow is a frontend stub for now; this endpoint only
+    grants credits, so it must be reachable only with intent. In production you
+    would verify an ad-completion callback/token here before crediting.
+    """
+
+    throttle_classes = [AIThrottle]
+
+    def post(self, request):
+        from django.db import transaction
+
+        today = timezone.localdate()
+        usage = AIUsage.usage_for(request.user, today)
+        if usage.ad_earned >= DAILY_AD_CAP:
+            return Response(
+                {
+                    "error": "AD_CAP_REACHED",
+                    "message": "You've earned the maximum bonus AI requests for today.",
+                    "details": allowance(request.user),
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        with transaction.atomic():
+            refreshed = AIUsage.objects.select_for_update().get(pk=usage.pk)
+            remaining_cap = DAILY_AD_CAP - refreshed.ad_earned
+            if remaining_cap <= 0:
+                return Response(
+                    {
+                        "error": "AD_CAP_REACHED",
+                        "message": "You've earned the maximum bonus AI requests for today.",
+                        "details": allowance(request.user),
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+            AIUsage.bank_ad(request.user, today, min(AD_REWARD, remaining_cap))
+        return Response({"details": allowance(request.user)}, status=status.HTTP_200_OK)
 

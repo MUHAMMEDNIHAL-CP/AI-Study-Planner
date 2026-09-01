@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ai.models import AIHistory
+from ai.usage import project_status
 from accounts.models import Profile
 from notes.models import Note
 from productivity.focus_models import FocusSession
@@ -843,6 +844,7 @@ class AdminAIView(APIView):
             "feature_breakdown": feature_breakdown,
             "provider_breakdown": provider_breakdown,
             "daily_usage": daily,
+            "project": project_status(),
         })
 
 

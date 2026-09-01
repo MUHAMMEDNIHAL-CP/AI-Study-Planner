@@ -7,6 +7,7 @@ import { IconAnalytics, IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile, firstName } from '../hooks/useUserProfile'
 import { notifyStudyActivity } from '../lib/studyActivity'
+import { AllowanceChip, useAllowance } from '../components/FloxLimitDialogs'
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -332,6 +333,8 @@ export default function AiTutorPage() {
   const [listening, setListening] = useState(false)
   const [genBusy, setGenBusy] = useState(false)
   const [quizBank, setQuizBank] = useState<Record<string, QuizShape>>({})
+
+  const { allowance, project } = useAllowance()
 
   const fileRef = useRef<HTMLInputElement | null>(null)
   const recRef = useRef<SpeechRecLike | null>(null)
@@ -974,6 +977,7 @@ export default function AiTutorPage() {
             <span className="ac-orb-pulse" />
           </div>
           <h2>FLOX AI</h2>
+          <AllowanceChip allowance={allowance} project={project} />
           <p className="ac-hi">Hey {userName} {'\uD83D\uDC4B'}</p>
           <p className="ac-q">What would you like to work on today?</p>
           <div className="ac-cards">

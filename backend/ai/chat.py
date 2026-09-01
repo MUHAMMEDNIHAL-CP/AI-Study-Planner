@@ -12,8 +12,15 @@ from productivity.models import ProductivityLog
 from study.models import Exam, StudyTask, Subject
 from study.streak import compute_streak_stats
 
-from .gemini import generate_json, sanitize_prompt
+from .gemini import QUOTA_EXHAUSTED, generate_json, sanitize_prompt
 from .models import AIHistory
+from .usage import (
+    daily_limit_response,
+    limited,
+    project_available,
+    quota_unavailable_response,
+    settle_success,
+)
 
 PAGE_FALLBACKS = {
     "dashboard": "Welcome back! You have {open_tasks} tasks due. Ready to start a focus session?",
@@ -41,12 +48,20 @@ class ChatBotView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        blocked, allowance_data = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
         ctx = self._gather_context(request.user)
 
         prompt = self._build_prompt(message, page, ctx)
 
-        gemini_response, gemini_error = generate_json(
-            prompt, timeout=20, return_error=True
+        gemini_response, gemini_error, tokens = generate_json(
+            prompt, timeout=20, return_error=True, return_usage=True
         )
 
         parsed = gemini_response if isinstance(gemini_response, dict) else None
@@ -62,13 +77,24 @@ class ChatBotView(APIView):
 
         result = {"reply": reply, "suggestions": suggestions, "action": action}
 
-        AIHistory.objects.create(
+        history = AIHistory.objects.create(
             user=request.user,
             feature="tutor",
             prompt=message,
             response=result,
             provider="gemini" if parsed else "mock",
         )
+
+        if parsed:
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            # Project quota hit mid-flight — do NOT charge the user's credit.
+            history.delete()
+            return quota_unavailable_response()
+        else:
+            # Served a local fallback because Gemini failed for a non-quota
+            # reason. Still counts as a served reply, so charge the credit.
+            settle_success(request.user, tokens=0)
 
         return Response(result, status=status.HTTP_200_OK)
 

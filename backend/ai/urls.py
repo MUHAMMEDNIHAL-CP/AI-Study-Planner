@@ -1,7 +1,14 @@
 from django.urls import path
 
 from .chat import ChatBotView
-from .views import AIHistoryListView, AIStatusView, ExplainTopicView, FocusCoachView, TutorView
+from .views import (
+    AIHistoryListView,
+    AIStatusView,
+    ExplainTopicView,
+    FocusCoachView,
+    TutorView,
+    WatchAdView,
+)
 
 urlpatterns = [
     path("status/", AIStatusView.as_view(), name="ai-status"),
@@ -9,5 +16,6 @@ urlpatterns = [
     path("tutor/", TutorView.as_view(), name="ai-tutor"),
     path("focus-coach/", FocusCoachView.as_view(), name="focus-coach"),
     path("explain/", ExplainTopicView.as_view(), name="explain-topic"),
+    path("watch-ad/", WatchAdView.as_view(), name="ai-watch-ad"),
     path("history/", AIHistoryListView.as_view(), name="ai-history"),
 ]

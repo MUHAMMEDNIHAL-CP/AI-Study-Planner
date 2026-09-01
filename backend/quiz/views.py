@@ -2,8 +2,15 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ai.gemini import generate_json
+from ai.gemini import QUOTA_EXHAUSTED, generate_json
 from ai.models import AIHistory
+from ai.usage import (
+    daily_limit_response,
+    limited,
+    project_available,
+    quota_unavailable_response,
+    settle_success,
+)
 from productivity.models import record_study_activity
 
 from .models import Quiz
@@ -38,22 +45,24 @@ def build_questions(topic, difficulty, count):
 
 
 def build_gemini_questions(topic, difficulty, count):
-    response = generate_json(
+    response, error, tokens = generate_json(
         "You are Flox AI. Generate an educational active-recall multiple-choice quiz. "
         "Return strict JSON with key questions. questions must be an array of objects with keys: "
         "id number, question string, options array of exactly 4 strings, answer_index number from 0 to 3, explanation string. "
-        f"Topic: {topic}. Difficulty: {difficulty}. Count: {count}."
+        f"Topic: {topic}. Difficulty: {difficulty}. Count: {count}.",
+        return_error=True,
+        return_usage=True,
     )
     raw_questions = response.get("questions") if isinstance(response, dict) else None
     if not isinstance(raw_questions, list):
-        return None
+        return None, error, tokens
 
     questions = []
     for index, question in enumerate(raw_questions[:count]):
         options = question.get("options") if isinstance(question, dict) else None
         answer_index = question.get("answer_index") if isinstance(question, dict) else None
         if not isinstance(options, list) or len(options) != 4 or not isinstance(answer_index, int) or not 0 <= answer_index <= 3:
-            return None
+            return None, error, tokens
         questions.append(
             {
                 "id": index + 1,
@@ -63,11 +72,19 @@ def build_gemini_questions(topic, difficulty, count):
                 "explanation": str(question.get("explanation") or "Review the concept and try explaining why the correct option works."),
             }
         )
-    return questions if len(questions) >= 3 else None
+    return (questions if len(questions) >= 3 else None), error, tokens
 
 
 class QuizGenerateView(APIView):
     def post(self, request):
+        blocked, _ = limited(request.user)
+        if blocked:
+            return daily_limit_response(request.user)
+
+        available, _ = project_available()
+        if not available:
+            return quota_unavailable_response()
+
         topic = str(request.data.get("topic") or "your topic").strip() or "your topic"
         difficulty = str(request.data.get("difficulty") or "medium").strip().lower() or "medium"
         difficulty = difficulty if difficulty in {"easy", "medium", "hard"} else "medium"
@@ -78,7 +95,7 @@ class QuizGenerateView(APIView):
             requested_count = 5
 
         count = max(3, min(requested_count, 10))
-        questions = build_gemini_questions(topic, difficulty, count)
+        questions, gemini_error, tokens = build_gemini_questions(topic, difficulty, count)
         provider = "gemini" if questions else "mock"
         questions = questions or build_questions(topic, difficulty, count)
         quiz = Quiz.objects.create(
@@ -98,6 +115,14 @@ class QuizGenerateView(APIView):
         data = QuizSerializer(quiz).data
         data["provider"] = provider
         record_study_activity(request.user)
+
+        if provider == "gemini":
+            settle_success(request.user, tokens=tokens)
+        elif gemini_error == QUOTA_EXHAUSTED:
+            quiz.delete()
+            return quota_unavailable_response()
+        else:
+            settle_success(request.user, tokens=0)
         return Response(data, status=status.HTTP_201_CREATED)
 
 

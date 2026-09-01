@@ -465,6 +465,13 @@
 
 .ad-bar-fill.mint { background: linear-gradient(90deg, var(--mint), var(--blue)); }
 .ad-bar-fill.amber { background: linear-gradient(90deg, var(--amber), var(--accent)); }
+.ad-bar-fill.green { background: linear-gradient(90deg, var(--green), var(--blue)); }
+.ad-bar-fill.red { background: linear-gradient(90deg, var(--danger), var(--amber)); }
+
+.ad-quota-num { font-style: normal; font-weight: 600; opacity: 0.7; margin-left: 4px; }
+.ad-bar-num.green { color: var(--green); }
+.ad-bar-num.amber { color: var(--amber); }
+.ad-bar-num.red { color: var(--danger); }
 
 .ad-bar-num {
   text-align: right;

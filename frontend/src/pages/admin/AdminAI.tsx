@@ -1,6 +1,7 @@
 import { adminApi } from '../../lib/adminApi'
 import { useAdminData, formatNumber } from '../../lib/adminHelpers'
 import AdminStatCard from '../../components/admin/AdminStatCard'
+import type { AIProjectStatus } from '../../lib/adminApi'
 
 export default function AdminAI() {
   const { data, error, loading } = useAdminData(adminApi.ai)
@@ -24,6 +25,12 @@ export default function AdminAI() {
             <AdminStatCard label="Active AI users" value={formatNumber(data.active_ai_users)} hint="Used AI today" tone="green" />
             <AdminStatCard label="Avg msgs/user" value={`${data.average_messages_per_user}`} hint="Today" tone="cyan" />
             <AdminStatCard label="Total conversations" value={formatNumber(data.total_conversations)} hint="All-time" tone="amber" />
+          </div>
+
+          <div className="ad-card">
+            <div className="ad-card-title"><h3>Gemini project quota — today</h3><span>{projectLabel(data.project.warning)}</span></div>
+            <QuotaRow label="Requests" used={data.project.requests_used} limit={data.project.requests_limit} pct={data.project.requests_pct} warning={data.project.warning} />
+            <QuotaRow label="Tokens" used={data.project.tokens_used} limit={data.project.tokens_limit} pct={data.project.tokens_pct} warning={data.project.warning} />
           </div>
 
           <div className="ad-grid">
@@ -81,4 +88,27 @@ export default function AdminAI() {
 
 function featureLabel(f: string) {
   return { planner: 'Study planning', tutor: 'Explain topic', quiz: 'Quiz generation', burnout: 'Progress analysis' }[f] ?? f
+}
+
+function projectLabel(w: AIProjectStatus['warning']) {
+  return { ok: 'Healthy', approaching: 'Approaching limit', critical: 'Critical', exhausted: 'Exhausted' }[w]
+}
+
+function QuotaRow({ label, used, limit, pct, warning }: { label: string; used: number; limit: number; pct: number; warning: AIProjectStatus['warning'] }) {
+  return (
+    <div className="ad-bar-row">
+      <span>{label} <em className="ad-quota-num">{formatNumber(used)} / {formatNumber(limit)}</em></span>
+      <div className="ad-bar-track">
+        <i className={`ad-bar-fill ${quotaTone(warning)}`} style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+      <span className={`ad-bar-num ${quotaTone(warning)}`}>{pct}%</span>
+    </div>
+  )
+}
+
+function quotaTone(w: AIProjectStatus['warning']) {
+  if (w === 'exhausted') return 'red'
+  if (w === 'critical') return 'red'
+  if (w === 'approaching') return 'amber'
+  return 'green'
 }
