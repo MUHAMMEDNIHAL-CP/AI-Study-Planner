@@ -14,6 +14,8 @@ export type UserProfile = {
   username?: string
   full_name?: string
   email: string
+  is_superuser?: boolean
+  is_staff?: boolean
 }
 
 export function displayName(profile: UserProfile | null | undefined) {

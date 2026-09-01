@@ -223,3 +223,149 @@ export function IconProgress(props: IconProps) {
     </svg>
   )
 }
+
+export function IconUsers(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M16 4.5a3.2 3.2 0 0 1 0 7" />
+      <path d="M21.5 20a6.5 6.5 0 0 0-5-6.3" />
+    </svg>
+  )
+}
+
+export function IconChart(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
+    </svg>
+  )
+}
+
+export function IconFlame(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M12 22c4.4-3.3 7-6.7 7-10.6C19 6.4 15.8 4 12 4S5 6.4 5 11.4C5 15.3 7.6 18.7 12 22Z" />
+      <path d="M12 13c.8-1.8.6-3.3-.5-4.8 1.6.6 2.4 2 2.4 3.8 1.4-1 2-2.3 1.8-4-1.2-.6-2-1.8-2.5-3.2-1.2 1-2 2.2-2.4 3.6-.8-1-.4-2.2.3-3.4C9.8 6.3 9 8.3 9.5 9.9" />
+    </svg>
+  )
+}
+
+export function IconBook(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+      <path d="M8 7h6M8 11h4" />
+    </svg>
+  )
+}
+
+export function IconPuzzle(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M21 10.5V8h-4a2 2 0 0 1-2-2V2H9v4" />
+      <path d="M9 6H5a2 2 0 0 0-2 2v4" />
+      <path d="M9 12h-2a2 2 0 0 0 0 4h2" />
+      <path d="M9 20h6a2 2 0 0 0 2-2v-4a2 2 0 0 1 2-2h.5a2 2 0 0 1 0 4h-1.5v4" />
+    </svg>
+  )
+}
+
+export function IconBrain(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M9.5 3A2.5 2.5 0 0 0 7 5.5V6a2 2 0 0 0-2.5 3.4A2.5 2.5 0 0 0 5 14a2 2 0 0 0 2 2.5V19a2.5 2.5 0 0 0 5 0v-.5" />
+      <path d="M14.5 3A2.5 2.5 0 0 1 17 5.5V6a2 2 0 0 1 2.5 3.4A2.5 2.5 0 0 1 19 14a2 2 0 0 1-2 2.5V19a2.5 2.5 0 0 1-5 0" />
+      <path d="M9.5 8h5M9.5 12h5" />
+    </svg>
+  )
+}
+
+export function IconTimer(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <circle cx="12" cy="13" r="7" />
+      <path d="M9 2h6" />
+      <path d="M12 9v4l2.5 1.5" />
+    </svg>
+  )
+}
+
+export function IconDevice(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <rect x="5" y="2" width="14" height="20" rx="2.5" />
+      <path d="M9 18h6M10 5h4" />
+    </svg>
+  )
+}
+
+export function IconShield(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M12 2 4.5 5v6c0 5 3.2 8.6 7.5 10 4.3-1.4 7.5-5 7.5-10V5L12 2Z" />
+      <path d="m9 11.5 2 2 4-4.5" />
+    </svg>
+  )
+}
+
+export function IconHealth(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M12 21s-7-4.6-9.3-9C1 8.5 3 5 6.5 5c2 0 3.5 1 4.5 2.6 1-1.6 2.5-2.6 4.5-2.6C19 5 21 8.5 22.3 12 20 16.4 12 21 12 21Z" />
+    </svg>
+  )
+}
+
+export function IconAudit(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M3 5h18v14H3z" />
+      <path d="M3 9h18" />
+      <path d="m7.5 14 1.5 1.5L12 12.5" />
+    </svg>
+  )
+}
+
+export function IconReport(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z" />
+      <path d="M14 2v6h6" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  )
+}
+
+export function IconDatabase(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+      <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+    </svg>
+  )
+}
+
+export function IconActivity(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M22 12h-4l-3 8-6-16-3 8H2" />
+    </svg>
+  )
+}

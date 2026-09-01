@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'burnout',
     'quiz',
     'notes',
+    'superadmin',
 ]
 
 MIDDLEWARE = [

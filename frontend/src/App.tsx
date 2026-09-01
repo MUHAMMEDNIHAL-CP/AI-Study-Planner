@@ -12,15 +12,16 @@ import AppRoutes from './routes'
 function AppFrame() {
   const location = useLocation()
   const authed = isAuthenticated()
+  const isAdminRoute = location.pathname.startsWith('/admin')
 
   return (
     <>
-      <Navigation />
-      <main className={authed ? 'app-main app-main-with-sidebar' : 'app-main app-main-public'} key={location.pathname}>
+      {!isAdminRoute && <Navigation />}
+      <main className={authed && !isAdminRoute ? 'app-main app-main-with-sidebar' : 'app-main app-main-public'} key={location.pathname}>
         <AppRoutes />
       </main>
-      {authed && <FloatingBot />}
-      {authed && <BottomNav />}
+      {authed && !isAdminRoute && <FloatingBot />}
+      {authed && !isAdminRoute && <BottomNav />}
       <ToastContainer
         position="top-right"
         theme="dark"

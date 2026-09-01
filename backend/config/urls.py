@@ -30,6 +30,7 @@ urlpatterns = [
     # - /api/auth/login/
     # - /api/auth/me/
     path('api/auth/', include('accounts.urls')),
+    path('api/admin/', include('superadmin.urls')),
 
     path('api/study/', include('study.urls')),
     path('api/productivity/', include('productivity.urls')),
