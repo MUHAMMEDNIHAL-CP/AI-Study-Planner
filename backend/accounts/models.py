@@ -21,6 +21,9 @@ class Profile(models.Model):
     session_length = models.PositiveIntegerField(default=50)
     learning_style = models.CharField(max_length=60, blank=True, default="")
     coaching_style = models.CharField(max_length=20, blank=True, default="balanced")
+    onboarding_completed = models.BooleanField(default=False)
+    onboarding_version = models.PositiveIntegerField(default=0)
+    onboarding_completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "accounts_profile"

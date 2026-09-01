@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+﻿@import 'tailwindcss';
 
 :root {
   color: var(--text);
@@ -11,7 +11,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── FocusFlow toasts (light, minimal) ────────────────────── */
+/* â”€â”€ FocusFlow toasts (light, minimal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 html .Toastify__toast-container,
 html .Toastify__toast-container--top-right,
 html .Toastify__toast,
@@ -33,7 +33,7 @@ html .Toastify__toast-container--top-right {
   max-width: calc(100vw - 28px);
 }
 
-/* card — light, airy, blends into the page */
+/* card â€” light, airy, blends into the page */
 html .Toastify__toast {
   position: relative;
   display: flex;
@@ -85,7 +85,7 @@ html .Toastify__toast-body > div:last-child {
   text-align: left;
 }
 
-/* icon chip — soft, subtle, no ring */
+/* icon chip â€” soft, subtle, no ring */
 html .Toastify__toast-icon {
   flex: 0 0 auto;
   width: 28px;
@@ -132,7 +132,7 @@ html .Toastify__toast--warning .Toastify__toast-icon svg {
   fill: #f59e0b;
 }
 
-/* close button — anchored to the top-right of the card */
+/* close button â€” anchored to the top-right of the card */
 html .Toastify__close-button {
   position: absolute;
   top: 8px;
@@ -1737,10 +1737,10 @@ h3 {
   gap: 16px;
 }
 
-/* ════════════════════════════════════════════════════════════
-   AI COACH — Google-Gemini-style three-pane redesign
-   sidebar conversations · chat · study context
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   AI COACH â€” Google-Gemini-style three-pane redesign
+   sidebar conversations Â· chat Â· study context
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .ai-coach-page .page-shell-hero {
   flex-direction: column;
@@ -1763,7 +1763,7 @@ h3 {
   }
 }
 
-/* ── Conversations sidebar ── */
+/* â”€â”€ Conversations sidebar â”€â”€ */
 
 .ac-sidebar {
   background: var(--panel);
@@ -1920,7 +1920,7 @@ h3 {
 .ac-chatitem.hist:hover { background: var(--glass); }
 .ac-chatitem.hist .ci-title { font-size: 12.8px; }
 
-/* ── Chat column ── */
+/* â”€â”€ Chat column â”€â”€ */
 
 .ac-chat {
   display: flex;
@@ -2448,7 +2448,7 @@ h3 {
 .ac-send:hover:not(:disabled) { transform: scale(1.07); }
 .ac-send:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 
-/* ── Study context panel ── */
+/* â”€â”€ Study context panel â”€â”€ */
 
 .ac-context {
   background: var(--panel);
@@ -2547,7 +2547,7 @@ h3 {
 
 .ac-reco button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 94, 58, 0.3); }
 
-/* ── Backdrop, note picker modal ── */
+/* â”€â”€ Backdrop, note picker modal â”€â”€ */
 
 .ac-backdrop {
   position: fixed;
@@ -2646,7 +2646,7 @@ h3 {
 
 .ac-filebtn:hover { background: rgba(255, 107, 74, 0.07); }
 
-/* ── Mobile ── */
+/* â”€â”€ Mobile â”€â”€ */
 
 @media (max-width: 1280px) {
   .ai-coach-page .ac-layout { grid-template-columns: 232px minmax(0, 1fr) 272px; }
@@ -2798,14 +2798,14 @@ h3 {
   .ac-cards { grid-template-columns: 1fr; }
 }
 
-/* The AI Coach is its own full experience — no floating assistant button. */
+/* The AI Coach is its own full experience â€” no floating assistant button. */
 body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 
-/* ════════════════════════════════════════════════════════════
-   QUIZ CENTER — stats · start-a-quiz · weak topics · history
-   distraction-free quiz taking · rewarding results · AI analysis
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   QUIZ CENTER â€” stats Â· start-a-quiz Â· weak topics Â· history
+   distraction-free quiz taking Â· rewarding results Â· AI analysis
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .zq-page { display: flex; flex-direction: column; gap: 26px; }
 
@@ -2886,7 +2886,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 .zq-empty-text { font-size: 13px; color: var(--text-dim); }
 
-/* ── Stat cards ── */
+/* â”€â”€ Stat cards â”€â”€ */
 
 .zq-stats-row {
   display: grid;
@@ -2949,7 +2949,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 .zq-stat-label { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 
-/* ── Start a quiz ── */
+/* â”€â”€ Start a quiz â”€â”€ */
 
 .zq-start-grid {
   display: grid;
@@ -3060,7 +3060,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 .ze-reco { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
 
-/* ── Subject quizzes ── */
+/* â”€â”€ Subject quizzes â”€â”€ */
 
 .zq-subject-grid {
   display: grid;
@@ -3104,7 +3104,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 .zq-subject-card:hover .zs-start { text-decoration: underline; }
 
-/* ── Weak topics ── */
+/* â”€â”€ Weak topics â”€â”€ */
 
 .zq-weak-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -3149,7 +3149,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
   .zw-go { opacity: 0.85; transform: none; }
 }
 
-/* ── Recent quizzes ── */
+/* â”€â”€ Recent quizzes â”€â”€ */
 
 .zq-history-list {
   display: flex;
@@ -3217,7 +3217,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 }
 
 
-/* ── Quiz taking screen ── */
+/* â”€â”€ Quiz taking screen â”€â”€ */
 
 .zq-take {
   width: min(760px, 100%);
@@ -3502,7 +3502,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
   filter: none;
 }
 
-/* ── Result page ── */
+/* â”€â”€ Result page â”€â”€ */
 
 .zr-wrap { width: min(700px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
@@ -3757,7 +3757,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 [data-theme='light'] .zt-fb-box { background: rgba(0, 0, 0, 0.03); }
 [data-theme='light'] .zt-progress { background: rgba(0, 0, 0, 0.07); }
 
-/* ── Create quiz modal ── */
+/* â”€â”€ Create quiz modal â”€â”€ */
 
 .zq-modal-overlay {
   position: fixed;
@@ -3947,7 +3947,7 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 .cq-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255, 94, 58, 0.35); }
 .cq-generate:disabled { opacity: 0.55; cursor: default; }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 
 @media (max-width: 900px) {
   .zq-stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -8486,7 +8486,7 @@ video {
 }
 
 
-/* ── My Subjects Page ── */
+/* â”€â”€ My Subjects Page â”€â”€ */
 .subjects-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -8650,7 +8650,7 @@ video {
   margin-top: 16px;
 }
 
-/* ── Tasks Page ── */
+/* â”€â”€ Tasks Page â”€â”€ */
 .tasks-tabs {
   display: flex;
   gap: 4px;
@@ -8813,7 +8813,7 @@ video {
   margin-top: 16px;
 }
 
-/* ── Progress Page ── */
+/* â”€â”€ Progress Page â”€â”€ */
 .progress-page .page-shell-hero {
   flex-wrap: wrap;
 }
@@ -8893,7 +8893,7 @@ video {
   margin-bottom: 20px;
 }
 
-/* ── Top Stats Row ── */
+/* â”€â”€ Top Stats Row â”€â”€ */
 .pg-stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -8937,7 +8937,7 @@ video {
   color: var(--text-dim);
 }
 
-/* ── Duo Row ── */
+/* â”€â”€ Duo Row â”€â”€ */
 .pg-duo-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -8948,7 +8948,7 @@ video {
   margin-bottom: 0;
 }
 
-/* ── Study Activity Chart ── */
+/* â”€â”€ Study Activity Chart â”€â”€ */
 .pg-activity-card {
   display: flex;
   flex-direction: column;
@@ -9039,7 +9039,7 @@ video {
   color: var(--danger);
 }
 
-/* ── Study Streak ── */
+/* â”€â”€ Study Streak â”€â”€ */
 .pg-streak-card {
   display: flex;
   flex-direction: column;
@@ -9095,7 +9095,7 @@ video {
   font-weight: 500;
 }
 
-/* ── Subject Performance Table ── */
+/* â”€â”€ Subject Performance Table â”€â”€ */
 .pg-subjects-table-head {
   display: grid;
   grid-template-columns: 1fr 100px 260px;
@@ -9175,7 +9175,7 @@ video {
   text-align: right;
 }
 
-/* ── Improvement ── */
+/* â”€â”€ Improvement â”€â”€ */
 .pg-improve-grid {
   display: flex;
   flex-direction: column;
@@ -9218,7 +9218,7 @@ video {
   color: var(--danger);
 }
 
-/* ── Focus Quality ── */
+/* â”€â”€ Focus Quality â”€â”€ */
 .pg-focus-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -9278,7 +9278,7 @@ video {
   transition: width 0.4s;
 }
 
-/* ── Exam Readiness ── */
+/* â”€â”€ Exam Readiness â”€â”€ */
 .pg-exams-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -9358,7 +9358,7 @@ video {
   color: var(--amber);
 }
 
-/* ── AI Insight ── */
+/* â”€â”€ AI Insight â”€â”€ */
 .pg-ai-card {
   background: linear-gradient(135deg, rgba(118, 169, 165, 0.06), rgba(45, 212, 191, 0.03));
   border-color: rgba(118, 169, 165, 0.18);
@@ -9420,7 +9420,7 @@ video {
   transform: translateY(-1px);
 }
 
-/* ── Study Consistency Heatmap ── */
+/* â”€â”€ Study Consistency Heatmap â”€â”€ */
 .pg-heatmap {
   display: flex;
   flex-direction: column;
@@ -9460,7 +9460,7 @@ video {
   background: linear-gradient(90deg, #ff661d 0%, #ff981a 45%, #44cc93 100%);
 }
 
-/* ── Achievements ── */
+/* â”€â”€ Achievements â”€â”€ */
 .pg-achievements-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -9500,7 +9500,7 @@ video {
   color: var(--text-dim);
 }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 1100px) {
   .pg-duo-row {
     grid-template-columns: 1fr;
@@ -9534,11 +9534,11 @@ video {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Notes - Three-pane knowledge base
    Browse sidebar - note cards - live preview panel -
    rich editor - AI drawer - quiz generator - flashcards
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .nt-page .page-shell-hero {
   flex-direction: column;
@@ -9554,7 +9554,7 @@ video {
   --cal-teal: #1d6f63;
 }
 
-/* ── Layout ── */
+/* â”€â”€ Layout â”€â”€ */
 
 .nt-layout {
   display: grid;
@@ -9569,7 +9569,7 @@ video {
   }
 }
 
-/* ── Sidebar ── */
+/* â”€â”€ Sidebar â”€â”€ */
 
 .nt-sidebar {
   display: flex;
@@ -9726,7 +9726,7 @@ video {
   color: var(--cal-teal, #7fc8be);
 }
 
-/* ── List column ── */
+/* â”€â”€ List column â”€â”€ */
 
 .nt-list {
   min-width: 0;
@@ -9869,7 +9869,7 @@ video {
   background: rgba(0, 0, 0, 0.06);
 }
 
-/* ── Note cards ── */
+/* â”€â”€ Note cards â”€â”€ */
 
 .nt-cards {
   display: grid;
@@ -10039,7 +10039,7 @@ video {
   }
 }
 
-/* ── Preview panel ── */
+/* â”€â”€ Preview panel â”€â”€ */
 
 .nt-preview {
   background: var(--panel);
@@ -10153,7 +10153,7 @@ video {
   filter: brightness(1.12);
 }
 
-/* ── Editor ── */
+/* â”€â”€ Editor â”€â”€ */
 
 .nt-editor {
   max-width: 880px;
@@ -10480,7 +10480,7 @@ video {
   text-align: center;
 }
 
-/* ── Empty states ── */
+/* â”€â”€ Empty states â”€â”€ */
 
 .nt-empty {
   display: flex;
@@ -10510,7 +10510,7 @@ video {
   cursor: pointer;
 }
 
-/* ── Modals ── */
+/* â”€â”€ Modals â”€â”€ */
 
 .nt-overlay {
   position: fixed;
@@ -10827,7 +10827,7 @@ video {
   color: var(--text-dim);
 }
 
-/* ── AI drawer ── */
+/* â”€â”€ AI drawer â”€â”€ */
 
 .nt-drawer-backdrop {
   position: fixed;
@@ -10991,7 +10991,7 @@ video {
   30% { transform: translateY(-5px); opacity: 1; }
 }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 
 .nt-backdrop {
   position: fixed;
@@ -11089,11 +11089,11 @@ video {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Calendar - Google-style time grid
    Week grid - event blocks - drag create - now line -
    month chips - schedule list - mobile date strip agenda
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .cal-page {
   --cal-teal: #7fc8be;
@@ -11111,7 +11111,7 @@ video {
   gap: 4px;
 }
 
-/* ── Top bar ── */
+/* â”€â”€ Top bar â”€â”€ */
 
 .cal-topbar {
   display: flex;
@@ -11277,7 +11277,7 @@ video {
   transform: scale(1.06);
 }
 
-/* ── Day headers ── */
+/* â”€â”€ Day headers â”€â”€ */
 
 .cal-desktopgrid {
   border: 1px solid var(--border);
@@ -11353,7 +11353,7 @@ video {
   color: var(--accent);
 }
 
-/* ── All-day / exam banner row ── */
+/* â”€â”€ All-day / exam banner row â”€â”€ */
 
 .cal-allday-row {
   min-height: 34px;
@@ -11435,7 +11435,7 @@ video {
   background: rgba(0, 0, 0, 0.05);
 }
 
-/* ── Time grid ── */
+/* â”€â”€ Time grid â”€â”€ */
 
 .cal-gridbody {
   overflow-y: auto;
@@ -11672,7 +11672,7 @@ video {
   pointer-events: none;
 }
 
-/* ── Month view ── */
+/* â”€â”€ Month view â”€â”€ */
 
 .cal-month {
   border: 1px solid var(--border);
@@ -11807,7 +11807,7 @@ video {
   padding-left: 4px;
 }
 
-/* ── Schedule view ── */
+/* â”€â”€ Schedule view â”€â”€ */
 
 .cal-schedule {
   display: flex;
@@ -11894,7 +11894,7 @@ video {
   white-space: nowrap;
 }
 
-/* ── Empty / loading ── */
+/* â”€â”€ Empty / loading â”€â”€ */
 
 .cal-empty {
   padding: 26px 20px;
@@ -11908,7 +11908,7 @@ video {
   font-size: 0.95rem;
 }
 
-/* ── Modals (base - shared with mobile popups block) ── */
+/* â”€â”€ Modals (base - shared with mobile popups block) â”€â”€ */
 
 .cal-modal-overlay {
   position: fixed;
@@ -12193,7 +12193,7 @@ a.cal-cancel:hover {
   color: var(--cal-teal);
 }
 
-/* ── Mobile: date strip + vertical timeline ── */
+/* â”€â”€ Mobile: date strip + vertical timeline â”€â”€ */
 
 .cal-mobile {
   display: flex;
@@ -12473,7 +12473,7 @@ a.cal-cancel:hover {
 
 /* Mid-size modal */
 
-/* ── Mobile: only the content section scrolls, header stays pinned ── */
+/* â”€â”€ Mobile: only the content section scrolls, header stays pinned â”€â”€ */
 
 @media (max-width: 900px) {
   .flow-page.cal-page {
@@ -12683,16 +12683,16 @@ a.cal-cancel:hover {
   .dashboard-subject-progress-grid { grid-template-columns: 1fr; }
 }
 
-/* ══════════════════════════════════════════════════════════
-   Study Planner — Redesigned
-   ══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Study Planner â€” Redesigned
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .planner-header-actions {
   display: flex;
   gap: 8px;
 }
 
-/* ── View Toggle ── */
+/* â”€â”€ View Toggle â”€â”€ */
 .planner-view-toggle {
   display: inline-flex;
   gap: 2px;
@@ -12722,7 +12722,7 @@ a.cal-cancel:hover {
   background: var(--bg-elevated);
 }
 
-/* ── Date Navigation ── */
+/* â”€â”€ Date Navigation â”€â”€ */
 .planner-date-nav {
   display: flex;
   align-items: center;
@@ -12768,14 +12768,14 @@ a.cal-cancel:hover {
   color: var(--accent);
 }
 
-/* ── Day View Layout ── */
+/* â”€â”€ Day View Layout â”€â”€ */
 .planner-day-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 20px;
 }
 
-/* ── Timeline Card ── */
+/* â”€â”€ Timeline Card â”€â”€ */
 .planner-timeline-header {
   display: flex;
   justify-content: space-between;
@@ -12817,7 +12817,7 @@ a.cal-cancel:hover {
   opacity: 0.4;
 }
 
-/* ── Session Block (in timeline) ── */
+/* â”€â”€ Session Block (in timeline) â”€â”€ */
 .planner-session-block {
   background: var(--glass);
   border: 1px solid var(--border);
@@ -12855,7 +12855,7 @@ a.cal-cancel:hover {
   border-color: var(--accent);
 }
 .planner-session-check.checked::after {
-  content: '✓';
+  content: 'âœ“';
   color: white;
   font-size: 11px;
   font-weight: bold;
@@ -12903,14 +12903,14 @@ a.cal-cancel:hover {
   gap: 16px;
 }
 
-/* ── Right Sidebar ── */
+/* â”€â”€ Right Sidebar â”€â”€ */
 .planner-day-sidebar {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* ── Upcoming Exams Card ── */
+/* â”€â”€ Upcoming Exams Card â”€â”€ */
 .planner-exam-item {
   display: flex;
   align-items: center;
@@ -12934,7 +12934,7 @@ a.cal-cancel:hover {
 .planner-exam-days.steady { background: rgba(34,197,94,0.15); color: #22c55e; }
 .planner-exam-days.calm { background: var(--bg-subtle); color: var(--text-dim); }
 
-/* ── Quick Stats Card ── */
+/* â”€â”€ Quick Stats Card â”€â”€ */
 .planner-quick-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -12956,7 +12956,7 @@ a.cal-cancel:hover {
   color: var(--text-dim);
 }
 
-/* ── Week View ── */
+/* â”€â”€ Week View â”€â”€ */
 .planner-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -13007,7 +13007,7 @@ a.cal-cancel:hover {
 .planner-week-session strong { display: block; }
 .planner-week-session small { color: var(--text-dim); }
 
-/* ── Month View ── */
+/* â”€â”€ Month View â”€â”€ */
 .planner-month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -13059,7 +13059,7 @@ a.cal-cancel:hover {
   background: var(--accent);
 }
 
-/* ── AI Plan Result ── */
+/* â”€â”€ AI Plan Result â”€â”€ */
 .planner-ai-result {
   margin-bottom: 20px;
 }
@@ -13119,7 +13119,7 @@ a.cal-cancel:hover {
 }
 .planner-ai-tip strong { color: var(--accent); }
 
-/* ── Create Session Modal ── */
+/* â”€â”€ Create Session Modal â”€â”€ */
 .planner-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -13256,7 +13256,7 @@ a.cal-cancel:hover {
 .planner-duration-opt:hover { border-color: var(--accent); color: var(--text); }
 .planner-duration-opt.selected { border-color: var(--accent); background: rgba(255,107,74,0.1); color: var(--accent); font-weight: 600; }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 900px) {
   .planner-day-layout { grid-template-columns: 1fr; }
   .planner-week-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -13291,9 +13291,9 @@ a.cal-cancel:hover {
   .coach-quick-actions { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Floating AI Bot
-   ══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .floating-bot-btn {
   position: fixed;
@@ -13340,7 +13340,7 @@ a.cal-cancel:hover {
   100% { opacity: 0; transform: scale(1.4); }
 }
 
-/* ── Chat Panel ── */
+/* â”€â”€ Chat Panel â”€â”€ */
 .floating-bot-panel {
   position: fixed;
   bottom: 92px;
@@ -13362,7 +13362,7 @@ a.cal-cancel:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Header ── */
+/* â”€â”€ Header â”€â”€ */
 .floating-bot-header {
   display: flex;
   align-items: center;
@@ -13405,7 +13405,7 @@ a.cal-cancel:hover {
   background: var(--bg-subtle);
 }
 
-/* ── Messages ── */
+/* â”€â”€ Messages â”€â”€ */
 .floating-bot-messages {
   flex: 1;
   overflow-y: auto;
@@ -13517,7 +13517,7 @@ a.cal-cancel:hover {
   30% { opacity: 1; transform: translateY(-3px); }
 }
 
-/* ── Quick Actions ── */
+/* â”€â”€ Quick Actions â”€â”€ */
 .floating-bot-quick-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -13546,7 +13546,7 @@ a.cal-cancel:hover {
   font-size: 1.1rem;
 }
 
-/* ── Input ── */
+/* â”€â”€ Input â”€â”€ */
 .floating-bot-input {
   display: flex;
   gap: 8px;
@@ -13593,7 +13593,7 @@ a.cal-cancel:hover {
   cursor: not-allowed;
 }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 1160px) {
   .floating-bot-btn {
     bottom: calc(96px + env(safe-area-inset-bottom));
@@ -13621,11 +13621,11 @@ a.cal-cancel:hover {
   }
 }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Exams Page
-   ══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Top Stats ── */
+/* â”€â”€ Top Stats â”€â”€ */
 .exams-stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -13656,7 +13656,7 @@ a.cal-cancel:hover {
   color: var(--text-dim);
 }
 
-/* ── Exam List ── */
+/* â”€â”€ Exam List â”€â”€ */
 .exams-grid {
   display: flex;
   flex-direction: column;
@@ -13727,7 +13727,7 @@ a.cal-cancel:hover {
   color: #22c55e;
 }
 
-/* ── Detail View ── */
+/* â”€â”€ Detail View â”€â”€ */
 .exam-detail-header {
   display: flex;
   align-items: center;
@@ -13798,7 +13798,7 @@ a.cal-cancel:hover {
   font-size: 0.85rem;
 }
 
-/* ── Syllabus ── */
+/* â”€â”€ Syllabus â”€â”€ */
 .exam-syllabus {
   margin-bottom: 24px;
 }
@@ -13844,7 +13844,7 @@ a.cal-cancel:hover {
 .exam-module-item span { font-size: 0.9rem; flex: 1; }
 .exam-module-item.done span { text-decoration: line-through; opacity: 0.6; }
 
-/* ── Weak Areas ── */
+/* â”€â”€ Weak Areas â”€â”€ */
 .exam-weak-areas {
   margin-bottom: 24px;
 }
@@ -13865,7 +13865,7 @@ a.cal-cancel:hover {
   font-size: 0.85rem;
 }
 
-/* ── Study Plan ── */
+/* â”€â”€ Study Plan â”€â”€ */
 .exam-study-plan {
   margin-bottom: 24px;
 }
@@ -13894,7 +13894,7 @@ a.cal-cancel:hover {
   color: var(--text-dim);
 }
 
-/* ── Exam Actions ── */
+/* â”€â”€ Exam Actions â”€â”€ */
 .exam-detail-actions {
   display: flex;
   gap: 10px;
@@ -13915,7 +13915,7 @@ a.cal-cancel:hover {
   border-color: #ef4444;
 }
 
-/* ── Exam Countdown Widget (Dashboard) ── */
+/* â”€â”€ Exam Countdown Widget (Dashboard) â”€â”€ */
 .dashboard-exam-countdown {
   background: linear-gradient(135deg, rgba(255,107,74,0.12), rgba(139,92,246,0.08));
   border: 1px solid var(--border);
@@ -13972,7 +13972,7 @@ a.cal-cancel:hover {
   gap: 8px;
 }
 
-/* ── Exam Create Modal ── */
+/* â”€â”€ Exam Create Modal â”€â”€ */
 .exam-modules-editor {
   display: flex;
   flex-direction: column;
@@ -14020,9 +14020,9 @@ a.cal-cancel:hover {
   .dashboard-countdown-numbers { justify-content: center; }
 }
 
-/* ════════════════════════════════════════════════════════════
-   FOCUS MODE — setup · immersive timer · break · reflection
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   FOCUS MODE â€” setup Â· immersive timer Â· break Â· reflection
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 body.fm-immersive .orbit-sidebar,
 body.fm-immersive .floating-bot-btn,
@@ -14045,7 +14045,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
     var(--bg);
 }
 
-/* ── Setup screen ── */
+/* â”€â”€ Setup screen â”€â”€ */
 
 .fm-setup {
   min-height: 100svh;
@@ -14404,7 +14404,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   }
 }
 
-/* ── Immersive running / paused ── */
+/* â”€â”€ Immersive running / paused â”€â”€ */
 
 .fm-run {
   position: relative;
@@ -14594,7 +14594,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   background: linear-gradient(90deg, var(--mint), var(--cyan));
 }
 
-/* ── Break ── */
+/* â”€â”€ Break â”€â”€ */
 
 .fm-break {
   min-height: 100svh;
@@ -14660,7 +14660,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .fm-break-count .fm-line { margin-top: 4px; }
 
-/* ── Complete / reflection ── */
+/* â”€â”€ Complete / reflection â”€â”€ */
 
 .fm-complete {
   min-height: 100svh;
@@ -14776,7 +14776,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 .fm-complete-save:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .fm-complete-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Study material & AI drawers ── */
+/* â”€â”€ Study material & AI drawers â”€â”€ */
 
 .fm-study,
 .fm-ai {
@@ -14973,7 +14973,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .fm-ai-back:hover { background: rgba(255, 107, 74, 0.14); }
 
-/* ── Confirm end modal ── */
+/* â”€â”€ Confirm end modal â”€â”€ */
 
 .fm-confirm-overlay {
   position: fixed;
@@ -15022,7 +15022,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .fm-confirm-discard:hover { color: var(--danger); }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 768px) {
   .fm-setup { padding: 20px 16px 40px; }
   .fm-run-tools { bottom: 60px; }
@@ -15061,9 +15061,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 
 
-/* ════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    My Subjects
-   ════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .ms-loading, .ms-empty { padding: 60px; text-align: center; color: var(--muted); }
 .ms-empty h2 { margin: 8px 0; color: var(--text); }
@@ -15080,7 +15080,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 }
 
 
-/* ── Cards Grid ── */
+/* â”€â”€ Cards Grid â”€â”€ */
 .ms-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -15291,7 +15291,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   box-shadow: 0 14px 30px -10px rgba(255, 107, 74, 0.7);
 }
 
-/* ── Detail View ── */
+/* â”€â”€ Detail View â”€â”€ */
 .ms-back {
   display: inline-flex;
   align-items: center;
@@ -15458,7 +15458,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .ms-delete-confirm { font-size: 0.82rem; color: #fca5a5; }
 
-/* ── Modal ── */
+/* â”€â”€ Modal â”€â”€ */
 .ms-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -15572,7 +15572,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   font-size: 0.95rem;
 }
 
-/* My Subjects — page alignment polish */
+/* My Subjects â€” page alignment polish */
 .ms-page .page-shell-hero {
   align-items: center;
   flex-wrap: wrap;
@@ -15659,9 +15659,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .ms-submit { padding: 12px; font-size: 0.9rem; border-radius: 12px; }
 }
 
-/* ════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Tasks (tk-*)
-   ════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .tk-tabs {
   display: inline-flex;
@@ -15905,9 +15905,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .tk-title { font-size: 0.88rem; }
 }
 
-/* ════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Exams (ex-*)
-   ════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .ex-center {
   padding: 60px;
@@ -16403,9 +16403,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .ex-delete-row .danger-button { width: 100%; }
 }
 
-/* ════════════════════════════════════════════════════════════
-   Study Planner — New Design (pl-*)
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Study Planner â€” New Design (pl-*)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .pl-card {
   background: var(--card-bg, rgba(255,255,255,0.04));
@@ -16830,7 +16830,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   min-width: 0;
 }
 
-/* ── Study Planner Responsive ── */
+/* â”€â”€ Study Planner Responsive â”€â”€ */
 @media (max-width: 900px) {
   .pl-day-layout {
     grid-template-columns: 1fr;
@@ -16952,11 +16952,11 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Dashboard - redesigned
-   Visual order: Main Goal → Streak → This Week → Continue →
-   Exam → AI → Schedule → Tasks → Subjects
-   ───────────────────────────────────────────────────────────── */
+   Visual order: Main Goal â†’ Streak â†’ This Week â†’ Continue â†’
+   Exam â†’ AI â†’ Schedule â†’ Tasks â†’ Subjects
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .db-page .page-shell-hero {
   flex-direction: column;
@@ -17575,6 +17575,17 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
     gap: 9px;
   }
 
+  /* Mobile: single vertical flow — streak/study time → today's plan → exam → activity */
+  .db-goal,
+  .db-streak { order: 1; }
+  .db-schedule { order: 2; }
+  .db-exam { order: 3; }
+  .db-continue { order: 4; }
+  .db-week { order: 5; }
+  .db-tasks { order: 6; }
+  .db-subjects { order: 7; }
+  .db-ai { order: 8; }
+
   .db-goal-title { font-size: 1.15rem; }
   .db-chart { height: 100px; }
   .db-continue-inner { flex-direction: column; align-items: stretch; }
@@ -17584,7 +17595,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .db-streak-num { font-size: 2rem; }
 }
 
-/* ═══════════════════ Progress Page v2 ═══════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Progress Page v2 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .pg-section-title {
   font-size: 0.78rem;
   font-weight: 700;
@@ -17954,7 +17965,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   margin-top: 8px;
 }
 
-/* Mobile ── stacked layout */
+/* Mobile â”€â”€ stacked layout */
 @media (max-width: 900px) {
   .progress-page .page-shell-header {
     position: static;
@@ -17983,10 +17994,10 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .pg-topic-row .pg-mini-btn { flex-shrink: 0; }
 }
 
-/* ════════════════════════════════════════════════════════════
-   QUIZ REDESIGN — inline AI generator · subject grid · history
-   hierarchy: stats → AI generator → your subjects → recent
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   QUIZ REDESIGN â€” inline AI generator Â· subject grid Â· history
+   hierarchy: stats â†’ AI generator â†’ your subjects â†’ recent
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .qz-page {
   max-width: 1280px;
@@ -17994,7 +18005,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   margin: 0 auto;
 }
 
-/* ── AI quiz generator (full-width horizontal card) ── */
+/* â”€â”€ AI quiz generator (full-width horizontal card) â”€â”€ */
 
 .qz-gen-card {
   background:
@@ -18171,7 +18182,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .qz-generate-btn:disabled { opacity: 0.6; cursor: default; }
 
-/* ── Your subjects (2 × 2 grid) ── */
+/* â”€â”€ Your subjects (2 Ã— 2 grid) â”€â”€ */
 
 .qz-subjects-grid {
   display: grid;
@@ -18268,7 +18279,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .qz-sc-btn:disabled { opacity: 0.55; cursor: default; }
 
-/* ── Recent quizzes row ── */
+/* â”€â”€ Recent quizzes row â”€â”€ */
 
 @media (max-width: 900px) {
   .qz-gen-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -18282,7 +18293,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .qz-subjects-grid { grid-template-columns: 1fr; gap: 10px; }
 }
 
-/* ── Quiz generator modal ── */
+/* â”€â”€ Quiz generator modal â”€â”€ */
 
 .qz-modal-backdrop {
   position: fixed;
@@ -18499,9 +18510,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   }
 }
 
-/* ════════════════════════════════════════════════════════════
-   AUTH — split login/register · onboarding
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   AUTH â€” split login/register Â· onboarding
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .au-page {
   min-height: 100svh;
@@ -18509,7 +18520,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
 }
 
-/* ── Left brand panel ── */
+/* â”€â”€ Left brand panel â”€â”€ */
 
 .au-brand {
   position: relative;
@@ -18625,7 +18636,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   gap: 4px;
 }
 
-/* ── Right form panel ── */
+/* â”€â”€ Right form panel â”€â”€ */
 
 .au-panel {
   display: flex;
@@ -18840,7 +18851,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .au-switch a:hover { text-decoration: underline; }
 
-/* ── Password strength (register) ── */
+/* â”€â”€ Password strength (register) â”€â”€ */
 
 .au-strength {
   display: flex;
@@ -18895,7 +18906,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 
 .au-checklist li.ok { color: #36d479; }
 
-/* ── Terms checkbox ── */
+/* â”€â”€ Terms checkbox â”€â”€ */
 
 .au-terms {
   display: flex;
@@ -18917,7 +18928,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   flex-shrink: 0;
 }
 
-/* ── Onboarding (/welcome) ── */
+/* â”€â”€ Onboarding (/welcome) â”€â”€ */
 
 .ob-page {
   grid-template-columns: 1fr;
@@ -18990,7 +19001,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   border-radius: 12px;
 }
 
-/* ── Onboarding responsive ── */
+/* â”€â”€ Onboarding responsive â”€â”€ */
 
 @media (max-width: 600px) {
   .ob-card {
@@ -19012,7 +19023,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   }
 }
 
-/* ── Auth responsive ── */
+/* â”€â”€ Auth responsive â”€â”€ */
 
 @media (max-width: 900px) {
   .au-page { grid-template-columns: 1fr; }
@@ -19020,9 +19031,9 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .au-panel { border-left: none; padding: 24px 16px; }
 }
 
-/* ════════════════════════════════════════════════════════════
-   Study Planner — Duo-tone (pl-*)
-   ════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Study Planner â€” Duo-tone (pl-*)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Toolbar */
 .pl-toolbar {
@@ -19076,7 +19087,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   transform: none;
 }
 
-/* View toggle — segmented pill */
+/* View toggle â€” segmented pill */
 .pl-view-toggle {
   display: inline-flex;
   gap: 3px;
@@ -19670,7 +19681,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
 }
 .pl-priority-active { font-weight: 800 !important; color: var(--text) !important; }
 
-/* ── Planner responsive ── */
+/* â”€â”€ Planner responsive â”€â”€ */
 @media (max-width: 960px) {
   .pl-day-layout { grid-template-columns: 1fr; }
   .pl-sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -19717,4 +19728,228 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
   .pl-plan-time { min-width: auto; }
   .pl-exam-item { padding: 9px 10px; }
   .pl-exam-name { font-size: 0.96rem; }
+}
+
+
+/* Progressive first-time feature tips (non-blocking). */
+.ft-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 70%, var(--accent) 6%);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px -18px rgba(0, 0, 0, 0.6);
+  animation: tour-pop 0.2s ease;
+}
+.ft-tip-body { flex: 1; }
+.ft-tip-close {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.ft-tip-close:hover { color: var(--text); }
+
+/* ------------------------------------------------------------
+   Dashboard setup checklist (setup-*)
+   ------------------------------------------------------------ */
+.setup-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 0 0 20px;
+  box-shadow: 0 14px 40px -24px rgba(0, 0, 0, 0.6);
+}
+.setup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.setup-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.setup-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-dim);
+  background: var(--bg-subtle);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.setup-sub {
+  margin: 6px 0 16px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.setup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.setup-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px;
+  border-top: 1px solid var(--border);
+}
+.setup-row:first-child { border-top: none; }
+.setup-row.is-done { opacity: 0.72; }
+.setup-row.is-active {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-radius: 14px;
+  margin: 8px -6px;
+  padding: 14px 12px;
+}
+.setup-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+}
+.setup-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-dim);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+.setup-badge.done {
+  color: #fff;
+  background: linear-gradient(135deg, #2ec27e, #1f9d63);
+  border-color: transparent;
+}
+.setup-row-text { display: flex; flex-direction: column; gap: 2px; }
+.setup-row-text strong { font-size: 14.5px; font-weight: 700; }
+.setup-row-text small { font-size: 12.5px; color: var(--text-dim); }
+.setup-row.is-done .setup-row-text small { color: var(--text-dim); }
+.setup-action {
+  white-space: nowrap;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+}
+.setup-action:hover { border-color: var(--accent); color: var(--accent); }
+.setup-flox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--cyan) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.setup-flox-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.setup-flox-icon {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--accent);
+}
+.setup-flox-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.setup-flox-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.setup-flox-btn {
+  margin-top: 2px;
+  width: 100%;
+  background: linear-gradient(135deg, #FF6B35, #FF8A3D);
+  border: none;
+  border-radius: 999px;
+  padding: 12px 14px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+.setup-flox-btn:hover { filter: brightness(1.05); }
+
+/* Ready state */
+.setup-ready {
+  text-align: center;
+  padding: 28px 20px;
+  margin: 0 0 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px -24px rgba(0, 0, 0, 0.6);
+}
+.setup-ready-emoji { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+.setup-ready-title { margin: 0 0 8px; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+.setup-ready-body { margin: 0 auto 20px; max-width: 420px; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+.setup-ready-btn {
+  background: linear-gradient(135deg, #FF6B35, #FF8A3D 55%, #76C7BE);
+  border: none;
+  border-radius: 999px;
+  padding: 13px 28px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 28px -12px rgba(255, 107, 74, 0.6);
+}
+.setup-ready-btn:hover { filter: brightness(1.05); }
+
+@media (max-width: 700px) {
+  .setup-card { padding: 16px; }
+  .setup-row { flex-wrap: wrap; }
+  .setup-row-main { flex: 1 1 100%; min-width: 0; }
+  .setup-action {
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    text-align: center;
+  }
 }

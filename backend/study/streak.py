@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Sum
 from django.utils import timezone
 
 from productivity.models import ProductivityLog
@@ -14,7 +14,11 @@ STREAK_MILESTONES = (7, 30, 50, 100, 200, 365)
 
 
 def _study_dates(user) -> list[date]:
-    """Return all distinct calendar days where the user logged any study time."""
+    """Return all distinct calendar days where the user logged study activity.
+
+    Any qualifying activity (adding a subject/exam/task/note, generating a quiz,
+    an AI interaction, or a completed focus session) marks the day as a study day.
+    """
     return list(
         ProductivityLog.objects.filter(user=user, minutes_studied__gt=0)
         .values_list("date", flat=True)
@@ -118,7 +122,7 @@ def study_day_counts(user, *, since: date) -> list[dict[str, Any]]:
     rows = (
         ProductivityLog.objects.filter(user=user, date__gte=since, minutes_studied__gt=0)
         .values("date")
-        .annotate(total_minutes=Count("minutes_studied"))
+        .annotate(total_minutes=Sum("minutes_studied"))
         .order_by("date")
     )
     return [

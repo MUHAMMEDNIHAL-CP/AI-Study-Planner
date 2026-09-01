@@ -9,6 +9,7 @@ class ProductivityLog(models.Model):
         ("okay", "Okay"),
         ("good", "Good"),
         ("great", "Great"),
+        ("excellent", "Excellent"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="productivity_logs")
@@ -30,16 +31,15 @@ class ProductivityLog(models.Model):
 
 
 def record_study_activity(user, *, minutes=5):
-    """Ensure the user has a study log for today so their streak counts this activity.
+    """Log a study activity for today, accumulating minutes toward the daily threshold.
 
-    If the day already has logged study minutes (e.g. a focus session), it is left
-    unchanged. Otherwise the day is marked as a study day with the given minutes.
+    Multiple activities (adding subjects, tasks, notes, quizzes, AI interactions,
+    etc.) each contribute minutes. A study day counts once total minutes reach 30+.
     """
     today = timezone.localdate()
     log, _ = ProductivityLog.objects.get_or_create(user=user, date=today)
-    if log.minutes_studied <= 0:
-        log.minutes_studied = minutes
-        log.save(update_fields=["minutes_studied"])
+    log.minutes_studied += minutes
+    log.save(update_fields=["minutes_studied"])
     return log
 
 

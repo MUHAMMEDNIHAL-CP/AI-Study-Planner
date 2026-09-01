@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { clearAuthTokens, getAccessToken, getRefreshToken, isAuthenticated, setAuthTokens } from './auth'
+import { clearAuthTokens, getAccessToken, getRefreshToken, hasValidAccessToken, isAuthenticated, setAuthTokens } from './auth'
 
 function resolveApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL as string | undefined
@@ -40,9 +40,10 @@ api.interceptors.request.use(async (config) => {
   let access = getAccessToken()
   const refresh = getRefreshToken()
 
-  // If the access token is missing or expired but we have a refresh token,
-  // proactively refresh before sending the request.
-  if ((!access || !isAuthenticated()) && refresh) {
+  // If the access token is missing or expired but we still have a valid refresh
+  // token, proactively mint a new access token before sending this request so
+  // the user is never logged out by an idle short-lived token.
+  if (!hasValidAccessToken() && refresh) {
     try {
       const res = await axios.post<{ access: string }>(`${API_BASE_URL}/api/auth/token/refresh/`, { refresh })
       setAuthTokens(res.data.access)

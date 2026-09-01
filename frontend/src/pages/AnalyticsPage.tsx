@@ -27,6 +27,7 @@ const MOOD_COLORS: Record<string, string> = {
   okay: '#fbbf24',
   good: '#a78bfa',
   great: '#4ade80',
+  excellent: '#22c55e',
 }
 
 function formatHours(minutes: number) {
@@ -53,6 +54,8 @@ function moodLabel(mood: string) {
       return 'Good'
     case 'great':
       return 'Great'
+    case 'excellent':
+      return 'Excellent'
     default:
       return 'Good'
   }
@@ -434,6 +437,7 @@ export default function AnalyticsPage() {
                   <option value="okay">Okay</option>
                   <option value="good">Good</option>
                   <option value="great">Great</option>
+                  <option value="excellent">Excellent</option>
                 </select>
               </label>
             </div>

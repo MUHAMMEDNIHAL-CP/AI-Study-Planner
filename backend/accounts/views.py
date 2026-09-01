@@ -116,6 +116,7 @@ class MeView(APIView):
             "bio", "education_level", "college", "course", "semester", "study_goal",
             "daily_study_goal", "target_grade", "main_goal",
             "preferred_study_time", "session_length", "learning_style", "coaching_style",
+            "onboarding_completed", "onboarding_version", "onboarding_completed_at",
         )
         profile_data = {f: request.data.get(f) for f in profile_fields if f in request.data}
         if profile_data:

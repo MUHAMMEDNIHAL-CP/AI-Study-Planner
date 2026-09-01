@@ -221,8 +221,12 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    # Access tokens are short-lived; the long-lived refresh token is used to
+    # mint fresh access tokens automatically, keeping students logged in across
+    # days without re-authentication. Only a real logout or an expired refresh
+    # token should end a session.
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_ACCESS_MINUTES', '30'))),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_DAYS', '7'))),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_DAYS', '30'))),
     'ROTATE_REFRESH_TOKENS': _env_bool('JWT_ROTATE_REFRESH', default=False),
     'BLACKLIST_AFTER_ROTATION': _env_bool('JWT_BLACKLIST_AFTER_ROTATION', default=False),
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -274,7 +278,7 @@ LOGGING = {
             "formatter": "verbose",
         },
         "file": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "config.logging_handlers.SafeRotatingFileHandler",
             "filename": BASE_DIR / "logs" / "flox.log",
             "maxBytes": 5 * 1024 * 1024,  # 5 MB
             "backupCount": 3,

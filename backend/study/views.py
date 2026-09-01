@@ -66,8 +66,10 @@ class OwnedQuerysetMixin:
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        # Each resource creation (subject/exam/task) contributes minutes toward
+        # the 30-minute daily study threshold.
         serializer.save(user=self.request.user)
-        record_study_activity(self.request.user)
+        record_study_activity(self.request.user, minutes=5)
 
 
 class SubjectListCreateView(OwnedQuerysetMixin, generics.ListCreateAPIView):
@@ -191,6 +193,17 @@ class StudyTaskListCreateView(OwnedQuerysetMixin, generics.ListCreateAPIView):
 class StudyTaskDetailView(OwnedQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = StudyTask.objects.select_related("subject")
     serializer_class = StudyTaskSerializer
+
+    def perform_update(self, serializer):
+        # Completing a task is a qualifying study activity: it should count
+        # towards the streak only when the task actually flips to done.
+        completing = (
+            serializer.validated_data.get("status") == "done"
+            and serializer.instance.status != "done"
+        )
+        serializer.save()
+        if completing:
+            record_study_activity(self.request.user, minutes=20)
 
 
 class DashboardView(APIView):

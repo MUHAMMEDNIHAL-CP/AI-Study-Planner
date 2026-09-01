@@ -5,9 +5,11 @@ class FocusSession(models.Model):
     MOOD_CHOICES = [
         ("terrible", "Terrible"),
         ("bad", "Bad"),
+        ("difficult", "Difficult"),
         ("okay", "Okay"),
         ("good", "Good"),
         ("great", "Great"),
+        ("excellent", "Excellent"),
     ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="focus_sessions")
     subject = models.ForeignKey("study.Subject", on_delete=models.SET_NULL, null=True, blank=True, related_name="focus_sessions")

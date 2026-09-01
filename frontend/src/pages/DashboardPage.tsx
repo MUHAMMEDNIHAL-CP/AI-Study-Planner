@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageShell from '../components/PageShell'
+import SetupChecklist from '../components/SetupChecklist'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
+import { markOnboardingComplete } from '../lib/tour'
 
 /* ── API shapes ────────────────────────────────────────────── */
 
@@ -29,7 +31,7 @@ type ApiTask = {
   status: 'todo' | 'doing' | 'done'
 }
 type StreakMilestone = { target: number; progress: number; remaining: number }
-type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; started_at: string }
+type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; started_at: string; completed?: boolean }
 type DashboardSummary = {
   current_streak: number
   longest_streak: number
@@ -109,6 +111,7 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null)
   const [subjects, setSubjects] = useState<ApiSubject[]>([])
   const [tasks, setTasks] = useState<ApiTask[]>([])
+  const [exams, setExams] = useState<ApiExam[]>([])
   const [sessions, setSessions] = useState<FocusSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -121,11 +124,12 @@ export default function DashboardPage() {
     let active = true
     async function load() {
       try {
-        const [profileRes, dashRes, subjRes, taskRes, sessRes] = await Promise.all([
+        const [profileRes, dashRes, subjRes, taskRes, examRes, sessRes] = await Promise.all([
           api.get<{ full_name?: string; username?: string; profile?: { education_level: string; course: string; college: string; semester: number; daily_study_goal: number } }>('/auth/me/'),
           api.get<DashboardSummary>('/study/dashboard/'),
           api.get<ApiSubject[]>('/study/subjects/'),
           api.get<ApiTask[]>('/study/tasks/'),
+          api.get<ApiExam[]>('/study/exams/').catch(() => ({ data: [] as ApiExam[] })),
           api.get<FocusSession[]>('/productivity/focus-sessions/').catch(() => ({ data: [] as FocusSession[] })),
         ])
         if (!active) return
@@ -135,6 +139,7 @@ export default function DashboardPage() {
         setDashboard(dashRes.data)
         setSubjects(subjRes.data)
         setTasks(taskRes.data)
+        setExams(examRes.data)
         setSessions(sessRes.data)
         setError(null)
       } catch (err) {
@@ -213,6 +218,28 @@ export default function DashboardPage() {
     return { hasData, text, detail, minutes }
   }, [subjects, nearestExam])
 
+  /* Onboarding setup checklist state */
+
+  const setupState = useMemo(
+    () => ({
+      accountDone: true,
+      subjectDone: subjects.length > 0,
+      taskDone: tasks.length > 0,
+      examDone: exams.length > 0,
+      focusDone: sessions.some((s) => s.completed && s.duration_minutes >= 30),
+    }),
+    [subjects, tasks, exams, sessions],
+  )
+
+  const allSetupDone = Object.values(setupState).every(Boolean)
+  const onboardedRef = useRef(false)
+  useEffect(() => {
+    if (allSetupDone && !onboardedRef.current) {
+      onboardedRef.current = true
+      void markOnboardingComplete()
+    }
+  }, [allSetupDone])
+
   const weekBars = useMemo(() => {
     const logMap = new Map(recentLogs.map((l) => [l.date, l.minutes_studied]))
     const days = lastSevenDays()
@@ -287,6 +314,12 @@ export default function DashboardPage() {
     >
       {error ? <div className="db-alert">{error}</div> : null}
       {loading ? <div className="db-loading">Loading your dashboard...</div> : null}
+
+      {!loading && !error ? (
+        <div className="db-setup-wrap">
+          <SetupChecklist state={setupState} />
+        </div>
+      ) : null}
 
       <div className="db-grid">
         {/* 1 - Today's Main Goal */}

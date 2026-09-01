@@ -130,6 +130,7 @@ class QuizSubmitView(APIView):
             )
         quiz.score = score
         quiz.save(update_fields=["score"])
+        record_study_activity(request.user, minutes=10)
         return Response({"score": score, "total": quiz.total_questions, "results": results})
 
 

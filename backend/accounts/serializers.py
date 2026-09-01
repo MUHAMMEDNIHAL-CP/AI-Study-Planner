@@ -14,6 +14,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "bio", "education_level", "college", "course", "semester", "study_goal",
             "daily_study_goal", "target_grade", "main_goal",
             "preferred_study_time", "session_length", "learning_style", "coaching_style",
+            "onboarding_completed", "onboarding_version", "onboarding_completed_at",
         )
 
 
