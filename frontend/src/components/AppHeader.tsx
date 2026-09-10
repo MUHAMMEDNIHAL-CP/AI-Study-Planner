@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useUserProfile, displayName, initials } from '../hooks/useUserProfile'
 
 type AppHeaderProps = {
@@ -36,10 +37,10 @@ export default function AppHeader({ children, className = '' }: AppHeaderProps) 
 
   return (
     <header className={`flow-header ${className}`.trim()}>
-      <div className="flow-time">
+      <Link to="/dashboard" className="flow-time">
         <span className="flow-time-clock">{formattedTime}</span>
         <span className="flow-time-date">{formattedDate}</span>
-      </div>
+      </Link>
 
       {children}
 

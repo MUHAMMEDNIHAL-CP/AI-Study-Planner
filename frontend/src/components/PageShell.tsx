@@ -50,10 +50,10 @@ export default function PageShell({
   return (
     <div className={`flow-page page-shell ${className}`.trim()}>
       <header className="page-shell-header">
-        <div className="page-shell-time">
+        <Link to="/dashboard" className="page-shell-time">
           <span className="page-shell-time-clock">{formattedTime}</span>
           <span className="page-shell-time-date">{formattedDate}</span>
-</div>
+        </Link>
         <div className="page-shell-spacer" />
         <div className="page-shell-header-actions">
           <button

@@ -412,6 +412,8 @@
   box-shadow: none;
 
   color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .page-shell-time-clock {

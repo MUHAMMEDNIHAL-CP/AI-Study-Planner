@@ -32,7 +32,45 @@ const SOUNDS: Array<{ id: SoundId; label: string }> = [
   { id: 'lofi', label: 'Lo-fi' },
 ]
 
+const PREFERENCES_KEY = 'FLOX.settings.v2'
 const SETTINGS_KEY = 'FLOX.focus.settings.v1'
+
+type SharedPreferences = {
+  sessionLength: number
+  breakLength: number
+  autoStartBreak: boolean
+  defaultSound: string
+  studySounds: boolean
+}
+
+const defaultSharedPrefs: SharedPreferences = { sessionLength: 50, breakLength: 10, autoStartBreak: false, defaultSound: 'rain', studySounds: true }
+
+function loadSharedPrefs(): SharedPreferences {
+  try {
+    const raw = localStorage.getItem(PREFERENCES_KEY)
+    if (raw) return { ...defaultSharedPrefs, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return defaultSharedPrefs
+}
+
+function settingsSoundToFocus(s: string): SoundId {
+  if (s === 'silence') return 'none'
+  if (s === 'rain') return 'rain'
+  if (s === 'lofi') return 'lofi'
+  return 'brown'
+}
+
+function focusSoundToSettings(s: SoundId): string {
+  if (s === 'none') return 'silence'
+  if (s === 'rain') return 'rain'
+  if (s === 'lofi') return 'lofi'
+  return 'white-noise'
+}
+
+function minutesToDurationIdx(minutes: number): number {
+  const idx = DURATIONS.findIndex((d) => d.seconds === minutes * 60)
+  return idx >= 0 ? idx : 1
+}
 
 type PersistedSettings = {
   durationIdx: number
@@ -40,14 +78,41 @@ type PersistedSettings = {
   sound: SoundId
   autoBreak: boolean
   confirmEnd: boolean
+  breakMinutes: number
 }
 
 function loadSettings(): PersistedSettings {
+  const prefs = loadSharedPrefs()
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    if (raw) return { ...{ durationIdx: 1, customMin: '', sound: 'none' as SoundId, autoBreak: true, confirmEnd: true }, ...(JSON.parse(raw) as Partial<PersistedSettings>) }
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<PersistedSettings>
+      return {
+        durationIdx: saved.durationIdx ?? minutesToDurationIdx(prefs.sessionLength),
+        customMin: saved.customMin ?? '',
+        sound: saved.sound ?? (prefs.studySounds ? settingsSoundToFocus(prefs.defaultSound) : 'none'),
+        autoBreak: saved.autoBreak ?? prefs.autoStartBreak,
+        confirmEnd: saved.confirmEnd ?? true,
+        breakMinutes: saved.breakMinutes ?? prefs.breakLength,
+      }
+    }
   } catch { /* ignore */ }
-  return { durationIdx: 1, customMin: '', sound: 'none', autoBreak: true, confirmEnd: true }
+  return {
+    durationIdx: minutesToDurationIdx(prefs.sessionLength),
+    customMin: '',
+    sound: prefs.studySounds ? settingsSoundToFocus(prefs.defaultSound) : 'none',
+    autoBreak: prefs.autoStartBreak,
+    confirmEnd: true,
+    breakMinutes: prefs.breakLength,
+  }
+}
+
+function saveSharedPrefs(updates: Partial<SharedPreferences>) {
+  try {
+    const raw = localStorage.getItem(PREFERENCES_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ ...existing, ...updates }))
+  } catch { /* ignore */ }
 }
 
 function pad2(n: number) { return n < 10 ? '0' + n : '' + n }
@@ -76,10 +141,11 @@ export default function FocusModePage() {
   const [sound, setSound] = useState<SoundId>(initial.sound)
   const [autoBreak, setAutoBreak] = useState(initial.autoBreak)
   const [confirmEnd, setConfirmEnd] = useState(initial.confirmEnd)
+  const [breakMinutes, setBreakMinutes] = useState(initial.breakMinutes)
 
   const [totalSeconds, setTotalSeconds] = useState(DURATIONS[initial.durationIdx]?.seconds ?? 50 * 60)
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds)
-  const [breakLeft, setBreakLeft] = useState(5 * 60)
+  const [breakLeft, setBreakLeft] = useState(initial.breakMinutes * 60)
   const [pauseCount, setPauseCount] = useState(0)
 
   const secondsLeftRef = useRef(secondsLeft)
@@ -122,8 +188,16 @@ export default function FocusModePage() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ durationIdx, customMin, sound, autoBreak, confirmEnd }))
-  }, [durationIdx, customMin, sound, autoBreak, confirmEnd])
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ durationIdx, customMin, sound, autoBreak, confirmEnd, breakMinutes }))
+    const durationMinutes = Number(customMin) > 0 ? Number(customMin) : DURATIONS[durationIdx].seconds / 60
+    saveSharedPrefs({
+      sessionLength: durationMinutes,
+      autoStartBreak: autoBreak,
+      defaultSound: focusSoundToSettings(sound),
+      studySounds: sound !== 'none',
+      breakLength: breakMinutes,
+    })
+  }, [durationIdx, customMin, sound, autoBreak, confirmEnd, breakMinutes])
 
   const immersive = phase !== 'setup'
 
@@ -169,14 +243,14 @@ export default function FocusModePage() {
         if (p <= 1) {
           playChime()
           setPhase(autoBreak ? 'break' : 'complete')
-          setBreakLeft(5 * 60)
+          setBreakLeft(breakMinutes * 60)
           return 0
         }
         return p - 1
       })
     }, 1000)
     return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [phase, autoBreak])
+  }, [phase, autoBreak, breakMinutes])
 
   useEffect(() => {
     if (breakTickRef.current) clearInterval(breakTickRef.current)
@@ -420,6 +494,12 @@ export default function FocusModePage() {
                 <i className={autoBreak ? 'on' : ''}>{autoBreak ? '\u2713' : ''}</i>
               </label>
               <label className="fm-set-row">
+                <span>Break duration</span>
+                <select value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))}>
+                  {[5, 10, 15, 20, 30].map((m) => <option key={m} value={m}>{m} min</option>)}
+                </select>
+              </label>
+              <label className="fm-set-row">
                 <input type="checkbox" checked={confirmEnd} onChange={(e) => setConfirmEnd(e.target.checked)} />
                 <span>Confirm before ending</span>
                 <i className={confirmEnd ? 'on' : ''}>{confirmEnd ? '\u2713' : ''}</i>
@@ -548,7 +628,7 @@ export default function FocusModePage() {
       <div className="fm-break-count">
         <span>BREAK</span>
         <strong>{clock(breakLeft)}</strong>
-        <div className="fm-line mint"><i style={{ width: ((5 * 60 - breakLeft) / (5 * 60)) * 100 + '%' }} /></div>
+        <div className="fm-line mint"><i style={{ width: ((breakMinutes * 60 - breakLeft) / (breakMinutes * 60)) * 100 + '%' }} /></div>
       </div>
 
       <button className="fm-ghost-btn" onClick={skipBreak} type="button">Skip Break {'\u2192'}</button>

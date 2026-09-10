@@ -987,6 +987,8 @@ h3 {
   box-shadow: none;
 
   color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .flow-time-clock {
