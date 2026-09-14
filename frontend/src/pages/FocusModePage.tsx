@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -164,6 +165,7 @@ export default function FocusModePage() {
   const [aiInput, setAiInput] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const confirmSheet = useSheet(confirmOpen)
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const breakTickRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -738,8 +740,8 @@ export default function FocusModePage() {
         <button className="fm-ai-back" onClick={() => setAiOpen(false)} type="button">Back to Focus {'\u2192'}</button>
       </aside>
 
-      {confirmOpen && (
-        <div className="fm-confirm-overlay" onClick={() => setConfirmOpen(false)}>
+      {confirmSheet.render && (
+        <div className={'fm-confirm-overlay' + (confirmSheet.closing ? ' sheet-closing' : '')} onClick={() => setConfirmOpen(false)}>
           <div className="fm-confirm" onClick={(e) => e.stopPropagation()}>
             <b>End session early?</b>
             <p>You have studied {completedMinutes} min. Ending now will still save your progress.</p>

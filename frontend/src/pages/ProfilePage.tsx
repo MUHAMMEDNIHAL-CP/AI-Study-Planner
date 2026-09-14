@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
 import { notifyProfileUpdated } from '../hooks/useUserProfile'
@@ -144,6 +145,9 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalKind>(null)
+  const profileSheet = useSheet(modal === 'profile')
+  const goalsSheet = useSheet(modal === 'goals')
+  const learningSheet = useSheet(modal === 'learning')
   const [saving, setSaving] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
 
@@ -630,8 +634,8 @@ export default function ProfilePage() {
         </>
       )}
 
-      {modal === 'profile' && (
-        <div className="pf-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+      {profileSheet.render && (
+        <div className={'pf-modal-overlay' + (profileSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit profile">
             <header className="pf-modal-head">
               <h2>Edit Profile</h2>
@@ -756,8 +760,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {modal === 'goals' && (
-        <div className="pf-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+      {goalsSheet.render && (
+        <div className={'pf-modal-overlay' + (goalsSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit goals">
             <header className="pf-modal-head">
               <h2>Edit Study Goals</h2>
@@ -814,8 +818,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {modal === 'learning' && (
-        <div className="pf-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+      {learningSheet.render && (
+        <div className={'pf-modal-overlay' + (learningSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit learning profile">
             <header className="pf-modal-head">
               <h2>Edit Learning Profile</h2>

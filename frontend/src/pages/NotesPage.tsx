@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -190,6 +191,7 @@ export default function NotesPage() {
   const [savedTick, setSavedTick] = useState(false)
 
   const [showTemplates, setShowTemplates] = useState(false)
+  const templatesSheet = useSheet(showTemplates)
   const [showSidebar, setShowSidebar] = useState(false)
   const [aiPanel, setAiPanelState] = useState<AiPanel>(AI_CLOSED)
   const [askInput, setAskInput] = useState('')
@@ -198,12 +200,17 @@ export default function NotesPage() {
   function closeAi() { setAiPanelState(AI_CLOSED) }
 
   const [quizOpen, setQuizOpen] = useState(false)
+  const quizSheet = useSheet(quizOpen)
   const [quizSource, setQuizSource] = useState<'note' | 'subject' | 'all'>('note')
   const [quizCount, setQuizCount] = useState('10')
   const [quizDifficulty, setQuizDifficulty] = useState('medium')
   const [quizBusy, setQuizBusy] = useState(false)
 
   const [deck, setDeck] = useState<Flashcard[] | null>(null)
+  const deckSheet = useSheet(!!deck)
+  const [lastDeck, setLastDeck] = useState<Flashcard[] | null>(null)
+  if (deck && deck !== lastDeck) setLastDeck(deck)
+  const deckModal = deckSheet.render ? (deck || lastDeck) : null
   const [deckIdx, setDeckIdx] = useState(0)
   const [deckFlipped, setDeckFlipped] = useState(false)
 
@@ -891,8 +898,8 @@ export default function NotesPage() {
       {showSidebar && <div className="nt-backdrop" onClick={() => setShowSidebar(false)} />}
 
       {/* Template picker */}
-      {showTemplates && (
-        <div className="nt-overlay" onClick={() => setShowTemplates(false)}>
+      {templatesSheet.render && (
+        <div className={'nt-overlay' + (templatesSheet.closing ? ' sheet-closing' : '')} onClick={() => setShowTemplates(false)}>
           <div className="nt-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Start a new note</h3>
             <div className="nt-template-grid">
@@ -908,8 +915,8 @@ export default function NotesPage() {
       )}
 
       {/* Quiz generator */}
-      {quizOpen && (
-        <div className="nt-overlay" onClick={() => setQuizOpen(false)}>
+      {quizSheet.render && (
+        <div className={'nt-overlay' + (quizSheet.closing ? ' sheet-closing' : '')} onClick={() => setQuizOpen(false)}>
           <div className="nt-modal nt-quizmodal" onClick={(e) => e.stopPropagation()}>
             <h3>{'\uD83D\uDCDD'} Generate Quiz</h3>
             <div className="qz-group">
@@ -955,8 +962,8 @@ export default function NotesPage() {
       )}
 
       {/* Flashcard deck */}
-      {deck && (
-        <div className="nt-overlay" onClick={() => setDeck(null)}>
+      {deckModal && (
+        <div className={'nt-overlay' + (deckSheet.closing ? ' sheet-closing' : '')} onClick={() => setDeck(null)}>
           <div className="nt-modal nt-deck" onClick={(e) => e.stopPropagation()}>
             <header className="dk-head">
               <span className="dk-kicker">{'\uD83C\uDCCF'} FLASHCARD</span>
@@ -967,11 +974,11 @@ export default function NotesPage() {
               onClick={() => setDeckFlipped(!deckFlipped)}
             >
               {deckFlipped ? (
-                <span className="dk-back">{deck[deckIdx].back}</span>
+                <span className="dk-back">{deckModal[deckIdx].back}</span>
               ) : (
                 <>
                   <span className="dk-q">What is it?</span>
-                  <span className="dk-front">{deck[deckIdx].front}</span>
+                  <span className="dk-front">{deckModal[deckIdx].front}</span>
                   <span className="dk-hint">{'\u2193 Tap to reveal \u2193'}</span>
                 </>
               )}
@@ -980,9 +987,9 @@ export default function NotesPage() {
               <button disabled={deckIdx === 0} onClick={() => { setDeckIdx(deckIdx - 1); setDeckFlipped(false) }}>
                 {'\u2190'} Previous
               </button>
-              <span className="dk-count">{deckIdx + 1} / {deck.length}</span>
+              <span className="dk-count">{deckIdx + 1} / {deckModal.length}</span>
               <button
-                disabled={deckIdx === deck.length - 1}
+                disabled={deckIdx === deckModal.length - 1}
                 onClick={() => { setDeckIdx(deckIdx + 1); setDeckFlipped(false) }}
               >
                 Next {'\u2192'}

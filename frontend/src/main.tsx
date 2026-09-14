@@ -6,6 +6,7 @@ import './styles/components.css'
 import './styles/admin.css'
 import './styles/flox.css'
 import './styles/legal.css'
+import './styles/mobile-first.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

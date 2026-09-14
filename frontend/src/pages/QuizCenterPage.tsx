@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -150,6 +151,7 @@ export default function QuizCenterPage() {
   const [cqDifficulty, setCqDifficulty] = useState('medium')
   const [generating, setGenerating] = useState(false)
   const [genOpen, setGenOpen] = useState(false)
+  const genSheet = useSheet(genOpen)
 
   /* active quiz */
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
@@ -792,8 +794,8 @@ export default function QuizCenterPage() {
       {view === 'active' && activeView}
       {view === 'result' && resultView}
 
-      {genOpen && (
-        <div className="qz-modal-backdrop" onClick={() => setGenOpen(false)}>
+      {genSheet.render && (
+        <div className={'qz-modal-backdrop' + (genSheet.closing ? ' sheet-closing' : '')} onClick={() => setGenOpen(false)}>
           <div className="qz-modal" onClick={(e) => e.stopPropagation()}>
             <div className="qz-modal-head">
               <div>

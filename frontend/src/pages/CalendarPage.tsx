@@ -3,6 +3,7 @@ import type { PointerEvent as RPointerEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -226,6 +227,16 @@ export default function CalendarPage() {
   const [aiBusy, setAiBusy] = useState(false)
   const [nowMin, setNowMin] = useState(() => nowMinutes())
   const [detail, setDetail] = useState<CalEvent | null>(null)
+
+  const formSheet = useSheet(form.open)
+  const detailSheet = useSheet(!!detail)
+  const aiSheet = useSheet(aiOpen)
+  const [lastForm, setLastForm] = useState<FormState | null>(null)
+  if (form.open && form !== lastForm) setLastForm(form)
+  const [lastDetail, setLastDetail] = useState<CalEvent | null>(null)
+  if (detail && detail !== lastDetail) setLastDetail(detail)
+  const formModal = formSheet.render ? (form.open ? form : lastForm) : null
+  const detailModal = detailSheet.render ? (detail || lastDetail) : null
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -926,38 +937,38 @@ export default function CalendarPage() {
       )}
 
       {/* Create / edit modal */}
-      {form.open && (
-        <div className="cal-modal-overlay" onClick={() => setForm(emptyForm())}>
+      {formSheet.render && formModal && (
+        <div className={'cal-modal-overlay' + (formSheet.closing ? ' sheet-closing' : '')} onClick={() => setForm(emptyForm())}>
           <div className="cal-modal cal-formmodal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
-              <h3>{form.mode === 'create' ? 'Create Study Session' : 'Edit Event'}</h3>
+              <h3>{formModal.mode === 'create' ? 'Create Study Session' : 'Edit Event'}</h3>
               <button className="cal-modal-close" onClick={() => setForm(emptyForm())} aria-label="Close">&#215;</button>
             </div>
             <label className="cal-field">
               <span>Title</span>
               <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                value={formModal.title}
+                onChange={(e) => setForm({ ...formModal, title: e.target.value })}
                 placeholder="Integration practice"
                 autoFocus
               />
             </label>
             <label className="cal-field">
               <span>Subject</span>
-              <select value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}>
+              <select value={formModal.subject} onChange={(e) => setForm({ ...formModal, subject: e.target.value })}>
                 <option value="">No subject</option>
                 {subjects.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
               </select>
             </label>
-            {form.mode === 'create' && (
+            {formModal.mode === 'create' && (
               <div className="cal-field-row type-row">
                 {(['study', 'exam', 'task', 'personal'] as EventType[]).map((t) => (
                   <button
                     key={t}
                     type="button"
-                    className={'cal-typebtn' + (form.type === t ? ' on' : '')}
+                    className={'cal-typebtn' + (formModal.type === t ? ' on' : '')}
                     style={{ ['--ev-accent' as string]: accentOf(t) }}
-                    onClick={() => setForm({ ...form, type: t })}
+                    onClick={() => setForm({ ...formModal, type: t })}
                   >
                     {t === 'study' ? 'Study' : t === 'exam' ? 'Exam' : t === 'task' ? 'Task' : 'Personal'}
                   </button>
@@ -967,28 +978,28 @@ export default function CalendarPage() {
             <div className="cal-field-row">
               <label className="cal-field">
                 <span>Date</span>
-                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <input type="date" value={formModal.date} onChange={(e) => setForm({ ...formModal, date: e.target.value })} />
               </label>
               <label className="cal-field">
                 <span>Start</span>
-                <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+                <input type="time" value={formModal.time} onChange={(e) => setForm({ ...formModal, time: e.target.value })} />
               </label>
             </div>
-            {form.type !== 'exam' && (
+            {formModal.type !== 'exam' && (
               <label className="cal-field">
                 <span>Duration</span>
-                <select value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })}>
+                <select value={formModal.duration} onChange={(e) => setForm({ ...formModal, duration: e.target.value })}>
                   {DURATIONS.map((d) => <option key={d} value={d}>{d} minutes</option>)}
                 </select>
               </label>
             )}
             <div className="cal-modal-actions">
-              {form.mode === 'edit' && editingEvent && (
+              {formModal.mode === 'edit' && editingEvent && (
                 <button className="cal-danger" disabled={saving} onClick={() => void deleteEvent(editingEvent)}>Delete</button>
               )}
               <button className="cal-cancel" onClick={() => setForm(emptyForm())}>Cancel</button>
               <button className="cal-save" disabled={saving} onClick={() => void submitForm()}>
-                {saving ? 'Saving\u2026' : form.mode === 'create' ? 'Create' : 'Save'}
+                {saving ? 'Saving\u2026' : formModal.mode === 'create' ? 'Create' : 'Save'}
               </button>
             </div>
           </div>
@@ -996,43 +1007,43 @@ export default function CalendarPage() {
       )}
 
       {/* Event detail modal */}
-      {detail && (
-        <div className="cal-modal-overlay" onClick={() => setDetail(null)}>
+      {detailSheet.render && detailModal && (
+        <div className={'cal-modal-overlay' + (detailSheet.closing ? ' sheet-closing' : '')} onClick={() => setDetail(null)}>
           <div className="cal-modal cal-detailmodal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
-              <h3><span className="dt-dot" style={{ background: accentOf(detail.type) }} />{detail.title}</h3>
+              <h3><span className="dt-dot" style={{ background: accentOf(detailModal.type) }} />{detailModal.title}</h3>
               <button className="cal-modal-close" onClick={() => setDetail(null)} aria-label="Close">&#215;</button>
             </div>
             <div className="dt-body">
-              <p className="dt-sub">{detail.subtitle}</p>
+              <p className="dt-sub">{detailModal.subtitle}</p>
               <p className="dt-line">
-                {friendlyDate(detail.date)}
-                {detail.time
-                  ? ` \u00B7 ${fmtTime12(detail.time)}${detail.minutes ? ` \u2013 ${fmtTime12(endTime(detail.time, detail.minutes))}` : ''}`
+                {friendlyDate(detailModal.date)}
+                {detailModal.time
+                  ? ` \u00B7 ${fmtTime12(detailModal.time)}${detailModal.minutes ? ` \u2013 ${fmtTime12(endTime(detailModal.time, detailModal.minutes))}` : ''}`
                   : ' \u00B7 All day'}
               </p>
-              {detail.type === 'exam' && detail.examDaysLeft != null && detail.examDaysLeft >= 0 && (
+              {detailModal.type === 'exam' && detailModal.examDaysLeft != null && detailModal.examDaysLeft >= 0 && (
                 <p className="dt-examline">
-                  {detail.examDaysLeft === 0 ? 'Exam is today' : `${detail.examDaysLeft} day${detail.examDaysLeft === 1 ? '' : 's'} away`}
-                  {' \u00B7 '}{detail.examPrepPct ?? 0}% prepared
+                  {detailModal.examDaysLeft === 0 ? 'Exam is today' : `${detailModal.examDaysLeft} day${detailModal.examDaysLeft === 1 ? '' : 's'} away`}
+                  {' \u00B7 '}{detailModal.examPrepPct ?? 0}% prepared
                 </p>
               )}
             </div>
             <div className="cal-modal-actions wrap">
-              {detail.kind === 'task' && !detail.completed && (
+              {detailModal.kind === 'task' && !detailModal.completed && (
                 <button className="cal-startfocus" onClick={() => navigate('/focus')}>Start Focus</button>
               )}
-              {detail.type === 'exam' && <Link className="cal-cancel" to="/exams">View Exams</Link>}
-              <button className="cal-cancel" onClick={() => openEdit(detail)}>Edit</button>
-              <button className="cal-danger" onClick={() => void deleteEvent(detail)}>Delete</button>
+              {detailModal.type === 'exam' && <Link className="cal-cancel" to="/exams">View Exams</Link>}
+              <button className="cal-cancel" onClick={() => openEdit(detailModal)}>Edit</button>
+              <button className="cal-danger" onClick={() => void deleteEvent(detailModal)}>Delete</button>
             </div>
           </div>
         </div>
       )}
 
       {/* AI free-slot modal */}
-      {aiOpen && (
-        <div className="cal-modal-overlay" onClick={() => setAiOpen(false)}>
+      {aiSheet.render && (
+        <div className={'cal-modal-overlay' + (aiSheet.closing ? ' sheet-closing' : '')} onClick={() => setAiOpen(false)}>
           <div className="cal-modal cal-aimodal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
               <h3><span className="ai-star">&#10022;</span> AI Schedule</h3>

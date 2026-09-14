@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 type Exam = {
@@ -94,6 +95,7 @@ export default function ExamsPage() {
   const [detailLoading, setDetailLoading] = useState(false)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const createSheet = useSheet(showCreateModal)
   const [showEditModules, setShowEditModules] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
@@ -467,9 +469,9 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {showCreateModal && (
+      {createSheet.render && (
         <div
-          className="cal-modal-overlay"
+          className={'cal-modal-overlay' + (createSheet.closing ? ' sheet-closing' : '')}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false) }}
         >
           <div

@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav'
 import FloxLimitDialogs from './components/FloxLimitDialogs'
 import FloatingBot from './components/FloatingBot'
 import Navigation from './components/Navigation'
+import ScrollToTop from './components/ScrollToTop'
 import { isAuthenticated } from './lib/auth'
 import { applyTheme, getTheme } from './lib/theme'
 import AppRoutes from './routes'
@@ -17,6 +18,7 @@ function AppFrame() {
 
   return (
     <>
+      <ScrollToTop />
       {!isAdminRoute && <Navigation />}
       <FloxLimitDialogs />
       <main className={authed && !isAdminRoute ? 'app-main app-main-with-sidebar' : 'app-main app-main-public'} key={location.pathname}>

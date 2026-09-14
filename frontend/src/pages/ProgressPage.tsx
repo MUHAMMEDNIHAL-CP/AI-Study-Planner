@@ -661,7 +661,7 @@ export default function ProgressPage() {
           </section>
         ) : null}
 
-        <section className="pg-card pg-quiz-card">
+        <section className={'pg-card pg-quiz-card' + (subjectRows.length ? '' : ' pg-card-full')}>
           <div className="pg-card-header">
             <span className="pg-section-title">{'\uD83D\uDCDD'} QUIZ PERFORMANCE</span>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSheet } from '../hooks/useSheet'
 import {
   AD_REWARD_PER_WATCH,
   type Allowance,
@@ -89,6 +90,10 @@ type Dialog = 'daily' | 'quota' | null
 export default function FloxLimitDialogs() {
   const { allowance, project, setAllowance } = useAllowance()
   const [dialog, setDialog] = useState<Dialog>(null)
+  const dialogSheet = useSheet(dialog !== null)
+  const [lastDialog, setLastDialog] = useState<Dialog>(null)
+  if (dialog && dialog !== lastDialog) setLastDialog(dialog)
+  const shownDialog = dialogSheet.render ? (dialog || lastDialog) : null
   const [error, setError] = useState('')
   const activeRef = useRef<Dialog>(null)
 
@@ -122,12 +127,12 @@ export default function FloxLimitDialogs() {
     setDialog(null)
   }
 
-  if (!dialog) return null
+  if (!shownDialog) return null
 
-  const isDaily = dialog === 'daily'
+  const isDaily = shownDialog === 'daily'
 
   return (
-    <div className="flox-backdrop" onClick={close}>
+    <div className={'flox-backdrop' + (dialogSheet.closing ? ' sheet-closing' : '')} onClick={close}>
       <div className="flox-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <header className="flox-modal-head">
           <span className="flox-modal-badge">{'\u2726'} FLOX AI</span>

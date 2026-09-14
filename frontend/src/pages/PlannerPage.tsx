@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type For
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconPlanner, IconSpark } from '../components/icons'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -184,6 +185,8 @@ export default function PlannerPage() {
   const [loading, setLoading] = useState(true)
   const [planLoading, setPlanLoading] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
+  const sessionSheet = useSheet(modal === 'session')
+  const aiSheet = useSheet(modal === 'ai')
 
   const [sessionSubject, setSessionSubject] = useState('')
   const [sessionTopic, setSessionTopic] = useState('')
@@ -612,8 +615,8 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {modal === 'session' && (
-        <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+      {sessionSheet.render && (
+        <div className={'cal-modal-overlay' + (sessionSheet.closing ? ' sheet-closing' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="zq-modal-head">
               <h2>New Study Session</h2>
@@ -663,8 +666,8 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {modal === 'ai' && (
-        <div className="cal-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
+      {aiSheet.render && (
+        <div className={'cal-modal-overlay' + (aiSheet.closing ? ' sheet-closing' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="zq-modal-head">
               <h2>Generate Study Plan</h2>

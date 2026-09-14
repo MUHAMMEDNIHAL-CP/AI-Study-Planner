@@ -5,6 +5,7 @@ import SetupChecklist from '../components/SetupChecklist'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 import { markOnboardingComplete } from '../lib/tour'
+import { IconFocus, IconNotes, IconPlanner, IconQuiz, IconTask, IconTutor } from '../components/icons'
 
 /* ── API shapes ────────────────────────────────────────────── */
 
@@ -306,6 +307,8 @@ export default function DashboardPage() {
       className="db-page"
       title={`Good ${hello.word}, ${firstName} ${hello.emoji}`}
       subtitle={[longDate(), educationLabel].filter(Boolean).join(' \u00B7 ')}
+      hideBack
+      clockInBar
       badge={
         <span className="db-streak-pill">
           {'\uD83D\uDD25'} {streak} day streak
@@ -340,6 +343,19 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* Quick Actions */}
+        <section className="db-card db-quick">
+          <span className="db-eyebrow">{'\u26A1'} Quick Actions</span>
+          <div className="db-quick-grid">
+            <Link className="db-quick-btn" to="/focus"><IconFocus size={18} /><span>Focus</span></Link>
+            <Link className="db-quick-btn" to="/planner"><IconPlanner size={18} /><span>Plan</span></Link>
+            <Link className="db-quick-btn" to="/tasks"><IconTask size={18} /><span>Tasks</span></Link>
+            <Link className="db-quick-btn" to="/quiz"><IconQuiz size={18} /><span>Quiz</span></Link>
+            <Link className="db-quick-btn" to="/ai-tutor"><IconTutor size={18} /><span>Ask FLOX</span></Link>
+            <Link className="db-quick-btn" to="/notes"><IconNotes size={18} /><span>Notes</span></Link>
+          </div>
+        </section>
+
         {/* 2 - Next Exam */}
         <section className="db-card db-exam">
           {nearestExam ? (
@@ -361,7 +377,7 @@ export default function DashboardPage() {
               <span className="db-eyebrow">{'\uD83C\uDF93'} No Upcoming Exams</span>
               <p className="db-exam-clear">You're all clear!</p>
               <p className="db-exam-clear-sub">Add an exam and I'll pace your preparation.</p>
-              <Link className="ghost-action db-btn db-btn-sm" to="/exams">Add Exam</Link>
+              <Link className="db-add" to="/exams">+ Add Exam</Link>
             </>
           )}
         </section>
@@ -383,6 +399,9 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+              <Link className="db-continue-cta" to="/focus">
+                {'\u23F1\uFE0F'} Resume Session
+              </Link>
             </div>
           ) : (
             <div className="db-continue-inner">

@@ -15,6 +15,7 @@ import {
   IconProgress,
   IconSettings,
   IconLogout,
+  IconHelp,
 } from './icons'
 
 type NavItem = {
@@ -48,6 +49,7 @@ const MORE_ITEMS: MoreItem[] = [
   { label: 'Calendar', to: '/calendar', icon: IconCalendar, section: 'study' },
   { label: 'Profile', to: '/profile', icon: IconDashboard, section: 'account' },
   { label: 'Settings', to: '/settings', icon: IconSettings, section: 'account' },
+  { label: 'Help & Support', to: '/help', icon: IconHelp, section: 'account' },
 ]
 
 export default function BottomNav() {

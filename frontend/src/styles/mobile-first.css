@@ -1,0 +1,1307 @@
+/* ============================================================
+   MOBILE-FIRST LAYER
+   Final-authority CSS imported LAST in src/main.tsx.
+
+   The app's base stylesheets (index.css, components.css, admin.css)
+   are desktop-first: layouts are authored for wide screens and patched
+   down with `max-width` media queries. This layer (a) keeps those
+   desktop rules untouched, and (b) re-states real mobile-first layouts
+   that win by source order / specificity. Everything here is gated to
+   small-viewport `max-width` blocks so desktop behavior is preserved
+   exactly as it is today.
+
+   Targets: 320 / 360 / 390 / 414 / 430 / 768 / 1024 / 1280 / 1440.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   0. Global foundations
+   ------------------------------------------------------------ */
+
+/* Fix horizontal overflow: clip (not hidden) so fixed/absolutely
+   positioned overlays keep working and the page never scrolls sideways. */
+html,
+body {
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent the iOS double-tap zoom on date/time selects and inputs */
+@media (max-width: 768px) {
+  select,
+  input,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (hover: none) {
+  *,
+  *::before,
+  *::after {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Consistent, visible focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid rgba(255, 107, 74, 0.7);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   1. App shell / navigation
+       Sidebar lives on desktop (>= 1201), bottom nav below it.
+   ------------------------------------------------------------ */
+
+/* Desktop reinforcement */
+@media (min-width: 1201px) {
+  .orbit-sidebar {
+    display: flex !important;
+  }
+
+  .app-main-with-sidebar {
+    padding-left: var(--sidebar-width) !important;
+    margin-left: 0 !important;
+  }
+
+  .bn-bar {
+    display: none !important;
+  }
+}
+
+/* The compact top bar is mobile-only */
+.page-shell-mbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Hide the big desktop clock header; show the compact bar instead */
+  .page-shell-header {
+    display: none !important;
+  }
+
+  .page-shell-mbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    margin: calc(var(--page-pad-x, 16px) * -1) calc(var(--page-pad-x, 16px) * -1) 8px;
+    padding: 6px var(--page-pad-x, 16px);
+    padding-top: max(6px, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .page-shell-back {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--glass);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .page-shell-back:active {
+    background: var(--bg-subtle);
+  }
+
+  .page-shell-mtitle {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Clock/date variant used on the dashboard mobile bar */
+  .page-shell-mclock {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .page-shell-mclock-time {
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .page-shell-mclock-date {
+    color: var(--text-dim);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .page-shell-mactions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .page-shell-mactions .page-shell-settings {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+  }
+
+  .app-main-with-sidebar {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Floating bot must sit above the bottom nav */
+  .floating-bot-btn {
+    right: 16px !important;
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .floating-bot-panel {
+    right: 12px !important;
+    bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    width: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   2. PageShell hero
+   ------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .page-shell-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .page-shell-copy h1 {
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    line-height: 1.05;
+  }
+
+  .page-shell-copy p {
+    margin-top: 6px;
+    max-width: 100%;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .page-shell-actions {
+    width: 100%;
+  }
+
+  .page-shell-actions > * {
+    min-height: 44px;
+  }
+
+  .page-shell-actions > .ms-add-btn,
+  .page-shell-actions > button,
+  .page-shell-actions > a {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* ------------------------------------------------------------
+   3. Dashboard
+   Spec mobile order: greeting -> today's progress -> streak
+   -> today's tasks -> exam -> quick actions -> continue -> recent.
+   ------------------------------------------------------------ */
+
+.db-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.db-quick-btn {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.db-quick-btn:hover {
+  border-color: var(--accent);
+}
+
+.db-quick-btn span {
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .db-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .db-card {
+    grid-column: 1 / -1;
+  }
+
+  /* Mobile-first reorder */
+  .db-goal { order: 1; }
+  .db-streak { order: 2; }
+  .db-tasks { order: 3; }
+  .db-exam { order: 4; }
+  .db-quick { order: 5; }
+  .db-continue { order: 6; }
+  .db-schedule { order: 7; }
+  .db-week { order: 8; }
+  .db-subjects { order: 9; }
+  .db-ai { order: 10; }
+
+  .db-card {
+    padding: 18px 16px;
+  }
+
+  .db-continue-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .db-continue-cta {
+    width: 100%;
+  }
+}
+
+.db-continue-cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: var(--gradient-brand);
+  box-shadow: 0 8px 22px -12px rgba(255, 107, 74, 0.6);
+  color: #1a0f0a;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.db-continue-cta:active {
+  transform: translateY(1px);
+}
+
+/* Desktop Quick Actions layout */
+@media (min-width: 769px) {
+  .db-quick-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+/* ------------------------------------------------------------
+   4. Focus Mode
+   Structure is already a mobile-first phase machine; harden the
+   full-screen experience + hide app chrome while immersed.
+   ------------------------------------------------------------ */
+
+body.fm-immersive .bn-bar,
+body.fm-immersive .floating-bot-btn,
+body.fm-immersive .floating-bot-panel {
+  display: none !important;
+}
+
+body.fm-immersive {
+  overscroll-behavior: none;
+}
+
+/* Safe-area room inside the immersive overlay */
+@media (max-width: 768px) {
+  body.fm-immersive .fm-root,
+  .fm-root {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .fm-run-tools {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .fm-setup {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ------------------------------------------------------------
+   5. AI Tutor (FLOX)
+   The 1-column + drawer behaviour exists at <= 1000px; tighten the
+   smallest phones so nothing overflows and the composer clears the
+   bottom nav.
+   ------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .ac-layout,
+  .ac-chat,
+  .ac-msgs,
+  .ac-welcome {
+    min-width: 0;
+  }
+
+  .ac-userbubble {
+    max-width: 100%;
+  }
+
+  .ac-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .ac-mobilebar {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .ac-composer {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .ac-chatitem,
+  .ac-quiz-options > button {
+    font-size: 0.92rem;
+  }
+}
+
+/* ------------------------------------------------------------
+   6. Quiz Center
+   Bottom-sheet generator modal on small screens; one-question flow
+   gets breathing room.
+   ------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .qz-modal-backdrop {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .qz-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92svh;
+    border-radius: 20px 20px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .qz-modal-head {
+    border-radius: 20px 20px 0 0;
+  }
+
+  .zq-create-btn,
+  .qz-generate-btn {
+    width: 100%;
+  }
+
+  .zt-top {
+    gap: 8px;
+  }
+
+  .zt-question h2 {
+    font-size: 1.15rem;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 480px) {
+  .zq-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .zq-page {
+    gap: 14px;
+  }
+}
+
+/* ------------------------------------------------------------
+   7. Notes
+   The JS already switches list<->editor below 1201px; add touch
+   sizing and safe-area padding for the editor.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .nt-layout {
+    gap: 12px;
+  }
+
+  .nt-list {
+    gap: 10px;
+  }
+
+  .nt-editor {
+    padding: 16px 14px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .nt-side-head {
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+
+  .nt-tagcloud {
+    gap: 6px;
+  }
+
+  .nt-backdrop {
+    z-index: 90;
+  }
+}
+
+/* ------------------------------------------------------------
+   8. Calendar
+   Mobile day view already exists (cal-mobile). Clear the floating
+   bottom nav and keep the top bar stick-able.
+   ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .cal-mobile-scroll {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .cal-topbar {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .cal-dd-menu {
+    max-width: calc(100vw - 24px);
+    right: 8px;
+  }
+
+  .cal-mo-grid {
+    gap: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cal-mo-grid {
+    gap: 1px;
+  }
+
+  .cal-gutter {
+    width: 44px;
+  }
+
+  .cal-hourlabel {
+    font-size: 0.68rem;
+  }
+
+  .cal-sc-row {
+    min-height: 52px;
+  }
+}
+
+/* ------------------------------------------------------------
+   9. Planner
+   Existing <= 620px pass is solid. Keep the week grid usable by
+   allowing the 7-day row to scroll horizontally instead of crushing.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .pl-week-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .pl-week-grid {
+    min-width: 660px;
+  }
+
+  .pl-month-grid .pl-month-cell {
+    min-height: 44px;
+  }
+
+  .pl-card {
+    padding: 18px 16px;
+  }
+}
+
+/* ------------------------------------------------------------
+   10. Tasks
+   Single-column list is near-native already; bump touch targets.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .tk-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tk-tab {
+    flex: 1 0 auto;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .tk-item {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .tk-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .tk-delete,
+  .tk-btn {
+    min-height: 40px;
+  }
+
+  .tk-title-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ------------------------------------------------------------
+   11. Subjects
+   Grid cards stack to one column on phones; FAB clears the bottom nav.
+   ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .ms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ms-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ms-card-subject {
+    min-height: 0;
+  }
+
+  .ms-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-add-btn {
+    min-height: 44px;
+  }
+}
+
+/* ------------------------------------------------------------
+   12. Exams
+   Detail/overview grid collapses to a single column on phones.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .ex-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .ex-stat-wide {
+    grid-column: 1 / -1;
+  }
+
+  .ex-list {
+    gap: 12px;
+  }
+
+  .ex-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ex-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .ex-card {
+    padding: 18px 16px;
+  }
+}
+
+/* ------------------------------------------------------------
+   13. Progress
+   Existing tablet/phone passes are solid; let the heatmap scroll
+   horizontally instead of squeezing to nothing.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .pg-heatgrid-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pg-heatgrid {
+    min-width: 560px;
+  }
+
+  .pg-ai-card {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pg-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-barlabel {
+    writing-mode: vertical-rl;
+    font-size: 0.6rem;
+  }
+}
+
+/* ------------------------------------------------------------
+   14. Profile
+   The 720px pass already handles the header/modal; keep inputs from
+   triggering iOS zoom and keep the danger zone tappable.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .pf-field input,
+  .pf-field select,
+  .pf-field textarea {
+    font-size: 16px;
+  }
+
+  .danger-button {
+    min-height: 44px;
+  }
+}
+
+/* ------------------------------------------------------------
+   15. Settings
+   Detail panels already render as "separate pages" (st-*). Make the
+   back row sticky so it is always reachable when the list scrolls.
+   ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .st-back {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: calc(var(--page-pad-x, 16px) * -1) calc(var(--page-pad-x, 16px) * -1) 4px;
+    padding: calc(8px + env(safe-area-inset-top)) var(--page-pad-x, 16px) 8px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .st-row {
+    min-height: 56px;
+  }
+}
+
+/* ------------------------------------------------------------
+   16. Auth (Login / Register / Onboarding)
+   Brand hero hides at <= 900px; tighten the card and inputs further.
+   ------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  .au-panel {
+    padding: 26px 18px calc(30px + env(safe-area-inset-bottom));
+  }
+
+  .au-field input,
+  .au-input-wrap input,
+  .au-field select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .au-submit {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .au-oauth {
+    gap: 8px;
+  }
+}
+
+/* ------------------------------------------------------------
+   17. Admin
+   admin.css hides .ad-sidebar entirely <= 820px. Replace that with a
+   real drawer + hamburger (JS added in AdminLayout.tsx).
+   ------------------------------------------------------------ */
+
+.ad-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ad-menu-btn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.ad-backdrop {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .ad-menu-btn {
+    display: inline-flex;
+    flex: 0 0 auto;
+    margin-right: 10px;
+    color: var(--muted);
+  }
+
+  .ad-topbar {
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+
+  .ad-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .ad-sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 70;
+    display: flex !important;
+    width: min(320px, 86vw);
+    height: 100vh;
+    transform: translateX(-102%);
+    transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: none;
+  }
+
+  .ad-shell.ad-mobile-open .ad-sidebar {
+    transform: none;
+    box-shadow: 10px 0 36px rgba(0, 0, 0, 0.28);
+  }
+
+  .ad-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border: 0;
+    padding: 0;
+    background: rgba(8, 10, 14, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .ad-main {
+    margin-left: 0 !important;
+  }
+
+  .ad-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Super admin stat grids keep working on phones */
+@media (max-width: 520px) {
+  .ad-stats,
+  .ad-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   18. Landing + Legal
+   Landing already collapses via ln-* passes; polish for very small
+   screens and keep legal reading comfortable.
+   ------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .ln-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .ln-hero-actions .ln-btn {
+    width: 100%;
+  }
+
+  .ln-nav-inner {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .doc-nav {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .doc-main article {
+    padding: 20px 14px;
+  }
+}
+
+/* ------------------------------------------------------------
+   19. Shared touch targets (min 44px on coarse pointers)
+   ------------------------------------------------------------ */
+
+@media (pointer: coarse) {
+  .cal-btn,
+  .cal-navarrow,
+  .cal-addfab,
+  .pl-action-btn,
+  .ms-view-btn,
+  .ex-view-btn,
+  .bn-drawer-close,
+  .db-card-link {
+    min-height: 44px;
+  }
+}
+
+/* Toast container on very small screens should not overflow */
+@media (max-width: 480px) {
+  .Toastify__toast-container {
+    width: calc(100vw - 24px) !important;
+    right: 12px !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   20. Mobile polish pass
+   Readability bumps for caption/label typography, consistent
+   tap targets on touch devices, and cross-page spacing harmony.
+   ------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  /* --- Global shell --- */
+  .page-shell-mclock-date {
+    font-size: 11.5px;
+  }
+
+  .page-shell-mbar {
+    gap: 8px;
+  }
+
+  .bn-label {
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
+  }
+
+  /* --- Shared card rhythm --- */
+  .db-card,
+  .pf-card,
+  .ex-card,
+  .pg-ai-card,
+  .st-card,
+  .zq-stats,
+  .pl-timeline {
+    border-radius: 16px;
+  }
+
+  /* --- Dashboard --- */
+  .db-eyebrow {
+    font-size: 11.5px;
+  }
+
+  .db-bar-label,
+  .db-milestone-label {
+    font-size: 11px;
+  }
+
+  .db-stat-label {
+    font-size: 11.5px;
+  }
+
+  /* --- Planner --- */
+  .pl-timeline-hour {
+    font-size: 11.5px;
+  }
+
+  .pl-stat-label {
+    font-size: 11.5px;
+  }
+
+  .pl-month-dow {
+    font-size: 11px;
+  }
+
+  /* --- Quiz center --- */
+  .zq-stat-label {
+    font-size: 11.5px;
+  }
+
+  .zq-section-title {
+    font-size: 12px;
+  }
+
+  /* --- Exams --- */
+  .ex-stat-label {
+    font-size: 12px;
+  }
+
+  /* --- Progress --- */
+  .pg-stat-label {
+    font-size: 12px;
+  }
+
+  .pg-barlabel {
+    font-size: 10.5px;
+  }
+
+  .pg-streak-label,
+  .pg-streak-next,
+  .pg-goal-sub,
+  .pg-mini-btn,
+  .pg-goal-title {
+    font-size: 12px;
+  }
+
+  .progress-filter-chevron {
+    font-size: 11px;
+  }
+
+  .pg-heat-legend {
+    font-size: 11px;
+  }
+
+  /* --- AI Coach --- */
+  .ac-side-label {
+    font-size: 11px;
+  }
+
+  .ac-ctx-label {
+    font-size: 11px;
+  }
+
+  /* --- Notes --- */
+  .nt-side-label {
+    font-size: 11px;
+  }
+
+  /* --- Calendar --- */
+  .hc-dow {
+    font-size: 11px;
+  }
+
+  .cal-mo-headrow span {
+    font-size: 11px;
+  }
+
+  .ag-datehead {
+    font-size: 12px;
+  }
+
+  .ag-hl {
+    font-size: 11px;
+  }
+
+  .sn-today {
+    font-size: 12px;
+  }
+
+  /* --- Profile --- */
+  .pf-stat-label,
+  .pf-achievement-status {
+    font-size: 11.5px;
+  }
+
+  .pf-streak-caption {
+    font-size: 11px;
+  }
+
+  /* --- Tasks --- */
+  .tk-tab-count {
+    font-size: 11px;
+  }
+
+  /* --- Settings --- */
+  .st-group-title {
+    font-size: 12px;
+  }
+
+  .st-row {
+    padding: 14px 14px;
+  }
+
+  /* --- Tap targets --- */
+  .cal-nav-btn,
+  .sn-arrow {
+    width: 40px;
+    height: 40px;
+  }
+
+  .cal-today-btn,
+  .sn-today,
+  .pl-view-btn,
+  .progress-filter-btn,
+  .ghost-action {
+    min-height: 40px;
+  }
+
+  .nt-filterbtn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .nt-chip,
+  .nt-newnote-btn {
+    min-height: 38px;
+  }
+
+  .nt-side-item {
+    min-height: 42px;
+  }
+
+  .nt-side-close {
+    width: 38px;
+    height: 38px;
+  }
+
+  .fm-setup-back {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .fm-top-right button,
+  .fm-kebab {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fm-study header button,
+  .fm-ai header button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fm-sound-chip {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .fm-ai-compose button,
+  .fm-ai-quick button,
+  .fm-ai-back,
+  .fm-study-overlay button {
+    min-height: 40px;
+  }
+
+  .pg-mini-btn {
+    min-height: 42px;
+  }
+
+  .db-card-link,
+  .db-quick-action {
+    min-height: 44px;
+  }
+
+  .ac-newchat {
+    min-height: 46px;
+  }
+
+  .ac-mobilebar button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .ac-ctxbtn {
+    min-height: 38px;
+  }
+
+  .ac-sheet-head button {
+    min-width: 38px;
+    min-height: 38px;
+  }
+}
+
+/* Touch devices: keep interactive rows comfortable */
+@media (pointer: coarse) {
+  .pl-timeline-hour,
+  .ag-hl {
+    font-size: 11.5px;
+  }
+
+  .bn-label {
+    font-size: 10.5px;
+  }
+}
+
+/* ------------------------------------------------------------
+   99. Bottom-sheet popups (mobile)
+   Every centered popup becomes an Instagram-style sheet that
+   slides UP on open and slides DOWN on close. Add a `sheet-closing`
+   class (driven by hooks/useSheet.ts) to the backdrop to play the
+   exit animation before unmounting.
+   ------------------------------------------------------------ */
+@media (max-width: 640px) {
+  @keyframes bsSheetUp {
+    from { transform: translateY(105%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes bsSheetDown {
+    from { transform: translateY(0); }
+    to { transform: translateY(105%); }
+  }
+
+  @keyframes bsBackdropIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes bsBackdropOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  /* Backdrops pin the sheet to the bottom */
+  .qz-modal-backdrop,
+  .cal-modal-overlay,
+  .nt-overlay,
+  .pf-modal-overlay,
+  .ac-overlay,
+  .fm-confirm-overlay,
+  .flox-backdrop {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    animation: bsBackdropIn 0.22s ease-out !important;
+  }
+
+  /* The sheet itself */
+  .qz-modal,
+  .cal-modal,
+  .nt-modal,
+  .pf-modal,
+  .ac-modal,
+  .fm-confirm,
+  .flox-modal {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92svh;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    animation: bsSheetUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* The quiz modal keeps its internal scrolling body */
+  .qz-modal {
+    overflow: hidden;
+  }
+
+  /* Grab handle */
+  .qz-modal::before,
+  .cal-modal::before,
+  .nt-modal::before,
+  .pf-modal::before,
+  .ac-modal::before,
+  .fm-confirm::before,
+  .flox-modal::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--muted, rgba(255, 255, 255, 0.28));
+    opacity: 0.5;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  /* Slide-down exit animation */
+  .qz-modal-backdrop.sheet-closing,
+  .cal-modal-overlay.sheet-closing,
+  .nt-overlay.sheet-closing,
+  .pf-modal-overlay.sheet-closing,
+  .ac-overlay.sheet-closing,
+  .fm-confirm-overlay.sheet-closing,
+  .flox-backdrop.sheet-closing {
+    animation: bsBackdropOut 0.24s ease-in forwards !important;
+  }
+
+  .qz-modal-backdrop.sheet-closing > .qz-modal,
+  .cal-modal-overlay.sheet-closing > .cal-modal,
+  .nt-overlay.sheet-closing > .nt-modal,
+  .pf-modal-overlay.sheet-closing > .pf-modal,
+  .ac-overlay.sheet-closing > .ac-modal,
+  .fm-confirm-overlay.sheet-closing > .fm-confirm,
+  .flox-backdrop.sheet-closing > .flox-modal {
+    animation: bsSheetDown 0.26s cubic-bezier(0.4, 0, 0.9, 0.4) forwards !important;
+  }
+}

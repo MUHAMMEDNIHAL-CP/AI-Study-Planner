@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -20,6 +21,7 @@ export default function MySubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const addSheet = useSheet(showModal)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [detailTasks, setDetailTasks] = useState<Task[]>([])
   const [detailExams, setDetailExams] = useState<Exam[]>([])
@@ -92,6 +94,7 @@ export default function MySubjectsPage() {
         <div className="ms-empty">
           <h2>Add your first subject</h2>
           <p>Subjects let Flox AI track your topics, weak areas, and progress.</p>
+          <button className="ms-add-btn" onClick={() => { resetForm(); setShowModal(true) }} type="button">+ Add Subject</button>
         </div>
       ) : detail ? (
         /* ── Detail View ── */
@@ -229,8 +232,8 @@ export default function MySubjectsPage() {
       )}
 
       {/* ── Add Modal ── */}
-      {showModal && (
-        <div className="cal-modal-overlay" onClick={() => setShowModal(false)} onMouseDown={(e) => e.target === e.currentTarget && setShowModal(false)}>
+      {addSheet.render && (
+        <div className={'cal-modal-overlay' + (addSheet.closing ? ' sheet-closing' : '')} onClick={() => setShowModal(false)} onMouseDown={(e) => e.target === e.currentTarget && setShowModal(false)}>
             <section className="cal-modal" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className="zq-modal-head">
               <h2>Add Subject</h2>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -74,6 +75,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabKey>('all')
   const [showModal, setShowModal] = useState(false)
+  const addSheet = useSheet(showModal)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const [formTitle, setFormTitle] = useState('')
@@ -281,9 +283,9 @@ export default function TasksPage() {
         )}
       </div>
 
-      {showModal && (
+      {addSheet.render && (
         <div
-          className="cal-modal-overlay"
+          className={'cal-modal-overlay' + (addSheet.closing ? ' sheet-closing' : '')}
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
         >

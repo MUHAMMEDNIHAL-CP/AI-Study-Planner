@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconAnalytics, IconBot } from '../components/icons'
+import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile, firstName } from '../hooks/useUserProfile'
 import { notifyStudyActivity } from '../lib/studyActivity'
@@ -328,6 +329,7 @@ export default function AiTutorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [ctxOpen, setCtxOpen] = useState(false)
   const [notePicker, setNotePicker] = useState(false)
+  const notePickerSheet = useSheet(notePicker)
   const [noteQuery, setNoteQuery] = useState('')
   const [attachments, setAttachments] = useState<Array<{ kind: 'note' | 'file'; label: string; content: string }>>([])
   const [listening, setListening] = useState(false)
@@ -1153,8 +1155,8 @@ export default function AiTutorPage() {
       {sidebarOpen && <div className="ac-backdrop" onClick={() => setSidebarOpen(false)} />}
       {ctxOpen && <div className="ac-backdrop" onClick={() => setCtxOpen(false)} />}
 
-      {notePicker && (
-        <div className="ac-overlay" onClick={() => setNotePicker(false)}>
+      {notePickerSheet.render && (
+        <div className={'ac-overlay' + (notePickerSheet.closing ? ' sheet-closing' : '')} onClick={() => setNotePicker(false)}>
           <div className="ac-modal" onClick={(e) => e.stopPropagation()}>
             <header className="ac-modal-head">
               <h3>Attach a note</h3>

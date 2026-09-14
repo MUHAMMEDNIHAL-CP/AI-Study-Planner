@@ -152,6 +152,27 @@ export function IconBot(props: IconProps) {
   )
 }
 
+export function IconHelp(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.3 9a2.8 2.8 0 1 1 4.7 2c-.9.6-1.5 1-1.6 2" />
+      <path d="M12 16.8h.01" />
+    </svg>
+  )
+}
+
+export function IconBack(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M19 12H5" />
+      <path d="m11 18-6-6 6-6" />
+    </svg>
+  )
+}
+
 export function IconChevron(props: IconProps) {
   const p = base(props)
   return (
