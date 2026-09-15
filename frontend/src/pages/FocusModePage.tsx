@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { IconSettings } from '../components/icons'
 import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Subject = { id: number; name: string; color?: string }
-type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; started_at: string; mood?: string }
+type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; date: string; mood?: string }
 type NoteLite = { id: number; title: string; content: string }
 
 type Phase = 'setup' | 'running' | 'paused' | 'break' | 'complete'
@@ -215,26 +216,25 @@ export default function FocusModePage() {
 
   const plannedSeconds = Number(customMin) > 0 ? Number(customMin) * 60 : DURATIONS[durationIdx].seconds
 
+  const hasSessionOn = useCallback(
+    (key: string) => sessions.some((s) => s.date === key && s.duration_minutes >= 20),
+    [sessions],
+  )
+
   const todayKeyStr = new Date().toISOString().slice(0, 10)
 
   const streak = useMemo(() => {
     let count = 0
     const d = new Date()
-    while (true) {
-      const ds = d.toISOString().slice(0, 10)
-      const had = sessions.some((s) => s.started_at?.slice(0, 10) === ds && s.duration_minutes >= 20)
-      if (!had) break
+    if (!hasSessionOn(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1)
+    while (hasSessionOn(d.toISOString().slice(0, 10))) {
       count++
       d.setDate(d.getDate() - 1)
-      if (ds === todayKeyStr) continue
     }
     return count
-  }, [sessions, todayKeyStr])
+  }, [hasSessionOn])
 
-  const todayDone = useMemo(
-    () => sessions.filter((s) => s.started_at?.slice(0, 10) === todayKeyStr && s.duration_minutes >= 20).length,
-    [sessions, todayKeyStr],
-  )
+  const todayDone = useMemo(() => sessions.filter((s) => s.date === todayKeyStr && s.duration_minutes >= 20).length, [sessions, todayKeyStr])
   const streakDelta = todayDone > 0 ? 0 : 1
 
   useEffect(() => {
@@ -472,24 +472,10 @@ export default function FocusModePage() {
         <Link to="/dashboard" className="fm-setup-back">{'\u2190'} Dashboard</Link>
         <div className="fm-top-right">
           <span className="fm-streak-pill">{'\uD83D\uDD25'} {streak} day{streak !== 1 ? 's' : ''}</span>
-          <button className={'fm-kebab' + (settingsOpen ? ' open' : '')} onClick={() => setSettingsOpen((v) => !v)} type="button" aria-label="Focus settings">{'\u22EE'}</button>
+          <button className={'fm-kebab' + (settingsOpen ? ' open' : '')} onClick={() => setSettingsOpen((v) => !v)} type="button" aria-label="Focus settings"><IconSettings size={18} /></button>
           {settingsOpen && (
             <div className="fm-settings">
-              <span className="fm-set-label">Timer</span>
-              <div className="fm-set-durs">
-                {DURATIONS.map((d, i) => (
-                  <button key={d.label} type="button" className={'fm-set-dur' + (durationIdx === i && !customMin ? ' active' : '')} onClick={() => { setDurationIdx(i); setCustomMin('') }}>{d.label}</button>
-                ))}
-                <input
-                  className={'fm-set-custom' + (customMin ? ' active' : '')}
-                  type="number"
-                  min={1}
-                  max={480}
-                  placeholder="Custom"
-                  value={customMin}
-                  onChange={(e) => setCustomMin(e.target.value)}
-                />
-              </div>
+              <span className="fm-set-label">Break</span>
               <label className="fm-set-row">
                 <input type="checkbox" checked={autoBreak} onChange={(e) => setAutoBreak(e.target.checked)} />
                 <span>Auto break after session</span>
@@ -506,12 +492,6 @@ export default function FocusModePage() {
                 <span>Confirm before ending</span>
                 <i className={confirmEnd ? 'on' : ''}>{confirmEnd ? '\u2713' : ''}</i>
               </label>
-              <span className="fm-set-label">Sound</span>
-              <div className="fm-set-sounds">
-                {SOUNDS.map((s) => (
-                  <button key={s.id} type="button" className={'fm-set-sound' + (sound === s.id ? ' active' : '')} onClick={() => setSound(s.id)}>{s.label}</button>
-                ))}
-              </div>
               <div className="fm-set-row static"><span>Notifications</span><i className="on">{'\u2713'} Blocked</i></div>
             </div>
           )}
@@ -519,52 +499,63 @@ export default function FocusModePage() {
       </header>
 
       <div className="fm-setup-body">
-        <div className="fm-setup-left">
-          <div className="fm-id-block">
-            <select className="fm-subject-select" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} aria-label="Subject">
-              <option value="">Choose a subject</option>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <input className="fm-topic-input" placeholder="What are you studying?" value={topic} onChange={(e) => setTopic(e.target.value)} aria-label="Topic" />
-          </div>
+        <span className="fm-session-meta">Session {todayDone + 1}</span>
 
-          <div className="fm-goal-card">
-            <span className="fm-goal-head">{'\uD83C\uDFAF'} Today's Goal</span>
-            <textarea
-              rows={2}
-              placeholder="Understand constructors and create 3 examples."
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-            />
-          </div>
-
-          <div className="fm-sound-row">
-            <span>{'\uD83D\uDD0A'} Sound</span>
-            {SOUNDS.map((s) => (
-              <button key={s.id} type="button" className={'fm-sound-chip' + (sound === s.id ? ' active' : '')} onClick={() => setSound(s.id)}>{s.label}</button>
-            ))}
+        <div className="fm-timer-ring">
+          <svg viewBox="0 0 200 200" className="fm-ring-svg">
+            <circle cx="100" cy="100" r="88" className="fm-ring-bg" />
+          </svg>
+          <div className="fm-timer-inner">
+            <div className="fm-hero-time">{clock(plannedSeconds)}</div>
+            <span className="fm-timer-label">{customMin ? customMin + ' min' : DURATIONS[durationIdx].label}</span>
           </div>
         </div>
 
-        <div className="fm-setup-center">
-          <span className="fm-session-meta">Session {todayDone + 1}</span>
-
-          <div className="fm-timer-ring">
-            <svg viewBox="0 0 200 200" className="fm-ring-svg">
-              <circle cx="100" cy="100" r="88" className="fm-ring-bg" />
-            </svg>
-            <div className="fm-timer-inner">
-              <div className="fm-hero-time">{clock(plannedSeconds)}</div>
-              <span className="fm-timer-label">{customMin ? customMin + ' min' : DURATIONS[durationIdx].label}</span>
-            </div>
-          </div>
-
-          <button className="fm-start-focus-btn" onClick={startSession} type="button">
-            {'\u25B6'} Start Focus
-          </button>
-
-          <span className="fm-dfm-note">{'\uD83D\uDD15'} Distraction-free mode while studying</span>
+        <div className="fm-dur-row">
+          {DURATIONS.map((d, i) => (
+            <button key={d.label} type="button" className={'fm-set-dur' + (durationIdx === i && !customMin ? ' active' : '')} onClick={() => { setDurationIdx(i); setCustomMin('') }}>{d.label}</button>
+          ))}
+          <input
+            className={'fm-set-custom' + (customMin ? ' active' : '')}
+            type="number"
+            min={1}
+            max={480}
+            placeholder="Custom"
+            value={customMin}
+            onChange={(e) => setCustomMin(e.target.value)}
+          />
         </div>
+
+        <div className="fm-id-block">
+          <select className="fm-subject-select" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} aria-label="Subject">
+            <option value="">Choose a subject</option>
+            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <input className="fm-topic-input" placeholder="What are you studying?" value={topic} onChange={(e) => setTopic(e.target.value)} aria-label="Topic" />
+        </div>
+
+        <div className="fm-goal-card">
+          <span className="fm-goal-head">{'\uD83C\uDFAF'} Today's Goal</span>
+          <textarea
+            rows={2}
+            placeholder="Understand constructors and create 3 examples."
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+          />
+        </div>
+
+        <div className="fm-sound-row">
+          <span>{'\uD83D\uDD0A'} Sound</span>
+          {SOUNDS.map((s) => (
+            <button key={s.id} type="button" className={'fm-sound-chip' + (sound === s.id ? ' active' : '')} onClick={() => setSound(s.id)}>{s.label}</button>
+          ))}
+        </div>
+
+        <button className="fm-start-focus-btn" onClick={startSession} type="button">
+          {'\u25B6'} Start Focus
+        </button>
+
+        <span className="fm-dfm-note">{'\uD83D\uDD15'} Distraction-free mode while studying</span>
       </div>
     </div>
   )
