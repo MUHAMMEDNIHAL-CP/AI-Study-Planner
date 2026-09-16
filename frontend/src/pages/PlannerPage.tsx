@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { IconPlanner, IconSpark } from '../components/icons'
-import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -94,6 +94,13 @@ function minutesLabel(minutes: number | string): string {
   return `${n} min`
 }
 
+function timeLabel(iso?: string): string {
+  if (!iso) return 'Flexible'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return 'Flexible'
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 function getHourFromScheduled(scheduledFor?: string): number | null {
   if (!scheduledFor) return null
   const date = new Date(scheduledFor)
@@ -175,6 +182,106 @@ function subjectInitial(text: string, fallback = '•'): string {
   return (text.trim().charAt(0) || fallback).toUpperCase()
 }
 
+/* Session card — one clean full-width row per study session. */
+function SessionCard({ task, subjects, onToggle }: { task: Task; subjects: Subject[]; onToggle: (t: Task) => void }) {
+  const color = getSubjectColor(task.subject, subjects)
+  const done = task.status === 'done'
+  return (
+    <div className={`pl-sess${done ? ' pl-sess-done' : ''}`} style={{ '--pl-color': color } as CSSProperties}>
+      <button className="pl-sess-check" onClick={() => onToggle(task)} type="button" aria-label={done ? 'Mark as not done' : 'Mark as done'}>
+        {done && (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        )}
+      </button>
+      <div className="pl-sess-body">
+        <div className="pl-sess-top">
+          <span className="pl-sess-time">{task.scheduled_for ? timeLabel(task.scheduled_for) : 'Flexible'}</span>
+          <span className="pl-sess-subject">{task.subject_name || 'Study'}</span>
+        </div>
+        <span className="pl-sess-title">{task.title}</span>
+        {task.description ? <span className="pl-sess-desc">{task.description}</span> : null}
+      </div>
+      <span className="pl-sess-dur">{minutesLabel(task.duration_minutes)}</span>
+    </div>
+  )
+}
+
+/* Scheduled list for one day — compact hour groups (no empty-hour filler). */
+function DaySchedule({ tasks, subjects, onToggle, onCreate }: {
+  tasks: Task[]
+  subjects: Subject[]
+  onToggle: (t: Task) => void
+  onCreate: () => void
+}) {
+  const slots = useMemo(
+    () =>
+      HOURS.map((hour) => ({ hour, items: tasks.filter((t) => getHourFromScheduled(t.scheduled_for) === hour) }))
+        .filter((s) => s.items.length > 0),
+    [tasks],
+  )
+  const other = useMemo(() => tasks.filter((t) => getHourFromScheduled(t.scheduled_for) === null), [tasks])
+
+  if (tasks.length === 0) {
+    return (
+      <div className="pl-empty-wrap">
+        <span className="pl-empty-ico"><IconPlanner size={26} /></span>
+        <h3 className="pl-empty-title">No study sessions yet.</h3>
+        <p className="pl-empty-sub">Create your first study session and build your study plan.</p>
+        <button className="pl-empty-cta" onClick={onCreate} type="button">+ Create Study Session</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="pl-day-list">
+      {slots.map((slot) => (
+        <div key={slot.hour} className="pl-hour-group">
+          <div className="pl-hour-head">
+            <span className="pl-hour-label">{`${String(slot.hour).padStart(2, '0')}:00`}</span>
+            <span className="pl-hour-line" />
+          </div>
+          <div className="pl-hour-tasks">
+            {slot.items.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} />)}
+          </div>
+        </div>
+      ))}
+      {other.length > 0 && (
+        <div className="pl-hour-group">
+          <div className="pl-hour-head">
+            <span className="pl-hour-label">Flexible</span>
+            <span className="pl-hour-line" />
+          </div>
+          <div className="pl-hour-tasks">
+            {other.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlannerSkeleton() {
+  return (
+    <div className="pl-skeleton" aria-hidden="true">
+      <div className="pl-skeleton-toolbar" />
+      <div className="pl-skeleton-card">
+        <div className="pl-skeleton-line w-40" />
+        <div className="pl-skeleton-line w-90" />
+        <div className="pl-skeleton-line w-70" />
+      </div>
+      <div className="pl-skeleton-card">
+        <div className="pl-skeleton-line w-40" />
+        <div className="pl-skeleton-line w-80" />
+        <div className="pl-skeleton-line w-60" />
+      </div>
+      <div className="pl-skeleton-card">
+        <div className="pl-skeleton-line w-50" />
+        <div className="pl-skeleton-line w-75" />
+      </div>
+    </div>
+  )
+}
+
 export default function PlannerPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [exams, setExams] = useState<Exam[]>([])
@@ -183,10 +290,9 @@ export default function PlannerPage() {
   const [selectedDate, setSelectedDate] = useState(toLocalDateInput())
   const [plan, setPlan] = useState<PlanResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [planLoading, setPlanLoading] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
-  const sessionSheet = useSheet(modal === 'session')
-  const aiSheet = useSheet(modal === 'ai')
 
   const [sessionSubject, setSessionSubject] = useState('')
   const [sessionTopic, setSessionTopic] = useState('')
@@ -195,6 +301,9 @@ export default function PlannerPage() {
   const [sessionDuration, setSessionDuration] = useState(45)
   const [sessionPriority, setSessionPriority] = useState<'high' | 'medium' | 'low'>('medium')
   const [sessionNotes, setSessionNotes] = useState('')
+  const [sessionErrors, setSessionErrors] = useState<{ subject?: string; topic?: string }>({})
+  const subjectRef = useRef<HTMLSelectElement>(null)
+  const topicRef = useRef<HTMLInputElement>(null)
 
   const [aiExamDate, setAiExamDate] = useState(toLocalDateInput())
   const [aiDailyHours, setAiDailyHours] = useState(4)
@@ -212,7 +321,7 @@ export default function PlannerPage() {
     [exams, today],
   )
 
-  const todayTasks = useMemo(
+  const selectedDayTasks = useMemo(
     () =>
       tasks.filter((t) => {
         if (t.scheduled_for) {
@@ -258,8 +367,8 @@ export default function PlannerPage() {
   )
   const weekHours = weekSessions.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
 
-  const dayTaskCount = todayTasks.length
-  const dayHours = todayTasks.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
+  const dayTaskCount = selectedDayTasks.length
+  const dayHours = selectedDayTasks.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
 
   const calendarInfo = useMemo(() => {
     const d = new Date(`${selectedDate}T12:00:00`)
@@ -290,13 +399,28 @@ export default function PlannerPage() {
     setTasks(taskRes.data)
   }, [])
 
+  const retryLoad = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      await loadPlanner()
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadPlanner])
+
   useEffect(() => {
     let active = true
     async function init() {
       try {
         await loadPlanner()
       } catch (err) {
-        if (active) toast.error(getErrorMessage(err))
+        if (active) {
+          setLoadError(true)
+          toast.error(getErrorMessage(err))
+        }
       } finally {
         if (active) setLoading(false)
       }
@@ -305,14 +429,26 @@ export default function PlannerPage() {
     return () => { active = false }
   }, [loadPlanner])
 
-  function resetSessionForm() {
+  function resetSessionForm(date = toLocalDateInput()) {
     setSessionSubject('')
     setSessionTopic('')
-    setSessionDate(toLocalDateInput())
+    setSessionDate(date)
     setSessionTime('09:00')
     setSessionDuration(45)
     setSessionPriority('medium')
     setSessionNotes('')
+    setSessionErrors({})
+  }
+
+  function openSession(date = toLocalDateInput()) {
+    toast.dismiss()
+    resetSessionForm(date)
+    setModal('session')
+  }
+
+  function closeSession() {
+    setModal(null)
+    resetSessionForm()
   }
 
   function resetAiForm() {
@@ -324,8 +460,18 @@ export default function PlannerPage() {
 
   async function handleCreateSession(e: FormEvent) {
     e.preventDefault()
+    const errors: { subject?: string; topic?: string } = {}
+    if (!sessionSubject) errors.subject = 'Please select a subject.'
+    if (!sessionTopic.trim()) errors.topic = 'Enter a task name.'
+    if (errors.subject || errors.topic) {
+      setSessionErrors(errors)
+      if (errors.subject) subjectRef.current?.focus()
+      else topicRef.current?.focus()
+      return
+    }
+    setSessionErrors({})
     try {
-      const subjectId = sessionSubject ? Number(sessionSubject) : null
+      const subjectId = Number(sessionSubject)
       const subjectObj = subjects.find((s) => s.id === subjectId)
       const title = sessionTopic.trim() || (subjectObj ? `${subjectObj.name} session` : 'Study session')
       const scheduledFor = `${sessionDate}T${sessionTime}:00`
@@ -349,8 +495,20 @@ export default function PlannerPage() {
     }
   }
 
+  async function handleToggleTask(task: Task) {
+    const next = task.status === 'done' ? 'todo' : 'done'
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
+    try {
+      await api.patch(`/study/tasks/${task.id}/`, { status: next })
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+      await loadPlanner().catch(() => undefined)
+    }
+  }
+
   async function handleAiGenerate(e: FormEvent) {
     e.preventDefault()
+    toast.dismiss()
     setPlanLoading(true)
     try {
       const weakSubj = subjects.find((s) => s.id === Number(aiWeakSubject))
@@ -375,9 +533,20 @@ export default function PlannerPage() {
 
   if (loading) {
     return (
-      <PageShell title="Plan Your Study" subtitle="Loading your planner...">
-        <div className="page-card" style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
-          Loading planner workspace...
+      <PageShell title="Study Planner" className="planner-page">
+        <PlannerSkeleton />
+      </PageShell>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <PageShell title="Study Planner" className="planner-page">
+        <div className="pl-error" role="alert">
+          <span className="pl-error-ico"><IconSpark size={26} /></span>
+          <h3 className="pl-error-title">Something went wrong</h3>
+          <p className="pl-error-sub">We couldn&apos;t load your study plan.</p>
+          <button className="pl-error-cta" onClick={() => void retryLoad()} type="button">Try Again</button>
         </div>
       </PageShell>
     )
@@ -385,15 +554,41 @@ export default function PlannerPage() {
 
   return (
     <PageShell
-      title="Plan Your Study"
-      subtitle="Build your schedule."
+      title="Study Planner"
+      subtitle="Plan your study sessions."
+      className="planner-page"
+      actions={
+        <>
+          <button className="pl-action-btn" onClick={() => openSession(selectedDate)} type="button">
+            <IconPlanner size={16} /> Create Session
+          </button>
+          <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
+            <IconSpark size={16} /> AI Generate
+          </button>
+        </>
+      }
+      mobileActions={
+        <button
+          className="pl-hadd"
+          onClick={() => openSession(selectedDate)}
+          type="button"
+          aria-label="Create study session"
+          title="Create study session"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      }
     >
       <div className="pl-toolbar">
-        <div className="pl-toolbar-left">
-          <div className="pl-view-toggle">
+        <div className="pl-toolbar-row">
+          <div className="pl-view-toggle" role="tablist" aria-label="View mode">
             {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
+                role="tab"
+                aria-selected={viewMode === mode}
                 className={`pl-view-btn ${viewMode === mode ? 'pl-view-active' : ''}`}
                 onClick={() => setViewMode(mode)}
                 type="button"
@@ -402,28 +597,24 @@ export default function PlannerPage() {
               </button>
             ))}
           </div>
+          <button className="pl-ai-mini" onClick={() => { resetAiForm(); setModal('ai') }} type="button" aria-label="Generate AI study plan">
+            <IconSpark size={15} /> AI
+          </button>
+        </div>
 
+        <div className="pl-toolbar-row">
           <div className="cal-nav planner-cal-nav">
             <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, -1, viewMode))} type="button" aria-label="Previous">&#8249;</button>
             <div className="cal-nav-center">
               <span className="cal-nav-title">
-                {viewMode === 'day' && formatFullDate(selectedDate)}
+                {viewMode === 'day' && shortDate(selectedDate)}
                 {viewMode === 'week' && `${shortDate(weekStart)} – ${shortDate(weekEnd)}`}
                 {viewMode === 'month' && calendarInfo.label}
               </span>
-              <button className="cal-today-btn" onClick={() => setSelectedDate(toLocalDateInput())} type="button">Today</button>
+              <button className="cal-today-btn" onClick={() => setSelectedDate(today)} type="button">Today</button>
             </div>
             <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, 1, viewMode))} type="button" aria-label="Next">&#8250;</button>
           </div>
-        </div>
-
-        <div className="pl-actions">
-          <button className="pl-action-btn" onClick={() => { resetSessionForm(); setModal('session') }} type="button">
-            <IconPlanner size={16} /> Create Session
-          </button>
-          <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
-            <IconSpark size={16} /> AI Generate
-          </button>
         </div>
       </div>
 
@@ -451,57 +642,8 @@ export default function PlannerPage() {
       {viewMode === 'day' && (
         <div className="pl-day-layout">
           <div className="pl-card pl-timeline">
-            <h3 className="pl-card-title">Daily Schedule</h3>
-            <div className="pl-timeline-grid">
-              {HOURS.map((hour) => {
-                const hourTasks = todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === hour)
-                const label = `${String(hour).padStart(2, '0')}:00`
-                return (
-                  <div key={hour} className="pl-timeline-row">
-                    <span className="pl-timeline-hour">{label}</span>
-                    <div className="pl-timeline-cell">
-                      {hourTasks.length === 0 ? (
-                        <div className="pl-timeline-empty" />
-                      ) : (
-                        hourTasks.map((task) => {
-                          const color = getSubjectColor(task.subject, subjects)
-                          return (
-                            <div key={task.id} className="pl-timeline-task" style={{ '--pl-color': color } as CSSProperties}>
-                              <span className="pl-avatar" style={{ '--pl-color': color } as CSSProperties}>{subjectInitial(task.subject_name || task.title, 'S')}</span>
-                              <div className="pl-timeline-task-info">
-                                <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
-                                <span className="pl-timeline-task-title">{task.title}</span>
-                              </div>
-                              <span className="pl-timeline-task-dur">{minutesLabel(task.duration_minutes)}</span>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              {todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === null).length > 0 && (
-                <div className="pl-timeline-row">
-                  <span className="pl-timeline-hour">Other</span>
-                  <div className="pl-timeline-cell">
-                    {todayTasks.filter((t) => getHourFromScheduled(t.scheduled_for) === null).map((task) => {
-                      const color = getSubjectColor(task.subject, subjects)
-                      return (
-                        <div key={task.id} className="pl-timeline-task" style={{ '--pl-color': color } as CSSProperties}>
-                          <span className="pl-avatar" style={{ '--pl-color': color } as CSSProperties}>{subjectInitial(task.subject_name || task.title, 'S')}</span>
-                          <div className="pl-timeline-task-info">
-                            <span className="pl-timeline-task-subject">{task.subject_name || 'Study'}</span>
-                            <span className="pl-timeline-task-title">{task.title}</span>
-                          </div>
-                          <span className="pl-timeline-task-dur">{minutesLabel(task.duration_minutes)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
+            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
             <div className="pl-day-summary">
               <span className="pl-chip">{dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''}</span>
               <span className="pl-chip">{dayHours.toFixed(1)} hours planned</span>
@@ -556,6 +698,21 @@ export default function PlannerPage() {
 
       {viewMode === 'week' && (
         <div className="pl-card pl-week-wrap">
+          <div className="pl-week-strip" role="tablist" aria-label="Day of week">
+            {weekDays.map((day) => (
+              <button
+                key={day.date}
+                role="tab"
+                aria-selected={selectedDate === day.date}
+                className={`pl-strip-day${selectedDate === day.date ? ' pl-strip-active' : ''}${day.isToday ? ' pl-strip-today' : ''}`}
+                onClick={() => setSelectedDate(day.date)}
+                type="button"
+              >
+                <span className="pl-strip-name">{day.dayName}</span>
+                <span className="pl-strip-num">{day.dayNum}</span>
+              </button>
+            ))}
+          </div>
           <div className="pl-week-grid">
             {weekDays.map((day) => {
               const dayTasks = weekTasks.filter((t) => {
@@ -584,122 +741,153 @@ export default function PlannerPage() {
               )
             })}
           </div>
+          <div className="pl-week-detail">
+            <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
+            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
+          </div>
         </div>
       )}
 
       {viewMode === 'month' && (
-        <div className="pl-card pl-month-wrap">
-          <div className="pl-month-header">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div key={d} className="pl-month-dow">{d}</div>
-            ))}
+        <>
+          <div className="pl-card pl-month-wrap">
+            <div className="pl-month-header">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                <div key={d} className="pl-month-dow">{d}</div>
+              ))}
+            </div>
+            <div className="pl-month-grid">
+              {calendarInfo.cells.map((cell, i) => {
+                const hasSession = cell ? monthTaskDates.has(cell) : false
+                const isToday = cell === today
+                const isSelected = cell === selectedDate
+                return (
+                  <button
+                    key={i}
+                    disabled={!cell}
+                    className={`pl-month-cell ${isToday ? 'pl-month-today' : ''} ${isSelected ? 'pl-month-selected' : ''} ${!cell ? 'pl-month-blank' : ''}`}
+                    onClick={() => { if (cell) setSelectedDate(cell) }}
+                    type="button"
+                  >
+                    <span>{cell ? cell.split('-')[2].replace(/^0/, '') : ''}</span>
+                    {hasSession && <span className="pl-month-dot" />}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <div className="pl-month-grid">
-            {calendarInfo.cells.map((cell, i) => {
-              const hasSession = cell ? monthTaskDates.has(cell) : false
-              const isToday = cell === today
-              return (
-                <button
-                  key={i}
-                  disabled={!cell}
-                  className={`pl-month-cell ${isToday ? 'pl-month-today' : ''} ${!cell ? 'pl-month-blank' : ''}`}
-                  onClick={() => { if (cell) { setSelectedDate(cell); setViewMode('day') } }}
-                  type="button"
-                >
-                  <span>{cell ? cell.split('-')[2].replace(/^0/, '') : ''}</span>
-                  {hasSession && <span className="pl-month-dot" />}
+          <div className="pl-card pl-month-detail">
+            <div className="pl-month-detail-head">
+              <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
+              <button className="pl-month-open-day" onClick={() => setViewMode('day')} type="button">Day view &#8250;</button>
+            </div>
+            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
+          </div>
+        </>
+      )}
+
+      <ResponsiveBottomSheet
+        open={modal === 'session'}
+        onClose={closeSession}
+        title="Create Study Task"
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button type="button" className="cal-modal-cancel" onClick={closeSession}>Cancel</button>
+            <button type="submit" className="cal-modal-create" form="pl-session-form">Create Study Task</button>
+          </div>
+        }
+      >
+        <form id="pl-session-form" className="rbs-form" onSubmit={handleCreateSession} noValidate>
+          <div className="cal-modal-field">
+            <label htmlFor="pl-session-subject">Subject</label>
+            <select
+              ref={subjectRef}
+              id="pl-session-subject"
+              value={sessionSubject}
+              onChange={(e) => {
+                setSessionSubject(e.target.value)
+                if (sessionErrors.subject) setSessionErrors((p) => ({ ...p, subject: undefined }))
+              }}
+              aria-invalid={!!sessionErrors.subject}
+            >
+              <option value="">Select subject</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            {sessionErrors.subject && <p className="pl-field-error" role="alert">{sessionErrors.subject}</p>}
+          </div>
+          <div className="cal-modal-field">
+            <label htmlFor="pl-session-topic">Task name</label>
+            <input
+              ref={topicRef}
+              id="pl-session-topic"
+              placeholder="e.g. Revise Algebra"
+              value={sessionTopic}
+              onChange={(e) => {
+                setSessionTopic(e.target.value)
+                if (sessionErrors.topic) setSessionErrors((p) => ({ ...p, topic: undefined }))
+              }}
+              aria-invalid={!!sessionErrors.topic}
+            />
+            {sessionErrors.topic && <p className="pl-field-error" role="alert">{sessionErrors.topic}</p>}
+          </div>
+          <div className="cal-modal-field">
+            <label htmlFor="pl-session-date">Date</label>
+            <input id="pl-session-date" type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} />
+          </div>
+          <div className="cal-modal-row">
+            <div className="cal-modal-field"><label htmlFor="pl-session-time">Start time</label><input id="pl-session-time" type="time" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} /></div>
+            <div className="cal-modal-field"><label htmlFor="pl-session-duration">Duration</label><select id="pl-session-duration" value={sessionDuration} onChange={(e) => setSessionDuration(Number(e.target.value))}>
+              {DURATION_OPTIONS.map((d) => <option key={d} value={d}>{minutesLabel(d)}</option>)}
+            </select></div>
+          </div>
+          <div className="cal-modal-field">
+            <label>Priority</label>
+            <div className="pl-priority-row" role="group" aria-label="Priority">
+              {PRIORITY_OPTIONS.map((p) => (
+                <button key={p} type="button" onClick={() => setSessionPriority(p)}
+                  className={`pl-priority-btn ${sessionPriority === p ? 'pl-priority-active' : ''}`}
+                  style={sessionPriority === p ? { borderColor: priorityColor(p), background: priorityColor(p) + '18' } : {}}>
+                  {p}
                 </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {sessionSheet.render && (
-        <div className={'cal-modal-overlay' + (sessionSheet.closing ? ' sheet-closing' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
-          <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="zq-modal-head">
-              <h2>New Study Session</h2>
-              <button className="zq-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">{'\u00d7'}</button>
+              ))}
             </div>
-            <form onSubmit={handleCreateSession} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="cal-modal-field">
-                <label>Subject</label>
-                <select value={sessionSubject} onChange={(e) => setSessionSubject(e.target.value)}>
-                  <option value="">Select subject</option>
-                  {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="cal-modal-field">
-                <label>Topic</label>
-                <input placeholder="e.g. Review chapter 5 notes" value={sessionTopic} onChange={(e) => setSessionTopic(e.target.value)} />
-              </div>
-              <div className="cal-modal-row">
-                <div className="cal-modal-field"><label>Date</label><input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} /></div>
-                <div className="cal-modal-field"><label>Start Time</label><input type="time" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} /></div>
-              </div>
-              <div className="cal-modal-field">
-                <label>Duration</label>
-                <select value={sessionDuration} onChange={(e) => setSessionDuration(Number(e.target.value))}>
-                  {DURATION_OPTIONS.map((d) => <option key={d} value={d}>{minutesLabel(d)}</option>)}
-                </select>
-              </div>
-              <div className="cal-modal-field">
-                <label>Priority</label>
-                <div className="pl-priority-row">
-                  {PRIORITY_OPTIONS.map((p) => (
-                    <button key={p} type="button" onClick={() => setSessionPriority(p)}
-                      className={`pl-priority-btn ${sessionPriority === p ? 'pl-priority-active' : ''}`}
-                      style={sessionPriority === p ? { borderColor: priorityColor(p), background: priorityColor(p) + '18' } : {}}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="cal-modal-field"><label>Notes</label><textarea placeholder="Optional notes..." value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} /></div>
-              <div className="cal-modal-actions">
-                <button type="button" className="cal-modal-cancel" onClick={() => setModal(null)}>Cancel</button>
-                <button type="submit" className="cal-modal-create">Create Session</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+          <div className="cal-modal-field"><label htmlFor="pl-session-notes">Notes</label><textarea id="pl-session-notes" placeholder="Optional notes..." value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} /></div>
+        </form>
+      </ResponsiveBottomSheet>
 
-      {aiSheet.render && (
-        <div className={'cal-modal-overlay' + (aiSheet.closing ? ' sheet-closing' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
-          <div className="cal-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="zq-modal-head">
-              <h2>Generate Study Plan</h2>
-              <button className="zq-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">{'\u00d7'}</button>
-            </div>
-            <form onSubmit={handleAiGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="cal-modal-field"><label>Exam Date</label><input type="date" value={aiExamDate} onChange={(e) => setAiExamDate(e.target.value)} /></div>
-              <div className="cal-modal-field"><label>Available Time per Day (hours)</label><input type="number" min={1} max={16} value={aiDailyHours} onChange={(e) => setAiDailyHours(Number(e.target.value))} /></div>
-              <div className="cal-modal-row">
-                <div className="cal-modal-field">
-                  <label>Weak Subject</label>
-                  <select value={aiWeakSubject} onChange={(e) => setAiWeakSubject(e.target.value)}>
-                    <option value="">Select subject</option>
-                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-                <div className="cal-modal-field">
-                  <label>Strong Subject</label>
-                  <select value={aiStrongSubject} onChange={(e) => setAiStrongSubject(e.target.value)}>
-                    <option value="">Select subject</option>
-                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="cal-modal-actions">
-                <button type="button" className="cal-modal-cancel" onClick={() => setModal(null)}>Cancel</button>
-                <button type="submit" className="cal-modal-create" disabled={planLoading}>{planLoading ? 'Generating...' : 'Generate Plan'}</button>
-              </div>
-            </form>
+      <ResponsiveBottomSheet
+        open={modal === 'ai'}
+        onClose={() => { setModal(null); resetAiForm() }}
+        title="Generate Study Plan"
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button type="button" className="cal-modal-cancel" onClick={() => { setModal(null); resetAiForm() }}>Cancel</button>
+            <button type="submit" className="cal-modal-create" form="pl-ai-form" disabled={planLoading}>{planLoading ? 'Generating...' : 'Generate Plan'}</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id="pl-ai-form" className="rbs-form" onSubmit={handleAiGenerate}>
+          <div className="cal-modal-field"><label htmlFor="pl-ai-date">Exam Date</label><input id="pl-ai-date" type="date" value={aiExamDate} onChange={(e) => setAiExamDate(e.target.value)} /></div>
+          <div className="cal-modal-field"><label htmlFor="pl-ai-hours">Available Time per Day (hours)</label><input id="pl-ai-hours" type="number" min={1} max={16} value={aiDailyHours} onChange={(e) => setAiDailyHours(Number(e.target.value))} /></div>
+          <div className="cal-modal-row">
+            <div className="cal-modal-field">
+              <label htmlFor="pl-ai-weak">Weak Subject</label>
+              <select id="pl-ai-weak" value={aiWeakSubject} onChange={(e) => setAiWeakSubject(e.target.value)}>
+                <option value="">Select subject</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="cal-modal-field">
+              <label htmlFor="pl-ai-strong">Strong Subject</label>
+              <select id="pl-ai-strong" value={aiStrongSubject} onChange={(e) => setAiStrongSubject(e.target.value)}>
+                <option value="">Select subject</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+        </form>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

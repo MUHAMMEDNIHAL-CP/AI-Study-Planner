@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import { IconAnalytics, IconBot } from '../components/icons'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { useUserProfile, firstName } from '../hooks/useUserProfile'
 import { notifyStudyActivity } from '../lib/studyActivity'
@@ -86,6 +86,8 @@ type ChatMessage = {
   quizTopic?: string
   actions?: MsgAction[]
   chips?: string[]
+  /** Re-sends this user text when a coach reply failed and the user taps Retry. */
+  retry?: string
 }
 
 type QuickKey = 'plan' | 'exam' | 'learn' | 'practice' | 'analyze' | 'revise'
@@ -102,10 +104,12 @@ const CHATS_KEY = 'FLOX.ai.chats.v1'
 /* ── Constants ─────────────────────────────────────────────── */
 
 const QUICK_CARDS: Array<{ key: QuickKey; icon: string; label: string }> = [
-  { key: 'plan', icon: '\uD83D\uDCC5', label: 'What should I study?' },
+  { key: 'plan', icon: '\uD83D\uDCC5', label: 'Plan my day' },
   { key: 'exam', icon: '\uD83C\uDF93', label: 'Prepare for exam' },
   { key: 'learn', icon: '\uD83E\uDDE0', label: 'Explain a topic' },
   { key: 'practice', icon: '\uD83D\uDCDD', label: 'Quiz me' },
+  { key: 'analyze', icon: '\uD83D\uDCCA', label: 'Analyze progress' },
+  { key: 'revise', icon: '\uD83D\uDD01', label: 'Help me revise' },
 ]
 
 const INPUT_CHIPS: Array<{ key: QuickKey; icon: string; label: string }> = [
@@ -329,7 +333,6 @@ export default function AiTutorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [ctxOpen, setCtxOpen] = useState(false)
   const [notePicker, setNotePicker] = useState(false)
-  const notePickerSheet = useSheet(notePicker)
   const [noteQuery, setNoteQuery] = useState('')
   const [attachments, setAttachments] = useState<Array<{ kind: 'note' | 'file'; label: string; content: string }>>([])
   const [listening, setListening] = useState(false)
@@ -382,6 +385,31 @@ export default function AiTutorPage() {
   useEffect(() => {
     document.body.classList.add('ai-coach-page-active')
     return () => document.body.classList.remove('ai-coach-page-active')
+  }, [])
+
+  /* Keep the composer above the on-screen keyboard (iOS) by exposing how much
+     visual Viewport space is lost behind the keyboard. On Android the
+     `interactive-widget=resizes-content` viewport handles this in CSS alone. */
+  useEffect(() => {
+    const root = document.documentElement
+    const vv = window.visualViewport
+    if (!vv) return
+    const applyKb = () => {
+      const el = document.activeElement
+      const typing = !!el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
+      const offset = Math.max(0, window.innerHeight - vv.height)
+      root.style.setProperty('--ac-kb', typing && offset > 80 ? offset + 'px' : '0px')
+    }
+    const off = () => root.style.removeProperty('--ac-kb')
+    vv.addEventListener('resize', applyKb)
+    document.addEventListener('focusin', applyKb)
+    document.addEventListener('focusout', applyKb)
+    return () => {
+      vv.removeEventListener('resize', applyKb)
+      document.removeEventListener('focusin', applyKb)
+      document.removeEventListener('focusout', applyKb)
+      off()
+    }
   }, [])
 
   const nextExam = exams[0] ?? null
@@ -522,8 +550,20 @@ export default function AiTutorPage() {
       notifyStudyActivity()
       appendMsgs([{ id: uid(), role: 'coach', text: data.reply, chips: data.suggestions?.slice(0, 3), mode: 'chat' }])
     } catch (err) {
-      appendMsgs([{ id: uid(), role: 'coach', text: 'I am having trouble connecting right now. Please try again.', mode: 'chat' }])
-      toast.error(getErrorMessage(err))
+      const msg = getErrorMessage(err)
+      const limited = /limit|quota|capacity|402|429/i.test(msg)
+      appendMsgs([
+        {
+          id: uid(),
+          role: 'coach',
+          mode: 'chat',
+          text: limited
+            ? "FLOX AI can't respond to new requests right now. Your daily AI limit was reached."
+            : "FLOX AI couldn't respond right now. Please try again.",
+          retry: student.text,
+        },
+      ])
+      if (!limited) toast.error('Couldn\u2019t reach FLOX AI. Check your connection and try again.')
     } finally {
       setSending(false)
     }
@@ -965,7 +1005,7 @@ export default function AiTutorPage() {
     <main className="ac-chat">
       <div className="ac-mobilebar">
         <button onClick={() => setSidebarOpen(true)} aria-label="Conversations">{'\u2630'}</button>
-        <span className="mb-title"><IconBot size={16} /> AI Coach</span>
+        <span className="mb-title"><IconBot size={16} /> FLOX AI</span>
         <button onClick={() => setCtxOpen(true)} aria-label="Study context" className="ac-ctxbtn">
           <IconAnalytics size={18} /> <span>Context</span>
         </button>
@@ -979,9 +1019,9 @@ export default function AiTutorPage() {
             <span className="ac-orb-pulse" />
           </div>
           <h2>FLOX AI</h2>
+          <p className="ac-tagline">Your personal AI study coach.</p>
           <AllowanceChip allowance={allowance} project={project} />
           <p className="ac-hi">Hey {userName} {'\uD83D\uDC4B'}</p>
-          <p className="ac-q">What would you like to work on today?</p>
           <div className="ac-cards">
             {QUICK_CARDS.map((c) => (
               <button key={c.key} className="ac-cardbtn" onClick={() => runQuick(c.key)}>
@@ -1075,6 +1115,12 @@ export default function AiTutorPage() {
                       ))}
                     </div>
                   )}
+
+                  {m.retry && (
+                    <div className="ac-msg-actions">
+                      <button className="primary" disabled={sending} onClick={() => send(m.retry)}>Retry</button>
+                    </div>
+                  )}
                 </div>
               </div>
             ),
@@ -1083,7 +1129,8 @@ export default function AiTutorPage() {
           {sending && (
             <div className="ac-row coach">
               <div className="ac-card">
-                <div className="ac-typing"><span /><span /><span /></div>
+                <span className="ac-typing-label">{'\uD83E\uDD16'} FLOX AI is thinking</span>
+                <div className="ac-typing" aria-label="FLOX AI is thinking"><span /><span /><span /></div>
               </div>
             </div>
           )}
@@ -1123,7 +1170,7 @@ export default function AiTutorPage() {
           ref={taRef}
           rows={1}
           value={input}
-          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX anything\u2026'}
+          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX AI\u2026'}
           onChange={(e) => { setInput(e.target.value); autoResize() }}
           onKeyDown={onComposerKeyDown}
           disabled={sending}
@@ -1155,35 +1202,31 @@ export default function AiTutorPage() {
       {sidebarOpen && <div className="ac-backdrop" onClick={() => setSidebarOpen(false)} />}
       {ctxOpen && <div className="ac-backdrop" onClick={() => setCtxOpen(false)} />}
 
-      {notePickerSheet.render && (
-        <div className={'ac-overlay' + (notePickerSheet.closing ? ' sheet-closing' : '')} onClick={() => setNotePicker(false)}>
-          <div className="ac-modal" onClick={(e) => e.stopPropagation()}>
-            <header className="ac-modal-head">
-              <h3>Attach a note</h3>
-              <button onClick={() => setNotePicker(false)} aria-label="Close">{'\u00D7'}</button>
-            </header>
-            <input
-              className="ac-note-search"
-              placeholder="Search notes..."
-              value={noteQuery}
-              onChange={(e) => setNoteQuery(e.target.value)}
-              autoFocus
-            />
-            <div className="ac-note-list">
-              {filteredNotes.map((n) => (
-                <button key={n.id} onClick={() => attachNote(n)}>
-                  {'\uD83D\uDCC4'} {n.title || 'Untitled'}
-                </button>
-              ))}
-              {!filteredNotes.length && <p className="ac-side-empty">No notes match.</p>}
-            </div>
-            <button className="ac-filebtn" onClick={() => fileRef.current?.click()}>
-              {'\uD83D\uDCCE'} Upload .txt / .md / .pdf instead
+      <ResponsiveBottomSheet
+        open={notePicker}
+        onClose={() => setNotePicker(false)}
+        title="Attach a note"
+      >
+        <input
+          className="ac-note-search"
+          placeholder="Search notes..."
+          value={noteQuery}
+          onChange={(e) => setNoteQuery(e.target.value)}
+          autoFocus
+        />
+        <div className="ac-note-list">
+          {filteredNotes.map((n) => (
+            <button key={n.id} onClick={() => attachNote(n)}>
+              {'\uD83D\uDCC4'} {n.title || 'Untitled'}
             </button>
-            <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.docx" hidden onChange={onPickFile} />
-          </div>
+          ))}
+          {!filteredNotes.length && <p className="ac-side-empty">No notes match.</p>}
         </div>
-      )}
+        <button className="ac-filebtn" onClick={() => fileRef.current?.click()}>
+          {'\uD83D\uDCCE'} Upload .txt / .md / .pdf instead
+        </button>
+        <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.docx" hidden onChange={onPickFile} />
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

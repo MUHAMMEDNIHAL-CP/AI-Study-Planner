@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -75,7 +75,6 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabKey>('all')
   const [showModal, setShowModal] = useState(false)
-  const addSheet = useSheet(showModal)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const [formTitle, setFormTitle] = useState('')
@@ -283,67 +282,59 @@ export default function TasksPage() {
         )}
       </div>
 
-      {addSheet.render && (
-        <div
-          className={'cal-modal-overlay' + (addSheet.closing ? ' sheet-closing' : '')}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
+      <ResponsiveBottomSheet
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Add Task"
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button type="button" className="cal-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>
+            <button type="submit" form="tk-add-task" className="cal-modal-create">Save Task</button>
+          </div>
+        }
+      >
+        <form
+          id="tk-add-task"
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          onSubmit={handleCreate}
         >
-          <section
-            aria-labelledby="add-task-title"
-            aria-modal="true"
-            className="cal-modal"
-            onMouseDown={(e) => e.stopPropagation()}
-            role="dialog"
-          >
-            <div className="zq-modal-head">
-              <h2 id="add-task-title">Add Task</h2>
-              <button className="zq-modal-close" onClick={() => setShowModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+          <div className="cal-modal-field">
+            <label>Title *</label>
+            <input autoFocus placeholder="Solve 20 active recall questions" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+          </div>
+          <div className="cal-modal-field">
+            <label>Subject</label>
+            <select value={formSubject} onChange={(e) => setFormSubject(e.target.value)}>
+              <option value="">No subject</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="cal-modal-row">
+            <div className="cal-modal-field">
+              <label>Due date *</label>
+              <input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} required />
             </div>
-            <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }} onSubmit={handleCreate}>
-              <div className="cal-modal-field">
-                <label>Title *</label>
-                <input autoFocus placeholder="Solve 20 active recall questions" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
-              </div>
-              <div className="cal-modal-field">
-                <label>Subject</label>
-                <select value={formSubject} onChange={(e) => setFormSubject(e.target.value)}>
-                  <option value="">No subject</option>
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="cal-modal-row">
-                <div className="cal-modal-field">
-                  <label>Due date *</label>
-                  <input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} required />
-                </div>
-                <div className="cal-modal-field">
-                  <label>Duration (min)</label>
-                  <input min="5" step="5" type="number" value={formDuration} onChange={(e) => setFormDuration(e.target.value)} />
-                </div>
-              </div>
-              <div className="cal-modal-field">
-                <label>Priority</label>
-                <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-              <div className="cal-modal-field">
-                <label>Description</label>
-                <textarea placeholder="Optional notes about this task" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
-              </div>
-              <div className="cal-modal-actions">
-                <button type="button" className="cal-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="cal-modal-create">Save Task</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+            <div className="cal-modal-field">
+              <label>Duration (min)</label>
+              <input min="5" step="5" type="number" value={formDuration} onChange={(e) => setFormDuration(e.target.value)} />
+            </div>
+          </div>
+          <div className="cal-modal-field">
+            <label>Priority</label>
+            <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div className="cal-modal-field">
+            <label>Description</label>
+            <textarea placeholder="Optional notes about this task" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
+          </div>
+        </form>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

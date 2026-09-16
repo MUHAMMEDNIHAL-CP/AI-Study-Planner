@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSheet } from '../hooks/useSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
 import { notifyProfileUpdated } from '../hooks/useUserProfile'
 import PageShell from '../components/PageShell'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 
 type ProfileData = {
   bio: string
@@ -145,9 +145,6 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalKind>(null)
-  const profileSheet = useSheet(modal === 'profile')
-  const goalsSheet = useSheet(modal === 'goals')
-  const learningSheet = useSheet(modal === 'learning')
   const [saving, setSaving] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
 
@@ -634,17 +631,22 @@ export default function ProfilePage() {
         </>
       )}
 
-      {profileSheet.render && (
-        <div className={'pf-modal-overlay' + (profileSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
-          <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit profile">
-            <header className="pf-modal-head">
-              <h2>Edit Profile</h2>
-              <button className="pf-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">&times;</button>
-            </header>
-
-            <div className="pf-modal-avatar">
-              <span>{avatar}</span>
-            </div>
+      <ResponsiveBottomSheet
+        open={modal === 'profile'}
+        onClose={() => setModal(null)}
+        title="Edit Profile"
+        footer={
+          <div className="pf-modal-actions">
+            <button className="ghost-action" disabled={savingProfile} onClick={() => setModal(null)} type="button">Cancel</button>
+            <button className="au-submit pf-modal-save" disabled={savingProfile} onClick={() => void saveIdentity()} type="button">
+              {savingProfile ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        }
+      >
+        <div className="pf-modal-avatar">
+          <span>{avatar}</span>
+        </div>
 
             <label className="pf-field">
               Full Name
@@ -749,38 +751,34 @@ export default function ProfilePage() {
                 value={identityForm.bio}
               />
             </label>
+      </ResponsiveBottomSheet>
 
-            <footer className="pf-modal-actions">
-              <button className="ghost-action" disabled={savingProfile} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button className="au-submit pf-modal-save" disabled={savingProfile} onClick={() => void saveIdentity()} type="button">
-                {savingProfile ? 'Saving...' : 'Save Changes'}
-              </button>
-            </footer>
+      <ResponsiveBottomSheet
+        open={modal === 'goals'}
+        onClose={() => setModal(null)}
+        title="Edit Study Goals"
+        footer={
+          <div className="pf-modal-actions">
+            <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
+            <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveGoals()} type="button">
+              {saving ? 'Saving...' : 'Save Goals'}
+            </button>
           </div>
-        </div>
-      )}
-
-      {goalsSheet.render && (
-        <div className={'pf-modal-overlay' + (goalsSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
-          <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit goals">
-            <header className="pf-modal-head">
-              <h2>Edit Study Goals</h2>
-              <button className="pf-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">&times;</button>
-            </header>
-
-            <label className="pf-field">
-              Daily Study Goal
-              <select
-                onChange={(e) => setGoalsForm((c) => ({ ...c, daily_study_goal: Number(e.target.value) }))}
-                value={goalsForm.daily_study_goal}
-              >
-                {[1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8].map((h) => (
-                  <option key={h} value={h}>{h} hours</option>
-                ))}
-              </select>
-            </label>
-            <label className="pf-field">
-              Target Grade
+        }
+      >
+        <label className="pf-field">
+          Daily Study Goal
+          <select
+            onChange={(e) => setGoalsForm((c) => ({ ...c, daily_study_goal: Number(e.target.value) }))}
+            value={goalsForm.daily_study_goal}
+          >
+            {[1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8].map((h) => (
+              <option key={h} value={h}>{h} hours</option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          Target Grade
               <select
                 onChange={(e) => setGoalsForm((c) => ({ ...c, target_grade: e.target.value }))}
                 value={goalsForm.target_grade}
@@ -799,88 +797,75 @@ export default function ProfilePage() {
                 value={goalsForm.main_goal}
               />
             </label>
-            <label className="pf-field">
-              Exam Goal
-              <input
-                onChange={(e) => setGoalsForm((c) => ({ ...c, study_goal: e.target.value }))}
-                placeholder="Be ready 7 days before exam"
-                value={goalsForm.study_goal}
-              />
-            </label>
+        <label className="pf-field">
+          Exam Goal
+          <input
+            onChange={(e) => setGoalsForm((c) => ({ ...c, study_goal: e.target.value }))}
+            placeholder="Be ready 7 days before exam"
+            value={goalsForm.study_goal}
+          />
+        </label>
+      </ResponsiveBottomSheet>
 
-            <footer className="pf-modal-actions">
-              <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveGoals()} type="button">
-                {saving ? 'Saving...' : 'Save Goals'}
-              </button>
-            </footer>
+      <ResponsiveBottomSheet
+        open={modal === 'learning'}
+        onClose={() => setModal(null)}
+        title="Edit Learning Profile"
+        footer={
+          <div className="pf-modal-actions">
+            <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
+            <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveLearning()} type="button">
+              {saving ? 'Saving...' : 'Save Learning Profile'}
+            </button>
           </div>
-        </div>
-      )}
-
-      {learningSheet.render && (
-        <div className={'pf-modal-overlay' + (learningSheet.closing ? ' sheet-closing' : '')} onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
-          <div className="pf-modal" role="dialog" aria-modal="true" aria-label="Edit learning profile">
-            <header className="pf-modal-head">
-              <h2>Edit Learning Profile</h2>
-              <button className="pf-modal-close" onClick={() => setModal(null)} type="button" aria-label="Close">&times;</button>
-            </header>
-
-            <label className="pf-field">
-              Preferred Study Time
-              <select
-                onChange={(e) => setLearningForm((c) => ({ ...c, preferred_study_time: e.target.value }))}
-                value={learningForm.preferred_study_time}
-              >
-                {STUDY_TIME_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="pf-field">
-              Preferred Session Length
-              <select
-                onChange={(e) => setLearningForm((c) => ({ ...c, session_length: Number(e.target.value) }))}
-                value={learningForm.session_length}
-              >
-                {[25, 30, 45, 50, 60, 90].map((m) => (
-                  <option key={m} value={m}>{m} minutes</option>
-                ))}
-              </select>
-            </label>
-            <label className="pf-field">
-              Learning Style
-              <select
-                onChange={(e) => setLearningForm((c) => ({ ...c, learning_style: e.target.value }))}
-                value={learningForm.learning_style}
-              >
-                <option value="">Not set</option>
-                {LEARNING_STYLE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="pf-field">
-              AI Coaching Intensity
-              <select
-                onChange={(e) => setLearningForm((c) => ({ ...c, coaching_style: e.target.value }))}
-                value={learningForm.coaching_style}
-              >
-                {COACHING_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <footer className="pf-modal-actions">
-              <button className="ghost-action" disabled={saving} onClick={() => setModal(null)} type="button">Cancel</button>
-              <button className="au-submit pf-modal-save" disabled={saving} onClick={() => void saveLearning()} type="button">
-                {saving ? 'Saving...' : 'Save Learning Profile'}
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
+        }
+      >
+              <label className="pf-field">
+          Preferred Study Time
+          <select
+            onChange={(e) => setLearningForm((c) => ({ ...c, preferred_study_time: e.target.value }))}
+            value={learningForm.preferred_study_time}
+          >
+            {STUDY_TIME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          Preferred Session Length
+          <select
+            onChange={(e) => setLearningForm((c) => ({ ...c, session_length: Number(e.target.value) }))}
+            value={learningForm.session_length}
+          >
+            {[25, 30, 45, 50, 60, 90].map((m) => (
+              <option key={m} value={m}>{m} minutes</option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          Learning Style
+          <select
+            onChange={(e) => setLearningForm((c) => ({ ...c, learning_style: e.target.value }))}
+            value={learningForm.learning_style}
+          >
+            <option value="">Not set</option>
+            {LEARNING_STYLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          AI Coaching Intensity
+          <select
+            onChange={(e) => setLearningForm((c) => ({ ...c, coaching_style: e.target.value }))}
+            value={learningForm.coaching_style}
+          >
+            {COACHING_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </label>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

@@ -5,9 +5,6 @@ import SetupChecklist from '../components/SetupChecklist'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 import { markOnboardingComplete } from '../lib/tour'
-import { IconFocus, IconNotes, IconPlanner, IconQuiz, IconTask, IconTutor } from '../components/icons'
-
-/* ── API shapes ────────────────────────────────────────────── */
 
 type ApiSubject = { id: number; name: string; weak_topics: string; weekly_goal_hours: number }
 type ApiExam = {
@@ -48,8 +45,6 @@ type DashboardSummary = {
   today_minutes?: number
 }
 
-/* ── Helpers ───────────────────────────────────────────────── */
-
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 function greeting() {
@@ -57,14 +52,6 @@ function greeting() {
   if (h < 12) return { word: 'morning', emoji: '\uD83C\uDF05' }
   if (h < 17) return { word: 'afternoon', emoji: '\u2600\uFE0F' }
   return { word: 'evening', emoji: '\uD83C\uDF19' }
-}
-
-function buildEducationLabel(p?: { education_level: string; course: string; college: string; semester: number }) {
-  if (!p) return ''
-  if (p.education_level === 'high_school') {
-    return ['High School', p.course, p.college].filter(Boolean).join(' \u00B7 ')
-  }
-  return ['College', p.course, p.semester ? `Semester ${p.semester}` : ''].filter(Boolean).join(' \u00B7 ')
 }
 
 function todayInput() {
@@ -105,8 +92,6 @@ function lastSevenDays() {
   return days
 }
 
-/* ── Page ──────────────────────────────────────────────────── */
-
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null)
@@ -118,9 +103,9 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null)
   const [firstName, setFirstName] = useState('Scholar')
-  const [educationLabel, setEducationLabel] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [dailyGoalHours, setDailyGoalHours] = useState(4)
+
   useEffect(() => {
     let active = true
     async function load() {
@@ -135,7 +120,6 @@ export default function DashboardPage() {
         ])
         if (!active) return
         setFirstName((profileRes.data.full_name || profileRes.data.username || 'Scholar').split(/\s+/)[0])
-        setEducationLabel(buildEducationLabel(profileRes.data.profile))
         if (profileRes.data.profile?.daily_study_goal) setDailyGoalHours(profileRes.data.profile.daily_study_goal)
         setDashboard(dashRes.data)
         setSubjects(subjRes.data)
@@ -153,35 +137,23 @@ export default function DashboardPage() {
     return () => { active = false }
   }, [])
 
-  /* Derived data */
-
   const streak = dashboard?.current_streak ?? 0
   const subjectsSummary = useMemo(() => dashboard?.subjects_summary ?? [], [dashboard])
   const recentLogs = useMemo(() => dashboard?.recent_logs ?? [], [dashboard])
   const todayMinutes = dashboard?.today_minutes ?? 0
-
-  const scheduleItems = useMemo(
-    () =>
-      tasks
-        .filter((t) => t.scheduled_for && t.scheduled_for.slice(0, 10) <= todayInput())
-        .sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? '')),
-    [tasks],
-  )
-
-  const todayTasks = useMemo(() => {
-    const ids = new Set(scheduleItems.map((t) => t.id))
-    const extra = (dashboard?.today_tasks ?? [])
-      .map((t) => tasks.find((x) => x.id === t.id))
-      .filter((t): t is ApiTask => Boolean(t) && !ids.has(t!.id))
-    return [...scheduleItems, ...extra].slice(0, 8)
-  }, [scheduleItems, dashboard, tasks])
-
   const dailyGoalMinutes = Math.max(Math.round((dailyGoalHours || 4) * 60), 30)
 
   const mainGoalPct = useMemo(() => {
     if (dailyGoalMinutes <= 0) return 0
     return Math.min(100, Math.round((todayMinutes / dailyGoalMinutes) * 100))
   }, [todayMinutes, dailyGoalMinutes])
+
+  const todaysTasks = useMemo(() => {
+    const day = todayInput()
+    return tasks.filter((t) => t.scheduled_for?.slice(0, 10) === day || t.due_date === day)
+  }, [tasks])
+
+  const todaysDone = todaysTasks.filter((t) => t.status === 'done').length
 
   const nearestExam = useMemo(() => {
     const upcoming = (dashboard?.upcoming_exams ?? []).filter((e) => e.date >= todayInput())
@@ -219,8 +191,6 @@ export default function DashboardPage() {
     return { hasData, text, detail, minutes }
   }, [subjects, nearestExam])
 
-  /* Onboarding setup checklist state */
-
   const setupState = useMemo(
     () => ({
       accountDone: true,
@@ -247,7 +217,7 @@ export default function DashboardPage() {
     const maxMin = Math.max(...days.map((d) => logMap.get(d.date) ?? 0), 60)
     return days.map((d) => {
       const mins = logMap.get(d.date) ?? 0
-      return { key: d.date, label: DAY_LETTERS[d.dow], minutes: mins, pct: Math.max(4, Math.round((mins / maxMin) * 100)) }
+      return { key: d.date, label: DAY_LETTERS[d.dow], minutes: mins, pct: Math.max(6, Math.round((mins / maxMin) * 100)) }
     })
   }, [recentLogs])
 
@@ -303,260 +273,277 @@ export default function DashboardPage() {
   const hello = greeting()
 
   return (
-    <PageShell
-      className="db-page"
-      title={`Good ${hello.word}, ${firstName} ${hello.emoji}`}
-      subtitle={[longDate(), educationLabel].filter(Boolean).join(' \u00B7 ')}
-      hideBack
-      clockInBar
-      badge={
-        <span className="db-streak-pill">
-          {'\uD83D\uDD25'} {streak} day streak
-        </span>
-      }
-    >
+    <PageShell className="db-page" title="" subtitle="" hideBack>
       {error ? <div className="db-alert">{error}</div> : null}
-      {loading ? <div className="db-loading">Loading your dashboard...</div> : null}
-
-      {!loading && !error ? (
-        <div className="db-setup-wrap">
-          <SetupChecklist state={setupState} />
+      {loading ? (
+        <div className="dash-skeleton" aria-hidden="true">
+          <div className="dash-skel dash-skel-hero" />
+          <div className="dash-skel dash-skel-card" />
+          <div className="dash-skel-grid">
+            <div className="dash-skel dash-skel-tile" />
+            <div className="dash-skel dash-skel-tile" />
+            <div className="dash-skel dash-skel-tile" />
+            <div className="dash-skel dash-skel-tile" />
+          </div>
+          <div className="dash-skel dash-skel-card" />
+          <div className="dash-skel dash-skel-card" />
         </div>
       ) : null}
 
-      <div className="db-grid">
-        {/* 1 - Today's Main Goal */}
-        <section className="db-card db-goal">
-          <span className="db-eyebrow">{'\uD83C\uDFAF'} Today's Main Goal</span>
-          <h2 className="db-goal-title">
-            {todayTasks.length ? `${todayTasks[0].subject_name ?? todayTasks[0].title} \u2014 ${todayTasks[0].subject_name ? todayTasks[0].title : 'Review and practice'}` : 'Plan your day to unlock a goal'}
-          </h2>
-          <div className="db-progress-row">
-            <div className="db-progress-track">
-              <div className="db-progress-fill" style={{ width: `${mainGoalPct}%` }} />
-            </div>
-            <span className="db-progress-pct">{mainGoalPct}%</span>
-          </div>
-          <div className="db-goal-meta">
-            <span>{formatMinutes(todayMinutes)} of {dailyGoalHours}h studied</span>
-            <span className="db-goal-remaining">{'\u23F3'} {formatMinutes(Math.max(0, dailyGoalMinutes - todayMinutes))} remaining today</span>
-          </div>
-        </section>
+      {!loading && !error ? (
+        <>
+          <section className="dash-greeting">
+            <p className="dash-greeting-date">{longDate()}</p>
+            <h1 className="dash-greeting-title">
+              Good {hello.word}, {firstName} {hello.emoji}
+            </h1>
+            <p className="dash-greeting-sub">Ready to study?</p>
+          </section>
 
-        {/* Quick Actions */}
-        <section className="db-card db-quick">
-          <span className="db-eyebrow">{'\u26A1'} Quick Actions</span>
-          <div className="db-quick-grid">
-            <Link className="db-quick-btn" to="/focus"><IconFocus size={18} /><span>Focus</span></Link>
-            <Link className="db-quick-btn" to="/planner"><IconPlanner size={18} /><span>Plan</span></Link>
-            <Link className="db-quick-btn" to="/tasks"><IconTask size={18} /><span>Tasks</span></Link>
-            <Link className="db-quick-btn" to="/quiz"><IconQuiz size={18} /><span>Quiz</span></Link>
-            <Link className="db-quick-btn" to="/ai-tutor"><IconTutor size={18} /><span>Ask FLOX</span></Link>
-            <Link className="db-quick-btn" to="/notes"><IconNotes size={18} /><span>Notes</span></Link>
-          </div>
-        </section>
+          {!allSetupDone ? <SetupChecklist state={setupState} /> : null}
 
-        {/* 2 - Next Exam */}
-        <section className="db-card db-exam">
-          {nearestExam ? (
-            <>
-              <span className="db-eyebrow">{'\uD83C\uDF93'} Next Exam</span>
-              <h3 className="db-exam-name">{nearestExam.subject_name ?? nearestExam.title}</h3>
-              <strong className="db-exam-days">{nearestExam.days_left ?? 0} DAYS LEFT</strong>
-              <span className="db-mini-label">Preparation</span>
-              <div className="db-progress-row">
-                <div className="db-progress-track">
-                  <div className="db-progress-fill db-fill-exam" style={{ width: `${nearestExam.preparation_pct ?? 0}%` }} />
-                </div>
-                <span className="db-progress-pct">{nearestExam.preparation_pct ?? 0}%</span>
+          <div className="dash-grid">
+            <section className="dash-card dash-progress">
+              <span className="dash-eyebrow">{'\uD83C\uDFAF'} Today's Progress</span>
+              <div className="dash-progress-main">
+                <strong>{formatMinutes(todayMinutes)}</strong>
+                <span>of {formatMinutes(dailyGoalMinutes)} goal</span>
               </div>
-              <Link className="ghost-action db-btn db-btn-sm" to="/exams">View Exam</Link>
-            </>
-          ) : (
-            <>
-              <span className="db-eyebrow">{'\uD83C\uDF93'} No Upcoming Exams</span>
-              <p className="db-exam-clear">You're all clear!</p>
-              <p className="db-exam-clear-sub">Add an exam and I'll pace your preparation.</p>
-              <Link className="db-add" to="/exams">+ Add Exam</Link>
-            </>
-          )}
-        </section>
+              <div className="dash-progress-track">
+                <div className="dash-progress-fill" style={{ width: `${mainGoalPct}%` }} />
+              </div>
+              <p className="dash-progress-meta">
+                {todaysTasks.length
+                  ? `${todaysDone} / ${todaysTasks.length} tasks completed`
+                  : 'No tasks scheduled for today'}
+              </p>
+            </section>
 
-        {/* 3 - Continue Studying */}
-        <section className="db-card db-continue">
-          {lastSession ? (
-            <div className="db-continue-inner">
-              <div className="db-continue-info">
-                <span className="db-eyebrow">{'\u23F1\uFE0F'} Continue Studying</span>
-                <h3>{lastSession.subject_name ?? 'Study Session'}{lastSession.topic ? ` \u2014 ${lastSession.topic}` : ''}</h3>
-                <span className="db-continue-meta">Last session: {timeAgo(lastSession.started_at)}</span>
-                {continueSubjectPct !== null && (
-                  <div className="db-progress-row db-progress-slim">
-                    <div className="db-progress-track">
-                      <div className="db-progress-fill db-fill-cyan" style={{ width: `${continueSubjectPct}%` }} />
-                    </div>
-                    <span className="db-progress-pct">{continueSubjectPct}%</span>
+            <section className="dash-card dash-quick">
+              <span className="dash-eyebrow">{'\u26A1'} Quick Actions</span>
+              <div className="dash-quick-grid">
+                <Link className="dash-quick-btn" to="/tasks">
+                  <span className="dash-quick-ico add">+</span>
+                  <span>Add Task</span>
+                </Link>
+                <Link className="dash-quick-btn" to="/notes">
+                  <span className="dash-quick-ico">{'\uD83D\uDCDD'}</span>
+                  <span>New Note</span>
+                </Link>
+                <Link className="dash-quick-btn" to="/quiz">
+                  <span className="dash-quick-ico">{'\uD83E\uDDE0'}</span>
+                  <span>Create Quiz</span>
+                </Link>
+                <Link className="dash-quick-btn" to="/focus">
+                  <span className="dash-quick-ico">{'\uD83C\uDFAF'}</span>
+                  <span>Start Focus</span>
+                </Link>
+              </div>
+            </section>
+
+            <section className="dash-card dash-tasks">
+              <div className="dash-head">
+                <span className="dash-eyebrow">{'\u2705'} Today's Tasks</span>
+                <Link className="dash-seeall" to="/tasks">See all</Link>
+              </div>
+              <div className="dash-task-list">
+                {taskList.map((task) => (
+                  <div key={task.id} className="dash-task-row">
+                    <button
+                      aria-label={task.status === 'done' ? 'Mark as not done' : 'Mark as done'}
+                      className={`dash-check ${task.status === 'done' ? 'done' : ''}`}
+                      disabled={savingTaskId === task.id}
+                      onClick={() => void toggleTask(task)}
+                      type="button"
+                    >
+                      {task.status === 'done' ? '\u2713' : ''}
+                    </button>
+                    <span className={`dash-task-text ${task.status === 'done' ? 'done' : ''}`}>
+                      <strong>{task.title}</strong>
+                      <small>
+                        {
+                          [
+                            task.subject_name,
+                            task.scheduled_for ? formatTime(task.scheduled_for) : '',
+                            task.duration_minutes ? `${task.duration_minutes} min` : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' \u00B7 ')
+                        }
+                      </small>
+                    </span>
                   </div>
+                ))}
+                {!taskList.length ? (
+                  <div className="dash-empty">
+                    <p className="dash-empty-title">No tasks yet</p>
+                    <p className="dash-empty-body">Create your first study task to start planning your day.</p>
+                    <Link className="dash-empty-btn" to="/tasks">+ Add Task</Link>
+                  </div>
+                ) : null}
+              </div>
+              {taskList.length ? (
+                <div className="dash-add-row">
+                  <input
+                    aria-label="Quick add task"
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void addTask() }}
+                    placeholder="+ Add a task"
+                    type="text"
+                    value={newTaskTitle}
+                  />
+                </div>
+              ) : null}
+            </section>
+
+            <section className="dash-card dash-streak-card">
+              <span className="dash-eyebrow flame">{'\uD83D\uDD25'} Study Streak</span>
+              <div className="dash-streak-num">
+                {streak > 0 ? `${streak} day streak` : 'Start your streak'}
+              </div>
+              <p className="dash-streak-sub">
+                {streak > 0
+                  ? dashboard?.studied_today
+                    ? "You've studied today. Keep it going!"
+                    : 'Study 30 minutes today to continue your streak.'
+                  : 'Study for 30 minutes today to begin your streak.'}
+              </p>
+              {dashboard?.next_milestone ? (
+                <div className="dash-ms">
+                  <span className="dash-ms-label">NEXT MILESTONE: {dashboard.next_milestone.target} DAYS</span>
+                  <div className="dash-ms-rail">
+                    <span className="dash-ms-cap">{'\uD83D\uDFE0'}</span>
+                    <div className="dash-ms-line">
+                      <div className="dash-ms-fill" style={{ width: `${Math.min(100, dashboard.next_milestone.progress)}%` }} />
+                    </div>
+                    <span className="dash-ms-cap">{'\uD83D\uDFE2'}</span>
+                  </div>
+                  <small className="dash-ms-count">{streak} / {dashboard.next_milestone.target} days</small>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="dash-card dash-exams">
+              <div className="dash-head">
+                <span className="dash-eyebrow">{'\uD83C\uDF93'} Upcoming Exams</span>
+                {dashboard?.upcoming_exams.length ? (
+                  <Link className="dash-seeall" to="/exams">See all</Link>
+                ) : null}
+              </div>
+              {dashboard?.upcoming_exams.length ? (
+                <div className="dash-exam-list">
+                  {dashboard.upcoming_exams.slice(0, 3).map((exam) => (
+                    <div key={exam.id} className="dash-exam-row">
+                      <div className="dash-exam-main">
+                        <strong>{exam.subject_name ?? exam.title}</strong>
+                        <small>
+                          {exam.subject_name ? `${exam.title} \u00B7 ` : ''}
+                          {new Date(exam.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </small>
+                      </div>
+                      <span className="dash-exam-days">{exam.days_left ?? 0} days</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="dash-empty">
+                  <p className="dash-empty-title">No upcoming exams</p>
+                  <p className="dash-empty-body">Add an exam and Flox will pace your preparation.</p>
+                  <Link className="dash-empty-btn" to="/exams">+ Add Exam</Link>
+                </div>
+              )}
+            </section>
+
+            <section className="dash-card dash-ai">
+              <span className="dash-eyebrow ai">{'\u2726'} FLOX AI</span>
+              <p className="dash-ai-text">{aiInsight.hasData ? aiInsight.text : 'Need help with your studies?'}</p>
+              {aiInsight.hasData ? (
+                <p className="dash-ai-detail">{aiInsight.detail}</p>
+              ) : null}
+              <Link className="dash-ai-btn" to="/ai-tutor">Ask FLOX AI {'\u2192'}</Link>
+            </section>
+
+            <section
+              className="dash-card dash-activity"
+              onClick={() => navigate('/progress')}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate('/progress') }}
+            >
+              <div className="dash-head">
+                <span className="dash-eyebrow">{'\uD83D\uDCCA'} Recent Activity</span>
+              </div>
+              <div className="dash-chart">
+                {weekBars.map((bar) => (
+                  <div className="dash-bar-col" key={bar.key}>
+                    <div className="dash-bar-track">
+                      <div
+                        className={`dash-bar-fill ${bar.minutes ? '' : 'empty'}`}
+                        style={{ height: `${bar.pct}%` }}
+                        title={`${formatMinutes(bar.minutes)}`}
+                      />
+                    </div>
+                    <span className="dash-bar-label">{bar.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="dash-activity-foot">
+                <strong>{formatMinutes(dashboard?.week_minutes ?? 0)}</strong>
+                <span>this week</span>
+                {weekDelta !== null && (
+                  <small className={weekDelta >= 0 ? 'up' : 'down'}>
+                    {weekDelta >= 0 ? '\u2191' : '\u2193'} {Math.abs(weekDelta)}% vs last week
+                  </small>
                 )}
               </div>
-              <Link className="db-continue-cta" to="/focus">
-                {'\u23F1\uFE0F'} Resume Session
-              </Link>
-            </div>
-          ) : (
-            <div className="db-continue-inner">
-              <div className="db-continue-info">
-                <span className="db-eyebrow">{'\u23F1\uFE0F'} Start Your First Session</span>
-                <h3>Choose something to study today.</h3>
-                <span className="db-continue-meta">Your completed sessions will appear here.</span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 4 - Today's Schedule */}
-        <section className="db-card db-schedule">
-          <span className="db-eyebrow">{'\uD83D\uDCC5'} Today's Schedule</span>
-          <div className="db-schedule-list">
-            {scheduleItems.length ? (
-              scheduleItems.slice(0, 5).map((task) => {
-                const done = task.status === 'done'
-                return (
-                  <div key={task.id} className={`db-sch-row ${done ? 'is-done' : ''}`}>
-                    <span className="db-sch-time">{formatTime(task.scheduled_for!)}</span>
-                    <span className="db-sch-texts">
-                      <strong>{task.subject_name ?? task.title}</strong>
-                      {task.subject_name ? <small>{task.title}</small> : null}
-                    </span>
-                    <span className={`db-sch-state ${done ? 'done' : ''}`}>{done ? '\u2713' : '\u25CB'}</span>
+              {lastSession ? (
+                <div className="dash-activity-row">
+                  <div className="dash-activity-text">
+                    <strong>{lastSession.subject_name ?? 'Study Session'}{lastSession.topic ? ` \u2014 ${lastSession.topic}` : ''}</strong>
+                    <small>Last session {timeAgo(lastSession.started_at)}{continueSubjectPct !== null ? ` \u00B7 ${continueSubjectPct}% complete` : ''}</small>
                   </div>
-                )
-              })
-            ) : (
-              <p className="db-empty">Nothing scheduled yet. Add sessions from the planner.</p>
-            )}
-          </div>
-          <Link className="db-card-link" to="/calendar">View Calendar {'\u2192'}</Link>
-        </section>
-
-        {/* 5 - AI Recommendation */}
-        <section className="db-card db-ai">
-          <span className="db-eyebrow ai">{'\u2726'} FLOX AI</span>
-          {aiInsight.hasData ? (
-            <>
-              <p className="db-ai-head">{aiInsight.text}</p>
-              <p className="db-ai-body">{aiInsight.detail}</p>
-              <span className="db-ai-time">Estimated time: {aiInsight.minutes} minutes</span>
-            </>
-          ) : (
-            <>
-              <p className="db-ai-head">I need a little more information to personalize your study plan.</p>
-              <p className="db-ai-body">Add your subjects and goals, and I'll build a plan around them.</p>
-            </>
-          )}
-        </section>
-
-        {/* 6 - This Week */}
-        <section className="db-card db-week" onClick={() => navigate('/progress')} role="link" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter') navigate('/progress') }}>
-          <span className="db-eyebrow">{'\uD83D\uDCCA'} This Week</span>
-          <div className="db-chart">
-            {weekBars.map((bar) => (
-              <div className="db-bar-col" key={bar.key}>
-                <div className="db-bar-track">
-                  <div className={`db-bar-fill ${bar.minutes ? '' : 'empty'}`} style={{ height: `${bar.pct}%` }} title={`${formatMinutes(bar.minutes)}`} />
+                  <Link className="dash-resume" to="/focus">{'\u23F1\uFE0F'} Resume</Link>
                 </div>
-                <span className="db-bar-label">{bar.label}</span>
-              </div>
-            ))}
-          </div>
-          <div className="db-week-foot">
-            <strong>{formatMinutes(dashboard?.week_minutes ?? 0)}</strong>
-            <span>this week</span>
-            {weekDelta !== null && (
-              <small className={weekDelta >= 0 ? 'up' : 'down'}>
-                {weekDelta >= 0 ? '\u2191' : '\u2193'} {Math.abs(weekDelta)}% vs last week
-              </small>
-            )}
-          </div>
-        </section>
+              ) : (
+                <p className="dash-activity-empty">Complete a focus session to start building momentum.</p>
+              )}
+            </section>
 
-        {/* 7 - Study Streak */}
-        <section className="db-card db-streak">
-          <span className="db-eyebrow flame">{'\uD83D\uDD25'} Study Streak</span>
-          <strong className="db-streak-num">{streak} days</strong>
-          {dashboard?.next_milestone ? (
-            <div className="db-milestone">
-              <span className="db-milestone-label">NEXT MILESTONE: {dashboard.next_milestone.target} DAYS</span>
-              <div className="db-milestone-track">
-                <span className="db-milestone-cap start">{'\uD83D\uDFE0'}</span>
-                <div className="db-milestone-rail">
-                  <div className="db-milestone-fill" style={{ width: `${Math.min(100, dashboard.next_milestone.progress)}%` }} />
+            <section className="dash-card dash-subjects">
+              <div className="dash-head">
+                <span className="dash-eyebrow">{'\uD83D\uDCDA'} Subject Progress</span>
+                {subjectsSummary.length ? (
+                  <Link className="dash-seeall" to="/subjects">View all</Link>
+                ) : null}
+              </div>
+              {subjectsSummary.length ? (
+                <div className="dash-subj-list">
+                  {subjectsSummary.slice(0, 4).map((sub) => {
+                    const pct = sub.total_topics ? Math.round((sub.topics_completed / sub.total_topics) * 100) : 0
+                    return (
+                      <div key={sub.name} className="dash-subj-row">
+                        <div className="dash-subj-head">
+                          <span className="dash-subj-dot" style={{ background: sub.color || '#8b5cf6' }} />
+                          <strong>{sub.name}</strong>
+                          <span>{pct}%</span>
+                        </div>
+                        <div className="dash-subj-track">
+                          <div className="dash-subj-fill" style={{ width: `${pct}%`, background: sub.color || '#8b5cf6' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                <span className="db-milestone-cap end">{'\uD83D\uDFE2'}</span>
-              </div>
-              <small>{streak} / {dashboard.next_milestone.target} days</small>
-            </div>
-          ) : (
-            <p className="db-empty">Keep studying to unlock milestones!</p>
-          )}
-        </section>
-
-        {/* 8 - Subject Progress */}
-        <section className="db-card db-subjects">
-          <span className="db-eyebrow">{'\uD83D\uDCDA'} Subject Progress</span>
-          <div className="db-subj-list">
-            {subjectsSummary.slice(0, 4).map((sub) => {
-              const pct = sub.total_topics ? Math.round((sub.topics_completed / sub.total_topics) * 100) : 0
-              return (
-                <div key={sub.name} className="db-subj-row">
-                  <div className="db-subj-head">
-                    <span className="db-subj-dot" style={{ background: sub.color || '#8b5cf6' }} />
-                    <strong>{sub.name}</strong>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="db-subj-track">
-                    <div className="db-subj-fill" style={{ width: `${pct}%`, background: sub.color || '#8b5cf6' }} />
-                  </div>
+              ) : (
+                <div className="dash-empty">
+                  <p className="dash-empty-body">Add subjects to track progress.</p>
+                  <Link className="dash-empty-btn" to="/subjects">+ Add Subject</Link>
                 </div>
-              )
-            })}
-            {!subjectsSummary.length && <p className="db-empty">Add subjects to track progress.</p>}
+              )}
+            </section>
           </div>
-          <Link className="db-card-link" to="/subjects">View All {'\u2192'}</Link>
-        </section>
-
-        {/* 9 - Today's Tasks */}
-        <section className="db-card db-tasks">
-          <span className="db-eyebrow">{'\u2705'} Today's Tasks</span>
-          <div className="db-task-list">
-            {taskList.map((task) => (
-              <div key={task.id} className="db-task-row">
-                <button
-                  aria-label={task.status === 'done' ? 'Mark as not done' : 'Mark as done'}
-                  className={`db-check ${task.status === 'done' ? 'done' : ''}`}
-                  disabled={savingTaskId === task.id}
-                  onClick={() => void toggleTask(task)}
-                  type="button"
-                />
-                <span className={`db-task-text ${task.status === 'done' ? 'done' : ''}`}>{task.title}</span>
-              </div>
-            ))}
-            {!taskList.length && <p className="db-empty">All caught up!</p>}
-          </div>
-          <div className="db-add-row">
-            <input
-              aria-label="Quick add task"
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void addTask() }}
-              placeholder="+ Add a task"
-              type="text"
-              value={newTaskTitle}
-            />
-          </div>
-          <Link className="db-card-link" to="/tasks">View All Tasks {'\u2192'}</Link>
-        </section>
-      </div>
+        </>
+      ) : null}
     </PageShell>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from './ResponsiveBottomSheet'
 import {
   AD_REWARD_PER_WATCH,
   type Allowance,
@@ -90,10 +90,9 @@ type Dialog = 'daily' | 'quota' | null
 export default function FloxLimitDialogs() {
   const { allowance, project, setAllowance } = useAllowance()
   const [dialog, setDialog] = useState<Dialog>(null)
-  const dialogSheet = useSheet(dialog !== null)
   const [lastDialog, setLastDialog] = useState<Dialog>(null)
   if (dialog && dialog !== lastDialog) setLastDialog(dialog)
-  const shownDialog = dialogSheet.render ? (dialog || lastDialog) : null
+  const shownDialog = dialog !== null ? dialog : lastDialog
   const [error, setError] = useState('')
   const activeRef = useRef<Dialog>(null)
 
@@ -132,35 +131,36 @@ export default function FloxLimitDialogs() {
   const isDaily = shownDialog === 'daily'
 
   return (
-    <div className={'flox-backdrop' + (dialogSheet.closing ? ' sheet-closing' : '')} onClick={close}>
-      <div className="flox-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <header className="flox-modal-head">
-          <span className="flox-modal-badge">{'\u2726'} FLOX AI</span>
-          <button className="flox-close" onClick={close} aria-label="Close">{'\u00D7'}</button>
-        </header>
+    <ResponsiveBottomSheet
+      open={dialog !== null}
+      onClose={close}
+      title={'\u2726 FLOX AI'}
+      footer={
+        !isDaily ? (
+          <button className="flox-btn" onClick={close}>Got it</button>
+        ) : undefined
+      }
+    >
+      {isDaily ? (
+        <div className="flox-body">
+          <h3>You&apos;ve reached your daily AI limit.</h3>
+          <p>You can get more AI access by watching a short ad.</p>
 
-        {isDaily ? (
-          <>
-            <h3>You've reached your daily AI limit.</h3>
-            <p>You can get more AI access by watching a short ad.</p>
+          <AllowanceChip allowance={allowance} project={project} />
 
-            <AllowanceChip allowance={allowance} project={project} />
+          <WatchAdCta onGranted={(a) => { setAllowance(a); setDialog(null) }} onError={() => setError('Could not grant ad reward right now.')} />
 
-            <WatchAdCta onGranted={(a) => { setAllowance(a); setDialog(null) }} onError={() => setError('Could not grant ad reward right now.')} />
+          {error && <p className="flox-error">{error}</p>}
 
-            {error && <p className="flox-error">{error}</p>}
-
-            <p className="flox-note">Your free AI resets tomorrow.</p>
-          </>
-        ) : (
-          <>
-            <h3>FLOX is taking a break.</h3>
-            <p>We've reached today's AI capacity. Please try again later.</p>
-            <p className="flox-note">Your study data is safe.</p>
-            <button className="flox-btn" onClick={close}>Got it</button>
-          </>
-        )}
-      </div>
-    </div>
+          <p className="flox-note">Your free AI resets tomorrow.</p>
+        </div>
+      ) : (
+        <div className="flox-body">
+          <h3>FLOX is taking a break.</h3>
+          <p>We&apos;ve reached today&apos;s AI capacity. Please try again later.</p>
+          <p className="flox-note">Your study data is safe.</p>
+        </div>
+      )}
+    </ResponsiveBottomSheet>
   )
 }

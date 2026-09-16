@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useUserProfile, displayName, initials } from '../hooks/useUserProfile'
 import { getTheme, toggleTheme, type ThemeMode } from '../lib/theme'
-import { IconBack, IconMoon, IconSettings, IconSun } from './icons'
+import { IconBack, IconBot, IconMoon, IconSettings, IconSun } from './icons'
 
 type PageShellProps = {
   title: string
@@ -15,6 +15,8 @@ type PageShellProps = {
   hideBack?: boolean
   /** Show the live clock + date in the mobile top bar instead of the page title. */
   clockInBar?: boolean
+  /** Extra compact actions rendered in the mobile top bar (e.g. a + add button). */
+  mobileActions?: ReactNode
 }
 
 export default function PageShell({
@@ -26,6 +28,7 @@ export default function PageShell({
   className = '',
   hideBack = false,
   clockInBar = false,
+  mobileActions,
 }: PageShellProps) {
   const profile = useUserProfile()
   const name = displayName(profile)
@@ -69,10 +72,18 @@ export default function PageShell({
             <IconBack size={22} />
           </button>
         )}
-        {clockInBar ? (
+        {clockInBar && !hideBack ? (
           <div className="page-shell-mclock">
             <span className="page-shell-mclock-time">{formattedTime}</span>
             <span className="page-shell-mclock-date">{formattedDate}</span>
+          </div>
+        ) : hideBack ? (
+          <div className="page-shell-mbrand">
+            <span className="page-shell-mbrand-mark"><IconBot size={18} /></span>
+            <span className="page-shell-mbrand-text">
+              <strong>Flox AI</strong>
+              <small>AI Study Planner</small>
+            </span>
           </div>
         ) : (
           <h1 className="page-shell-mtitle">{title}</h1>
@@ -90,6 +101,7 @@ export default function PageShell({
           <Link className="page-shell-settings" to="/settings" title="Settings" aria-label="Settings">
             <IconSettings size={18} />
           </Link>
+          {mobileActions}
         </div>
       </div>
 

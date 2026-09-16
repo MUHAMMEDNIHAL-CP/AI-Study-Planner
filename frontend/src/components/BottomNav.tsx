@@ -16,6 +16,8 @@ import {
   IconSettings,
   IconLogout,
   IconHelp,
+  IconShield,
+  IconBook,
 } from './icons'
 
 type NavItem = {
@@ -36,7 +38,7 @@ type MoreItem = {
   label: string
   to: string
   icon: typeof IconDashboard
-  section: 'study' | 'account'
+  section: 'study' | 'account' | 'support'
 }
 
 const MORE_ITEMS: MoreItem[] = [
@@ -49,7 +51,9 @@ const MORE_ITEMS: MoreItem[] = [
   { label: 'Calendar', to: '/calendar', icon: IconCalendar, section: 'study' },
   { label: 'Profile', to: '/profile', icon: IconDashboard, section: 'account' },
   { label: 'Settings', to: '/settings', icon: IconSettings, section: 'account' },
-  { label: 'Help & Support', to: '/help', icon: IconHelp, section: 'account' },
+  { label: 'Help & Support', to: '/help', icon: IconHelp, section: 'support' },
+  { label: 'Privacy Policy', to: '/privacy', icon: IconShield, section: 'support' },
+  { label: 'Terms of Service', to: '/terms', icon: IconBook, section: 'support' },
 ]
 
 export default function BottomNav() {
@@ -153,6 +157,17 @@ export default function BottomNav() {
                   <span className="bn-drawer-row-label">Logout</span>
                   <span className="bn-drawer-row-arrow">{'\u203A'}</span>
                 </button>
+              </div>
+
+              <span className="bn-drawer-section">Support</span>
+              <div className="bn-drawer-list">
+                {MORE_ITEMS.filter((i) => i.section === 'support').map((item) => (
+                  <Link key={item.to} to={item.to} className="bn-drawer-row">
+                    <span className="bn-drawer-row-icon"><item.icon size={19} /></span>
+                    <span className="bn-drawer-row-label">{item.label}</span>
+                    <span className="bn-drawer-row-arrow">{'\u203A'}</span>
+                  </Link>
+                ))}
               </div>
             </div>
           </div>

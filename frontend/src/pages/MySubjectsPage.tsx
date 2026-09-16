@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -21,7 +21,6 @@ export default function MySubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const addSheet = useSheet(showModal)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [detailTasks, setDetailTasks] = useState<Task[]>([])
   const [detailExams, setDetailExams] = useState<Exam[]>([])
@@ -232,34 +231,36 @@ export default function MySubjectsPage() {
       )}
 
       {/* ── Add Modal ── */}
-      {addSheet.render && (
-        <div className={'cal-modal-overlay' + (addSheet.closing ? ' sheet-closing' : '')} onClick={() => setShowModal(false)} onMouseDown={(e) => e.target === e.currentTarget && setShowModal(false)}>
-            <section className="cal-modal" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className="zq-modal-head">
-              <h2>Add Subject</h2>
-              <button className="zq-modal-close" onClick={() => setShowModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+      <ResponsiveBottomSheet
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Add Subject"
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button type="button" className="cal-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>
+            <button type="submit" form="ms-add-subject" className="cal-modal-create">Save Subject</button>
+          </div>
+        }
+      >
+        <form
+          id="ms-add-subject"
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          onSubmit={handleCreate}
+        >
+          <div className="cal-modal-field"><label>Subject Name *</label><input autoFocus placeholder="Computer Science" value={fName} onChange={(e) => setFName(e.target.value)} required /></div>
+          <div className="cal-modal-field"><label>Subject Code</label><input placeholder="CS101" value={fCode} onChange={(e) => setFCode(e.target.value)} /></div>
+          <div className="cal-modal-field"><label>Teacher</label><input placeholder="Dr. Smith" value={fTeacher} onChange={(e) => setFTeacher(e.target.value)} /></div>
+          <div className="cal-modal-field">
+            <label>Color</label>
+            <div className="ms-color-row">
+              {COLORS.map((c) => <button key={c} type="button" className={`ms-color-btn ${fColor === c ? 'active' : ''}`} style={{ background: c }} onClick={() => setFColor(c)} />)}
             </div>
-            <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }} onSubmit={handleCreate}>
-              <div className="cal-modal-field"><label>Subject Name *</label><input autoFocus placeholder="Computer Science" value={fName} onChange={(e) => setFName(e.target.value)} required /></div>
-              <div className="cal-modal-field"><label>Subject Code</label><input placeholder="CS101" value={fCode} onChange={(e) => setFCode(e.target.value)} /></div>
-              <div className="cal-modal-field"><label>Teacher</label><input placeholder="Dr. Smith" value={fTeacher} onChange={(e) => setFTeacher(e.target.value)} /></div>
-              <div className="cal-modal-field">
-                <label>Color</label>
-                <div className="ms-color-row">
-                  {COLORS.map((c) => <button key={c} type="button" className={`ms-color-btn ${fColor === c ? 'active' : ''}`} style={{ background: c }} onClick={() => setFColor(c)} />)}
-                </div>
-              </div>
-              <div className="cal-modal-field"><label>Target Grade</label><input placeholder="A" value={fGrade} onChange={(e) => setFGrade(e.target.value)} /></div>
-              <div className="cal-modal-field"><label>Weekly Goal (hrs)</label><input min="0" step="0.5" type="number" value={fGoal} onChange={(e) => setFGoal(e.target.value)} /></div>
-              <div className="cal-modal-field"><label>Weak Topics</label><input placeholder="Inheritance, Polymorphism, ..." value={fWeak} onChange={(e) => setFWeak(e.target.value)} /></div>
-              <div className="cal-modal-actions">
-                <button type="button" className="cal-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="cal-modal-create">Save Subject</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+          </div>
+          <div className="cal-modal-field"><label>Target Grade</label><input placeholder="A" value={fGrade} onChange={(e) => setFGrade(e.target.value)} /></div>
+          <div className="cal-modal-field"><label>Weekly Goal (hrs)</label><input min="0" step="0.5" type="number" value={fGoal} onChange={(e) => setFGoal(e.target.value)} /></div>
+          <div className="cal-modal-field"><label>Weak Topics</label><input placeholder="Inheritance, Polymorphism, ..." value={fWeak} onChange={(e) => setFWeak(e.target.value)} /></div>
+        </form>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

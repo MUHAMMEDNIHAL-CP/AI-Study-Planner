@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { IconSettings } from '../components/icons'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
+import { useStreak } from '../hooks/useStreak'
 
 type Subject = { id: number; name: string; color?: string }
 type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; date: string; mood?: string }
@@ -166,7 +167,7 @@ export default function FocusModePage() {
   const [aiInput, setAiInput] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const confirmSheet = useSheet(confirmOpen)
+  const [celebrate, setCelebrate] = useState(false)
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const breakTickRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -216,26 +217,21 @@ export default function FocusModePage() {
 
   const plannedSeconds = Number(customMin) > 0 ? Number(customMin) * 60 : DURATIONS[durationIdx].seconds
 
-  const hasSessionOn = useCallback(
-    (key: string) => sessions.some((s) => s.date === key && s.duration_minutes >= 20),
+  // Streak + today's focus progress come from the shared backend source of
+  // truth (GET /study/dashboard/), never from a local session-only counter.
+  const { streak, loading: streakLoading, error: streakError, refresh: refreshStreak } = useStreak()
+
+  const todaySessions = useMemo(
+    () => sessions.filter((s) => s.date === new Date().toISOString().slice(0, 10)).length,
     [sessions],
   )
 
-  const todayKeyStr = new Date().toISOString().slice(0, 10)
+  const streakLabel = streakLoading && !streak ? '\u2014 day streak' : `${streak?.current_streak ?? 0} day${(streak?.current_streak ?? 0) === 1 ? '' : 's'}`
 
-  const streak = useMemo(() => {
-    let count = 0
-    const d = new Date()
-    if (!hasSessionOn(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1)
-    while (hasSessionOn(d.toISOString().slice(0, 10))) {
-      count++
-      d.setDate(d.getDate() - 1)
-    }
-    return count
-  }, [hasSessionOn])
-
-  const todayDone = useMemo(() => sessions.filter((s) => s.date === todayKeyStr && s.duration_minutes >= 20).length, [sessions, todayKeyStr])
-  const streakDelta = todayDone > 0 ? 0 : 1
+  const todayMinutes = streak?.today_minutes ?? 0
+  const DAILY_GOAL_MINUTES = 30
+  const todayMinutesLabel = streakLoading && !streak ? '\u2014' : String(todayMinutes)
+  const todayPct = Math.min(100, Math.round((todayMinutes / DAILY_GOAL_MINUTES) * 100))
 
   useEffect(() => {
     if (tickRef.current) clearInterval(tickRef.current)
@@ -365,6 +361,7 @@ export default function FocusModePage() {
     setReviewNote('')
     setAiMessages([])
     setUiVisible(true)
+    setCelebrate(false)
     setPhase('running')
   }
 
@@ -452,6 +449,9 @@ export default function FocusModePage() {
       notifyStudyActivity()
       const { data } = await api.get<FocusSession[]>('/productivity/focus-sessions/')
       setSessions(data)
+      // Pull the freshly-recomputed streak (backend marks today's study day and
+      // counts it once, no matter how many activities happen today).
+      void refreshStreak()
       toast.success('📊 Progress updated — great work!')
       stopAmbience()
       setPhase('setup')
@@ -459,6 +459,7 @@ export default function FocusModePage() {
       setGoal('')
       setMood('')
       setReviewNote('')
+      setCelebrate(completedMinutes >= 30)
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
@@ -469,9 +470,8 @@ export default function FocusModePage() {
   const setup = (
     <div className="fm-setup">
       <header className="fm-top">
-        <Link to="/dashboard" className="fm-setup-back">{'\u2190'} Dashboard</Link>
+        <Link to="/dashboard" className="fm-setup-back">{'\u2190'} Focus Mode</Link>
         <div className="fm-top-right">
-          <span className="fm-streak-pill">{'\uD83D\uDD25'} {streak} day{streak !== 1 ? 's' : ''}</span>
           <button className={'fm-kebab' + (settingsOpen ? ' open' : '')} onClick={() => setSettingsOpen((v) => !v)} type="button" aria-label="Focus settings"><IconSettings size={18} /></button>
           {settingsOpen && (
             <div className="fm-settings">
@@ -499,7 +499,30 @@ export default function FocusModePage() {
       </header>
 
       <div className="fm-setup-body">
-        <span className="fm-session-meta">Session {todayDone + 1}</span>
+        <section className="fm-streak-card">
+          <div className="fm-streak-head">
+            <span className="fm-streak-emoji">{'\uD83D\uDD25'}</span>
+            <div className="fm-streak-txt">
+              <b>{streakLabel}</b>
+              <span>{streakLoading && !streak ? 'Loading your streak…' : streakError ? 'Could not refresh — showing last known value' : 'From your study log'}</span>
+            </div>
+            {streakError && (
+              <button className="fm-streak-retry" onClick={() => void refreshStreak()} type="button" aria-label="Retry streak" title="Retry">{'\u21BB'}</button>
+            )}
+          </div>
+          <div className="fm-today-head">
+            <span>{'\uD83C\uDFAF'} Today&apos;s Focus</span>
+            <b>{todayMinutesLabel} / {DAILY_GOAL_MINUTES} min</b>
+          </div>
+          <div className="fm-today-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={todayPct}>
+            <i style={{ width: todayPct + '%' }} />
+          </div>
+          {celebrate && todayMinutes >= DAILY_GOAL_MINUTES && (
+            <div className="fm-celebrate">{'\uD83C\uDF89'} Focus goal completed! {DAILY_GOAL_MINUTES} minutes studied {'\u00B7'} {'\uD83D\uDD25'} {streakLabel}</div>
+          )}
+        </section>
+
+        <span className="fm-session-meta">Session {todaySessions + 1}</span>
 
         <div className="fm-timer-ring">
           <svg viewBox="0 0 200 200" className="fm-ring-svg">
@@ -576,13 +599,15 @@ export default function FocusModePage() {
       </button>
 
       <div className="fm-run-center">
-        <div className="fm-hero-time xl">{clock(secondsLeft)}</div>
+        <span className="fm-run-brand">Focus Mode</span>
+        <div className="fm-hero-time xl" aria-label={clock(secondsLeft)}>{clock(secondsLeft)}</div>
         <div className="fm-line"><i style={{ width: progress + '%' }} /></div>
         <div className="fm-run-subject">
           {subjectName ? <b style={{ color: subjectColor }}>{subjectName}</b> : <b>Focus session</b>}
           {topic ? <span>{topic}</span> : null}
           {goal ? <em>{'\uD83C\uDFAF'} {goal}</em> : null}
         </div>
+        <div className="fm-run-streak">{'\uD83D\uDD25'} {streakLoading ? '\u2014 day streak' : streakLabel}</div>
 
         <button
           className="fm-pause-btn"
@@ -642,7 +667,8 @@ export default function FocusModePage() {
         <div className="fm-stat-chips">
           <div className="fm-chip">{'\u23F1'} {completedMinutes} min</div>
           <div className="fm-chip">{'\uD83C\uDFAF'} Focus {focusScore}%</div>
-          <div className="fm-chip">{'\uD83D\uDD25'} {streakDelta === 1 ? '+1 day' : streak + ' days'}</div>
+          {completedMinutes >= 30 && <div className="fm-chip goal">{'\uD83C\uDF89'} 30-min goal</div>}
+          <div className="fm-chip">{'\uD83D\uDD25'} {streakLabel}</div>
         </div>
 
         <p className="fm-complete-question">How did it go?</p>
@@ -731,19 +757,20 @@ export default function FocusModePage() {
         <button className="fm-ai-back" onClick={() => setAiOpen(false)} type="button">Back to Focus {'\u2192'}</button>
       </aside>
 
-      {confirmSheet.render && (
-        <div className={'fm-confirm-overlay' + (confirmSheet.closing ? ' sheet-closing' : '')} onClick={() => setConfirmOpen(false)}>
-          <div className="fm-confirm" onClick={(e) => e.stopPropagation()}>
-            <b>End session early?</b>
-            <p>You have studied {completedMinutes} min. Ending now will still save your progress.</p>
-            <div className="fm-confirm-actions">
-              <button className="fm-ghost-btn" onClick={() => setConfirmOpen(false)} type="button">Keep Going</button>
-              <button className="fm-main-btn" onClick={() => { setConfirmOpen(false); setPhase('complete') }} type="button">End &amp; Save</button>
-            </div>
-            <button className="fm-confirm-discard" onClick={discardSession} type="button">Discard without saving</button>
+      <ResponsiveBottomSheet
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="End session early?"
+        footer={
+          <div className="fm-confirm-actions">
+            <button className="fm-ghost-btn" onClick={() => setConfirmOpen(false)} type="button">Continue</button>
+            <button className="fm-main-btn" onClick={() => { setConfirmOpen(false); setPhase('complete') }} type="button">End Session</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className="fm-confirm-copy">Your current session is {completedMinutes} minute{completedMinutes === 1 ? '' : 's'}. Ending now saves your progress{completedMinutes < 30 ? ' — it is under the 30-minute goal, so it will not count as a focus-goal day by itself.' : '.'}</p>
+        <button className="fm-confirm-discard" onClick={discardSession} type="button">Discard without saving</button>
+      </ResponsiveBottomSheet>
     </div>
   )
 }

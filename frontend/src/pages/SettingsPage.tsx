@@ -6,6 +6,7 @@ import { applyTheme, getTheme, type ThemeMode } from '../lib/theme'
 import { clearAuthTokens } from '../lib/auth'
 import { notifyProfileUpdated } from '../hooks/useUserProfile'
 import PageShell from '../components/PageShell'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 
 /* ── Local preferences ─────────────────────────────────────── */
 
@@ -864,27 +865,29 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {editField && (
-        <div className="pf-modal-overlay" onClick={() => setEditField(null)} role="presentation">
-          <div className="pf-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <h3>Edit Email</h3>
-            <label className="pf-field">
-              <span>Email</span>
-              <input
-                autoFocus
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit() }}
-                placeholder="you@example.com"
-                type="email"
-                value={editValue}
-              />
-            </label>
-            <div className="pf-modal-actions">
-              <button className="ghost-action" onClick={() => setEditField(null)} type="button">Cancel</button>
-            </div>
+      <ResponsiveBottomSheet
+        open={editField !== null}
+        onClose={() => setEditField(null)}
+        title="Edit Email"
+        footer={
+          <div className="pf-modal-actions">
+            <button className="ghost-action" onClick={() => setEditField(null)} type="button">Cancel</button>
+            <button className="au-submit pf-modal-save" onClick={() => void saveEdit()} type="button">Save</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <label className="pf-field">
+          <span>Email</span>
+          <input
+            autoFocus
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit() }}
+            placeholder="you@example.com"
+            type="email"
+            value={editValue}
+          />
+        </label>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

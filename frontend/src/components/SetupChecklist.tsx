@@ -93,7 +93,7 @@ export default function SetupChecklist({ state }: { state: SetupChecklistState }
   return (
     <section className="setup-card">
       <header className="setup-head">
-        <span className="setup-title">Get started with FocusFlow</span>
+        <span className="setup-title">Get started with Flox AI</span>
         <span className="setup-count">{doneCount}/{steps.length}</span>
       </header>
       <p className="setup-sub">Complete these steps to set up your study workspace.</p>

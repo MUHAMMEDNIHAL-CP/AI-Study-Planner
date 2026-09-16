@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -151,7 +151,6 @@ export default function QuizCenterPage() {
   const [cqDifficulty, setCqDifficulty] = useState('medium')
   const [generating, setGenerating] = useState(false)
   const [genOpen, setGenOpen] = useState(false)
-  const genSheet = useSheet(genOpen)
 
   /* active quiz */
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
@@ -794,84 +793,83 @@ export default function QuizCenterPage() {
       {view === 'active' && activeView}
       {view === 'result' && resultView}
 
-      {genSheet.render && (
-        <div className={'qz-modal-backdrop' + (genSheet.closing ? ' sheet-closing' : '')} onClick={() => setGenOpen(false)}>
-          <div className="qz-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="qz-modal-head">
-              <div>
-                <span className="qz-gen-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
-                <h3>Create a Quiz</h3>
-                <p>Pick a subject or topic, choose your settings, and let AI test your knowledge.</p>
-              </div>
-              <button className="qz-modal-close" onClick={() => setGenOpen(false)} type="button">&#10005;</button>
-            </div>
-
-            <div className="qz-modal-body">
-              <div className="qz-gen-grid">
-                <label className="qz-field">
-                  <span>Subject</span>
-                  <select value={cqSubject} onChange={(e) => pickSubject(e.target.value)}>
-                    <option value="">No subject</option>
-                    {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </label>
-
-                <label className="qz-field">
-                  <span>Topic</span>
-                  <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
-                    {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-                    <option value="__custom">Custom topic...</option>
-                  </select>
-                </label>
-
-                <label className="qz-field">
-                  <span>Questions</span>
-                  <select value={cqCount} onChange={(e) => setCqCount(Number(e.target.value))}>
-                    {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} Questions</option>)}
-                  </select>
-                </label>
-
-                <label className="qz-field">
-                  <span>Difficulty</span>
-                  <select value={cqDifficulty} onChange={(e) => setCqDifficulty(e.target.value)}>
-                    {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              {cqTopic === '__custom' && (
-                <input
-                  className="qz-custom-input"
-                  placeholder="e.g. Constructors & Destructors"
-                  value={cqCustomTopic}
-                  onChange={(e) => setCqCustomTopic(e.target.value)}
-                />
-              )}
-
-              <div className="qz-source-row">
-                <span className="qz-source-label">Source</span>
-                {SOURCES.map((src) => (
-                  <button
-                    key={src.key}
-                    className={'qz-source' + (cqSource === src.key ? ' on' : '')}
-                    onClick={() => handleSource(src.key)}
-                    type="button"
-                  >
-                    <i className="qz-radio" />{src.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="qz-modal-foot">
-              <button className="qz-cancel-btn" onClick={() => setGenOpen(false)} type="button">Cancel</button>
-              <button className="qz-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
-                {generating ? 'Generating...' : 'Generate Quiz \u2192'}
-              </button>
-            </div>
+      <ResponsiveBottomSheet
+        open={genOpen}
+        onClose={() => setGenOpen(false)}
+        title="Create a Quiz"
+        footer={
+          <div className="rbs-actions">
+            <button className="qz-cancel-btn" onClick={() => setGenOpen(false)} type="button">Cancel</button>
+            <button className="qz-generate-btn" disabled={generating} onClick={() => void generateQuiz()} type="button">
+              {generating ? 'Generating...' : 'Generate Quiz →'}
+            </button>
           </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="qz-gen-kicker">{'\u2726'} AI QUIZ GENERATOR</span>
+          <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.5, color: 'var(--text-dim)' }}>
+            Pick a subject or topic, choose your settings, and let AI test your knowledge.
+          </p>
         </div>
-      )}
+
+        <div className="qz-gen-grid">
+          <label className="qz-field">
+            <span>Subject</span>
+            <select value={cqSubject} onChange={(e) => pickSubject(e.target.value)}>
+              <option value="">No subject</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+
+          <label className="qz-field">
+            <span>Topic</span>
+            <select value={cqTopic} onChange={(e) => setCqTopic(e.target.value)}>
+              {topicOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              <option value="__custom">Custom topic...</option>
+            </select>
+          </label>
+
+          <label className="qz-field">
+            <span>Questions</span>
+            <select value={cqCount} onChange={(e) => setCqCount(Number(e.target.value))}>
+              {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} Questions</option>)}
+            </select>
+          </label>
+
+          <label className="qz-field">
+            <span>Difficulty</span>
+            <select value={cqDifficulty} onChange={(e) => setCqDifficulty(e.target.value)}>
+              {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {cqTopic === '__custom' && (
+          <input
+            className="qz-custom-input"
+            placeholder="e.g. Constructors & Destructors"
+            value={cqCustomTopic}
+            onChange={(e) => setCqCustomTopic(e.target.value)}
+          />
+        )}
+
+        <div className="qz-source-row">
+          <span className="qz-source-label">Source</span>
+          {SOURCES.map((src) => (
+            <button
+              key={src.key}
+              className={'qz-source' + (cqSource === src.key ? ' on' : '')}
+              onClick={() => handleSource(src.key)}
+              type="button"
+            >
+              <i className="qz-radio" />{src.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

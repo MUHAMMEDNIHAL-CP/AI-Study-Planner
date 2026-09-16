@@ -3,7 +3,7 @@ import type { PointerEvent as RPointerEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -228,15 +228,12 @@ export default function CalendarPage() {
   const [nowMin, setNowMin] = useState(() => nowMinutes())
   const [detail, setDetail] = useState<CalEvent | null>(null)
 
-  const formSheet = useSheet(form.open)
-  const detailSheet = useSheet(!!detail)
-  const aiSheet = useSheet(aiOpen)
   const [lastForm, setLastForm] = useState<FormState | null>(null)
   if (form.open && form !== lastForm) setLastForm(form)
   const [lastDetail, setLastDetail] = useState<CalEvent | null>(null)
   if (detail && detail !== lastDetail) setLastDetail(detail)
-  const formModal = formSheet.render ? (form.open ? form : lastForm) : null
-  const detailModal = detailSheet.render ? (detail || lastDetail) : null
+  const formModal = form.open ? form : lastForm
+  const detailModal = detail || lastDetail
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -937,13 +934,24 @@ export default function CalendarPage() {
       )}
 
       {/* Create / edit modal */}
-      {formSheet.render && formModal && (
-        <div className={'cal-modal-overlay' + (formSheet.closing ? ' sheet-closing' : '')} onClick={() => setForm(emptyForm())}>
-          <div className="cal-modal cal-formmodal" onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <h3>{formModal.mode === 'create' ? 'Create Study Session' : 'Edit Event'}</h3>
-              <button className="cal-modal-close" onClick={() => setForm(emptyForm())} aria-label="Close">&#215;</button>
-            </div>
+      <ResponsiveBottomSheet
+        open={form.open}
+        onClose={() => setForm(emptyForm())}
+        title={formModal?.mode === 'create' ? 'Create Study Session' : 'Edit Event'}
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            {formModal?.mode === 'edit' && editingEvent && (
+              <button className="cal-danger" disabled={saving} onClick={() => void deleteEvent(editingEvent)}>Delete</button>
+            )}
+            <button className="cal-cancel" onClick={() => setForm(emptyForm())}>Cancel</button>
+            <button className="cal-save" disabled={saving} onClick={() => void submitForm()}>
+              {saving ? 'Saving\u2026' : formModal?.mode === 'create' ? 'Create' : 'Save'}
+            </button>
+          </div>
+        }
+      >
+        {formModal && (
+          <>
             <label className="cal-field">
               <span>Title</span>
               <input
@@ -993,43 +1001,22 @@ export default function CalendarPage() {
                 </select>
               </label>
             )}
-            <div className="cal-modal-actions">
-              {formModal.mode === 'edit' && editingEvent && (
-                <button className="cal-danger" disabled={saving} onClick={() => void deleteEvent(editingEvent)}>Delete</button>
-              )}
-              <button className="cal-cancel" onClick={() => setForm(emptyForm())}>Cancel</button>
-              <button className="cal-save" disabled={saving} onClick={() => void submitForm()}>
-                {saving ? 'Saving\u2026' : formModal.mode === 'create' ? 'Create' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </ResponsiveBottomSheet>
 
       {/* Event detail modal */}
-      {detailSheet.render && detailModal && (
-        <div className={'cal-modal-overlay' + (detailSheet.closing ? ' sheet-closing' : '')} onClick={() => setDetail(null)}>
-          <div className="cal-modal cal-detailmodal" onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <h3><span className="dt-dot" style={{ background: accentOf(detailModal.type) }} />{detailModal.title}</h3>
-              <button className="cal-modal-close" onClick={() => setDetail(null)} aria-label="Close">&#215;</button>
-            </div>
-            <div className="dt-body">
-              <p className="dt-sub">{detailModal.subtitle}</p>
-              <p className="dt-line">
-                {friendlyDate(detailModal.date)}
-                {detailModal.time
-                  ? ` \u00B7 ${fmtTime12(detailModal.time)}${detailModal.minutes ? ` \u2013 ${fmtTime12(endTime(detailModal.time, detailModal.minutes))}` : ''}`
-                  : ' \u00B7 All day'}
-              </p>
-              {detailModal.type === 'exam' && detailModal.examDaysLeft != null && detailModal.examDaysLeft >= 0 && (
-                <p className="dt-examline">
-                  {detailModal.examDaysLeft === 0 ? 'Exam is today' : `${detailModal.examDaysLeft} day${detailModal.examDaysLeft === 1 ? '' : 's'} away`}
-                  {' \u00B7 '}{detailModal.examPrepPct ?? 0}% prepared
-                </p>
-              )}
-            </div>
-            <div className="cal-modal-actions wrap">
+      <ResponsiveBottomSheet
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title={
+          detailModal ? (
+            <><span className="dt-dot" style={{ background: accentOf(detailModal.type) }} />{detailModal.title}</>
+          ) : ''
+        }
+        footer={
+          detailModal ? (
+            <div className="cal-modal-actions rbs-actions wrap">
               {detailModal.kind === 'task' && !detailModal.completed && (
                 <button className="cal-startfocus" onClick={() => navigate('/focus')}>Start Focus</button>
               )}
@@ -1037,46 +1024,62 @@ export default function CalendarPage() {
               <button className="cal-cancel" onClick={() => openEdit(detailModal)}>Edit</button>
               <button className="cal-danger" onClick={() => void deleteEvent(detailModal)}>Delete</button>
             </div>
+          ) : null
+        }
+      >
+        {detailModal && (
+          <div className="dt-body">
+            <p className="dt-sub">{detailModal.subtitle}</p>
+            <p className="dt-line">
+              {friendlyDate(detailModal.date)}
+              {detailModal.time
+                ? ` \u00B7 ${fmtTime12(detailModal.time)}${detailModal.minutes ? ` \u2013 ${fmtTime12(endTime(detailModal.time, detailModal.minutes))}` : ''}`
+                : ' \u00B7 All day'}
+            </p>
+            {detailModal.type === 'exam' && detailModal.examDaysLeft != null && detailModal.examDaysLeft >= 0 && (
+              <p className="dt-examline">
+                {detailModal.examDaysLeft === 0 ? 'Exam is today' : `${detailModal.examDaysLeft} day${detailModal.examDaysLeft === 1 ? '' : 's'} away`}
+                {' \u00B7 '}{detailModal.examPrepPct ?? 0}% prepared
+              </p>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </ResponsiveBottomSheet>
 
       {/* AI free-slot modal */}
-      {aiSheet.render && (
-        <div className={'cal-modal-overlay' + (aiSheet.closing ? ' sheet-closing' : '')} onClick={() => setAiOpen(false)}>
-          <div className="cal-modal cal-aimodal" onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <h3><span className="ai-star">&#10022;</span> AI Schedule</h3>
-              <button className="cal-modal-close" onClick={() => setAiOpen(false)} aria-label="Close">&#215;</button>
-            </div>
-            {aiSlots.length === 0 ? (
-              <p className="ai-lead">{'Your week looks packed \u2014 no free 50-minute periods found.'}</p>
-            ) : (
-              <>
-                <p className="ai-lead">I found {aiSlots.length} free study period{aiSlots.length === 1 ? '' : 's'} this week:</p>
-                <ul className="ai-slots">
-                  {aiSlots.map((s, i) => (
-                    <li key={`${s.date}-${s.time}`}>
-                      <span className="ai-n">{i + 1}</span>
-                      <b>{friendlyDate(s.date)}</b>
-                      <span className="ai-t">{fmtTime12(s.time)} {'\u00B7'} 50 min</span>
-                    </li>
-                  ))}
-                </ul>
-                {aiSubject && <p className="ai-rec">Recommended for <b>{aiSubject}</b></p>}
-              </>
+      <ResponsiveBottomSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        title={<><span className="ai-star">&#10022;</span> AI Schedule</>}
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button className="cal-cancel" onClick={() => setAiOpen(false)}>Close</button>
+            {aiSlots.length > 0 && (
+              <button className="cal-save" disabled={aiBusy} onClick={() => void addAiSlots()}>
+                {aiBusy ? 'Adding\u2026' : 'Add All'}
+              </button>
             )}
-            <div className="cal-modal-actions">
-              <button className="cal-cancel" onClick={() => setAiOpen(false)}>Close</button>
-              {aiSlots.length > 0 && (
-                <button className="cal-save" disabled={aiBusy} onClick={() => void addAiSlots()}>
-                  {aiBusy ? 'Adding\u2026' : 'Add All'}
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        }
+      >
+        {aiSlots.length === 0 ? (
+          <p className="ai-lead">{'Your week looks packed \u2014 no free 50-minute periods found.'}</p>
+        ) : (
+          <>
+            <p className="ai-lead">I found {aiSlots.length} free study period{aiSlots.length === 1 ? '' : 's'} this week:</p>
+            <ul className="ai-slots">
+              {aiSlots.map((s, i) => (
+                <li key={`${s.date}-${s.time}`}>
+                  <span className="ai-n">{i + 1}</span>
+                  <b>{friendlyDate(s.date)}</b>
+                  <span className="ai-t">{fmtTime12(s.time)} {'\u00B7'} 50 min</span>
+                </li>
+              ))}
+            </ul>
+            {aiSubject && <p className="ai-rec">Recommended for <b>{aiSubject}</b></p>}
+          </>
+        )}
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }

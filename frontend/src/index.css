@@ -20002,3 +20002,7 @@ body.fm-immersive .app-main-with-sidebar { padding-left: 0 !important; }
     text-align: center;
   }
 }
+
+/* Toast containers must never block the UI behind them; only the toast itself is interactive. */
+.Toastify__toast-container { pointer-events: none; }
+.Toastify__toast-container > * { pointer-events: auto; }

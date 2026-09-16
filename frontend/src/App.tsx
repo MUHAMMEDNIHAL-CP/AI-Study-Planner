@@ -16,6 +16,12 @@ function AppFrame() {
   const authed = isAuthenticated()
   const isAdminRoute = location.pathname.startsWith('/admin')
 
+  useEffect(() => {
+    const useShell = authed && !isAdminRoute && !location.pathname.startsWith('/login')
+    document.body.classList.toggle('app-shell', useShell)
+    return () => { document.body.classList.remove('app-shell') }
+  }, [authed, isAdminRoute, location.pathname])
+
   return (
     <>
       <ScrollToTop />

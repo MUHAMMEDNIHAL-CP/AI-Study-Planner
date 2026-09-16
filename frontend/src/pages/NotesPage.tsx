@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 
@@ -191,7 +191,6 @@ export default function NotesPage() {
   const [savedTick, setSavedTick] = useState(false)
 
   const [showTemplates, setShowTemplates] = useState(false)
-  const templatesSheet = useSheet(showTemplates)
   const [showSidebar, setShowSidebar] = useState(false)
   const [aiPanel, setAiPanelState] = useState<AiPanel>(AI_CLOSED)
   const [askInput, setAskInput] = useState('')
@@ -200,17 +199,15 @@ export default function NotesPage() {
   function closeAi() { setAiPanelState(AI_CLOSED) }
 
   const [quizOpen, setQuizOpen] = useState(false)
-  const quizSheet = useSheet(quizOpen)
   const [quizSource, setQuizSource] = useState<'note' | 'subject' | 'all'>('note')
   const [quizCount, setQuizCount] = useState('10')
   const [quizDifficulty, setQuizDifficulty] = useState('medium')
   const [quizBusy, setQuizBusy] = useState(false)
 
   const [deck, setDeck] = useState<Flashcard[] | null>(null)
-  const deckSheet = useSheet(!!deck)
   const [lastDeck, setLastDeck] = useState<Flashcard[] | null>(null)
   if (deck && deck !== lastDeck) setLastDeck(deck)
-  const deckModal = deckSheet.render ? (deck || lastDeck) : null
+  const deckModal = deck || lastDeck
   const [deckIdx, setDeckIdx] = useState(0)
   const [deckFlipped, setDeckFlipped] = useState(false)
 
@@ -898,91 +895,76 @@ export default function NotesPage() {
       {showSidebar && <div className="nt-backdrop" onClick={() => setShowSidebar(false)} />}
 
       {/* Template picker */}
-      {templatesSheet.render && (
-        <div className={'nt-overlay' + (templatesSheet.closing ? ' sheet-closing' : '')} onClick={() => setShowTemplates(false)}>
-          <div className="nt-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Start a new note</h3>
-            <div className="nt-template-grid">
-              {TEMPLATES.map((t) => (
-                <button key={t.key} className="nt-template-card" onClick={() => startFromTemplate(t.key)}>
-                  <span className="tc-icon">{t.icon}</span>
-                  <strong>{t.label}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
+      <ResponsiveBottomSheet
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        title="Start a new note"
+      >
+        <div className="nt-template-grid">
+          {TEMPLATES.map((t) => (
+            <button key={t.key} className="nt-template-card" onClick={() => startFromTemplate(t.key)}>
+              <span className="tc-icon">{t.icon}</span>
+              <strong>{t.label}</strong>
+            </button>
+          ))}
         </div>
-      )}
+      </ResponsiveBottomSheet>
 
       {/* Quiz generator */}
-      {quizSheet.render && (
-        <div className={'nt-overlay' + (quizSheet.closing ? ' sheet-closing' : '')} onClick={() => setQuizOpen(false)}>
-          <div className="nt-modal nt-quizmodal" onClick={(e) => e.stopPropagation()}>
-            <h3>{'\uD83D\uDCDD'} Generate Quiz</h3>
-            <div className="qz-group">
-              <span className="qz-label">From</span>
-              {([
-                ['note', 'This note'],
-                ['subject', 'This subject'],
-                ['all', 'All my notes'],
-              ] as Array<['note' | 'subject' | 'all', string]>).map(([key, label]) => (
-                <button
-                  key={key}
-                  className={'qz-radio' + (quizSource === key ? ' on' : '')}
-                  onClick={() => setQuizSource(key)}
-                >
-                  <i /> {label}
-                </button>
-              ))}
-            </div>
-            <div className="qz-group">
-              <span className="qz-label">Questions</span>
-              <select value={quizCount} onChange={(e) => setQuizCount(e.target.value)}>
-                {['5', '10', '15', '20'].map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="qz-group">
-              <span className="qz-label">Difficulty</span>
-              <div className="qz-seg">
-                {['easy', 'medium', 'hard'].map((d) => (
-                  <button key={d} className={quizDifficulty === d ? ' on' : ''} onClick={() => setQuizDifficulty(d)}>
-                    {d.charAt(0).toUpperCase() + d.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="nt-modal-actions">
-              <button className="nt-cancel" onClick={() => setQuizOpen(false)}>Cancel</button>
-              <button className="nt-primary" disabled={quizBusy} onClick={() => void generateQuiz()}>
-                {quizBusy ? 'Generating\u2026' : 'Generate Quiz'}
+      <ResponsiveBottomSheet
+        open={quizOpen}
+        onClose={() => setQuizOpen(false)}
+        title={'\uD83D\uDCDD Generate Quiz'}
+        footer={
+          <div className="nt-modal-actions">
+            <button className="nt-cancel" onClick={() => setQuizOpen(false)}>Cancel</button>
+            <button className="nt-primary" disabled={quizBusy} onClick={() => void generateQuiz()}>
+              {quizBusy ? 'Generating\u2026' : 'Generate Quiz'}
+            </button>
+          </div>
+        }
+      >
+        <div className="qz-group">
+          <span className="qz-label">From</span>
+          {([
+            ['note', 'This note'],
+            ['subject', 'This subject'],
+            ['all', 'All my notes'],
+          ] as Array<['note' | 'subject' | 'all', string]>).map(([key, label]) => (
+            <button
+              key={key}
+              className={'qz-radio' + (quizSource === key ? ' on' : '')}
+              onClick={() => setQuizSource(key)}
+            >
+              <i /> {label}
+            </button>
+          ))}
+        </div>
+        <div className="qz-group">
+          <span className="qz-label">Questions</span>
+          <select value={quizCount} onChange={(e) => setQuizCount(e.target.value)}>
+            {['5', '10', '15', '20'].map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="qz-group">
+          <span className="qz-label">Difficulty</span>
+          <div className="qz-seg">
+            {['easy', 'medium', 'hard'].map((d) => (
+              <button key={d} className={quizDifficulty === d ? ' on' : ''} onClick={() => setQuizDifficulty(d)}>
+                {d.charAt(0).toUpperCase() + d.slice(1)}
               </button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+      </ResponsiveBottomSheet>
 
       {/* Flashcard deck */}
-      {deckModal && (
-        <div className={'nt-overlay' + (deckSheet.closing ? ' sheet-closing' : '')} onClick={() => setDeck(null)}>
-          <div className="nt-modal nt-deck" onClick={(e) => e.stopPropagation()}>
-            <header className="dk-head">
-              <span className="dk-kicker">{'\uD83C\uDCCF'} FLASHCARD</span>
-              <button className="nt-x" onClick={() => setDeck(null)} aria-label="Close">&#215;</button>
-            </header>
-            <button
-              className={'dk-card' + (deckFlipped ? ' flipped' : '')}
-              onClick={() => setDeckFlipped(!deckFlipped)}
-            >
-              {deckFlipped ? (
-                <span className="dk-back">{deckModal[deckIdx].back}</span>
-              ) : (
-                <>
-                  <span className="dk-q">What is it?</span>
-                  <span className="dk-front">{deckModal[deckIdx].front}</span>
-                  <span className="dk-hint">{'\u2193 Tap to reveal \u2193'}</span>
-                </>
-              )}
-            </button>
+      <ResponsiveBottomSheet
+        open={!!deck}
+        onClose={() => setDeck(null)}
+        title={'\uD83C\uDCCF FLASHCARD'}
+        footer={
+          deckModal ? (
             <footer className="dk-nav">
               <button disabled={deckIdx === 0} onClick={() => { setDeckIdx(deckIdx - 1); setDeckFlipped(false) }}>
                 {'\u2190'} Previous
@@ -995,9 +977,26 @@ export default function NotesPage() {
                 Next {'\u2192'}
               </button>
             </footer>
-          </div>
-        </div>
-      )}
+          ) : null
+        }
+      >
+        {deckModal && (
+          <button
+            className={'dk-card' + (deckFlipped ? ' flipped' : '')}
+            onClick={() => setDeckFlipped(!deckFlipped)}
+          >
+            {deckFlipped ? (
+              <span className="dk-back">{deckModal[deckIdx].back}</span>
+            ) : (
+              <>
+                <span className="dk-q">What is it?</span>
+                <span className="dk-front">{deckModal[deckIdx].front}</span>
+                <span className="dk-hint">{'\u2193 Tap to reveal \u2193'}</span>
+              </>
+            )}
+          </button>
+        )}
+      </ResponsiveBottomSheet>
 
       {/* AI drawer */}
       {aiPanel.open && (

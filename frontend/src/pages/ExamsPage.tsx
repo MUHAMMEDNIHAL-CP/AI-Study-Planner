@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { toast } from 'react-toastify'
 import PageShell from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
-import { useSheet } from '../hooks/useSheet'
+import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 type Exam = {
@@ -95,7 +95,6 @@ export default function ExamsPage() {
   const [detailLoading, setDetailLoading] = useState(false)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const createSheet = useSheet(showCreateModal)
   const [showEditModules, setShowEditModules] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
@@ -469,99 +468,95 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {createSheet.render && (
-        <div
-          className={'cal-modal-overlay' + (createSheet.closing ? ' sheet-closing' : '')}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false) }}
+      <ResponsiveBottomSheet
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Add Exam"
+        footer={
+          <div className="cal-modal-actions rbs-actions">
+            <button type="button" className="cal-modal-cancel" onClick={() => setShowCreateModal(false)}>Cancel</button>
+            <button type="submit" form="ex-add-exam" className="cal-modal-create">Save Exam</button>
+          </div>
+        }
+      >
+        <form
+          id="ex-add-exam"
+          onSubmit={handleCreate}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
         >
-          <div
-            className="cal-modal"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="zq-modal-head">
-              <h2>Add Exam</h2>
-              <button className="zq-modal-close" onClick={() => setShowCreateModal(false)} type="button" aria-label="Close">{'\u00d7'}</button>
+          <div className="cal-modal-field">
+            <label>Title *</label>
+            <input autoFocus placeholder="e.g. Calculus Midterm" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+          </div>
+          <div className="cal-modal-field">
+            <label>Subject</label>
+            <select value={formSubject} onChange={(e) => setFormSubject(e.target.value)}>
+              <option value="">No subject</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="cal-modal-row">
+            <div className="cal-modal-field">
+              <label>Date *</label>
+              <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
             </div>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="cal-modal-field">
-                <label>Title *</label>
-                <input autoFocus placeholder="e.g. Calculus Midterm" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
-              </div>
-              <div className="cal-modal-field">
-                <label>Subject</label>
-                <select value={formSubject} onChange={(e) => setFormSubject(e.target.value)}>
-                  <option value="">No subject</option>
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="cal-modal-row">
-                <div className="cal-modal-field">
-                  <label>Date *</label>
-                  <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
-                </div>
-                <div className="cal-modal-field">
-                  <label>Priority</label>
-                  <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-              </div>
-              <div className="cal-modal-field">
-                <label>Notes</label>
-                <textarea placeholder="Optional notes about this exam" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} />
-              </div>
-              <div className="cal-modal-field">
-                <label>Modules</label>
-                {formModules.map((name, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                    <input
-                      placeholder={`Module ${i + 1}`}
-                      value={name}
-                      onChange={(e) => {
-                        const updated = [...formModules]
-                        updated[i] = e.target.value
-                        setFormModules(updated)
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFormModules(formModules.filter((_, j) => j !== i))}
-                      style={{
-                        padding: '0 10px',
-                        borderRadius: 8,
-                        border: '1px solid var(--line)',
-                        background: 'transparent',
-                        color: '#fca5a5',
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      &times;
-                    </button>
-                  </div>
-                ))}
+            <div className="cal-modal-field">
+              <label>Priority</label>
+              <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+          <div className="cal-modal-field">
+            <label>Notes</label>
+            <textarea placeholder="Optional notes about this exam" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} />
+          </div>
+          <div className="cal-modal-field">
+            <label>Modules</label>
+            {formModules.map((name, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <input
+                  placeholder={`Module ${i + 1}`}
+                  value={name}
+                  onChange={(e) => {
+                    const updated = [...formModules]
+                    updated[i] = e.target.value
+                    setFormModules(updated)
+                  }}
+                />
                 <button
                   type="button"
-                  onClick={() => setFormModules([...formModules, ''])}
-                  className="ghost-action"
-                  style={{ fontSize: '0.82rem', padding: '6px 14px', marginTop: 4 }}
+                  onClick={() => setFormModules(formModules.filter((_, j) => j !== i))}
+                  style={{
+                    padding: '0 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--line)',
+                    background: 'transparent',
+                    color: '#fca5a5',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                  }}
                 >
-                  + Add Module
+                  &times;
                 </button>
               </div>
-              <div className="cal-modal-actions">
-                <button type="button" className="cal-modal-cancel" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button type="submit" className="cal-modal-create">Save Exam</button>
-              </div>
-            </form>
+            ))}
+            <button
+              type="button"
+              onClick={() => setFormModules([...formModules, ''])}
+              className="ghost-action"
+              style={{ fontSize: '0.82rem', padding: '6px 14px', marginTop: 4 }}
+            >
+              + Add Module
+            </button>
           </div>
-        </div>
-      )}
+        </form>
+      </ResponsiveBottomSheet>
     </PageShell>
   )
 }
