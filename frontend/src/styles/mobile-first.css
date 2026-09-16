@@ -4300,8 +4300,10 @@ body.ai-coach-page-active .app-main-with-sidebar {
   flex: 0 0 auto;
 }
 
-/* ── Desktop sidebar (≥1201px) ── */
-@media (min-width: 1201px) {
+/* ── Desktop sidebar overrides DISABLED ──
+   PC uses the original index.css sidebar. Restore the redesigned sidebar
+   by changing the media query below back to `@media (min-width: 1201px)`. */
+@media (min-width: 99999px) {
   .orbit-sidebar {
     width: var(--sidebar-width);
     display: flex !important;
