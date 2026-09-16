@@ -22,7 +22,7 @@ export default function DocumentLayout({ eyebrow, title, subtitle, children }: D
       <header className="doc-nav">
         <Link className="doc-brand" to={authed ? '/dashboard' : '/'}>
           <span className="doc-brand-mark"><IconBot size={18} /></span>
-          <strong>FocusFlow AI</strong>
+          <strong>Flox AI</strong>
         </Link>
         <div className="doc-nav-spacer" />
         {authed ? (

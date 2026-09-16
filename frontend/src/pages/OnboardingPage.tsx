@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import { IconBot } from '../components/icons'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyProfileUpdated } from '../hooks/useUserProfile'
@@ -46,7 +46,8 @@ export default function OnboardingPage() {
       navigate('/dashboard')
     } catch (err) {
       toast.error(getErrorMessage(err))
-      navigate('/dashboard')
+      // Stay on this page so the student can retry — navigating to the
+      // dashboard on failure would silently discard their setup.
     } finally {
       setSaving(false)
     }

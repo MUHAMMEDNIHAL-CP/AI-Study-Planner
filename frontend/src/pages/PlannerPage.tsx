@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { IconPlanner, IconSpark } from '../components/icons'

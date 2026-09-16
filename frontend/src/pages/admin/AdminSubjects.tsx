@@ -23,7 +23,7 @@ export default function AdminSubjects() {
       {!loading && !error && data && (
         <>
           <div className="ad-stats ad-stats-3">
-            <AdminStatCard label="Total subjects" value={formatNumber(subjects.length ? 0 : 0)} hint="Ranked by user count" tone="violet" />
+            <AdminStatCard label="Total subjects" value={formatNumber(subjects.length)} hint="Ranked by user count" tone="violet" />
             <AdminStatCard label="Most users" value={top ? formatNumber(top.user_count) : 0} hint={top?.name ?? '—'} tone="green" />
             <AdminStatCard label="Most sessions" value={subjects.length ? formatNumber(Math.max(...subjects.map((s) => s.session_count))) : 0} hint="Focus sessions" tone="cyan" />
           </div>

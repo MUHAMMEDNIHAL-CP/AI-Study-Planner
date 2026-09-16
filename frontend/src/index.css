@@ -1866,6 +1866,30 @@ h3 {
   color: var(--text);
 }
 
+.ci-preview {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.ci-time {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  opacity: 0.7;
+  margin-top: 3px;
+}
+
+.ac-chatitem.active .ci-preview,
+.ac-chatitem.active .ci-time { color: #ff8a5c; opacity: 0.85; }
+
 .ci-more { position: relative; }
 
 .ci-more summary {
@@ -2062,17 +2086,18 @@ h3 {
 .ac-row.coach { justify-content: flex-start; }
 
 .ac-userbubble {
-  max-width: min(78%, 480px);
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 10px 15px;
+  max-width: min(80%, 480px);
+  background: linear-gradient(135deg, var(--accent) 0%, #f97316 100%);
+  color: #ffffff;
+  border: none;
+  padding: 11px 15px;
   border-radius: 18px 18px 4px 18px;
-  font-size: 13.8px;
+  font-size: 14px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  overflow-wrap: anywhere;
+  box-shadow: 0 3px 12px rgba(255, 107, 74, 0.22);
 }
 
 .ac-card {
@@ -3738,6 +3763,19 @@ body.ai-coach-page-active .floating-bot-btn { display: none !important; }
 
 .zri-badge.ok { background: rgba(54, 212, 121, 0.15); color: #36d479; }
 .zri-badge.no { background: rgba(255, 123, 114, 0.15); color: #ff7b72; }
+
+/* Neutral review state (past attempts have no per-question marks) */
+.zr-item.review { border-left: 3px solid var(--border); }
+.zri-badge.review { background: rgba(128, 128, 144, 0.16); color: var(--muted); font-size: 9px; }
+.zri-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+}
 
 .zri-q { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.5; flex: 1; }
 

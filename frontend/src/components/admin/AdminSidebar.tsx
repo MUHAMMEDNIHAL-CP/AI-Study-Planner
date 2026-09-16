@@ -87,7 +87,7 @@ export default function AdminSidebar() {
           <IconShield size={20} />
         </span>
         <span className="ad-brand-text">
-          <strong>FocusFlow</strong>
+          <strong>Flox</strong>
           <small>Super Admin</small>
         </span>
       </Link>

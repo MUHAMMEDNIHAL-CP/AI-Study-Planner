@@ -143,21 +143,19 @@ export default function FloxLimitDialogs() {
     >
       {isDaily ? (
         <div className="flox-body">
-          <h3>You&apos;ve reached your daily AI limit.</h3>
-          <p>You can get more AI access by watching a short ad.</p>
-
+          <h3>AI limit reached</h3>
+          <p>Flox AI has reached your daily AI usage limit.</p>
+          <p>Get more AI access by watching a short ad, or try again tomorrow.</p>
           <AllowanceChip allowance={allowance} project={project} />
-
           <WatchAdCta onGranted={(a) => { setAllowance(a); setDialog(null) }} onError={() => setError('Could not grant ad reward right now.')} />
-
           {error && <p className="flox-error">{error}</p>}
-
           <p className="flox-note">Your free AI resets tomorrow.</p>
         </div>
       ) : (
         <div className="flox-body">
-          <h3>FLOX is taking a break.</h3>
-          <p>We&apos;ve reached today&apos;s AI capacity. Please try again later.</p>
+          <h3>AI limit reached</h3>
+          <p>Flox AI has temporarily reached its AI usage limit.</p>
+          <p>Please try again later.</p>
           <p className="flox-note">Your study data is safe.</p>
         </div>
       )}

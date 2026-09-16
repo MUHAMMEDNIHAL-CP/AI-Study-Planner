@@ -48,8 +48,13 @@ export default function AdminSettings() {
         </div>
       </div>
 
+      <div className="ad-alert" role="status">
+        Preview switches. Saving records the intended platform configuration in the audit log, but the
+        backend doesn't enforce these flags yet.
+      </div>
+
       {error && <div className="ad-alert">{error}</div>}
-      {saved && <div className="ad-empty" style={{ borderColor: 'var(--line-strong)' }}>Settings saved and audited.</div>}
+      {saved && <div className="ad-empty" style={{ borderColor: 'var(--line-strong)' }}>Preference recorded and audited.</div>}
 
       <div className="ad-card">
         <div className="ad-bars">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
@@ -146,8 +146,11 @@ export default function ExamsPage() {
   const upcomingExams = useMemo(
     () =>
       [...exams]
-        .filter((e) => new Date(e.date) >= new Date())
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        // Parse "YYYY-MM-DD" as LOCAL midnight so an exam today is still
+        // "upcoming" until the day ends (a UTC parse drops today's exam in
+        // timezones west of UTC).
+        .filter((e) => new Date(e.date + 'T00:00:00') >= new Date(new Date().toDateString()))
+        .sort((a, b) => new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime()),
     [exams],
   )
 

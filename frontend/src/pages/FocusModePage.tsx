@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import { IconSettings } from '../components/icons'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
@@ -8,12 +8,28 @@ import { notifyStudyActivity } from '../lib/studyActivity'
 import { useStreak } from '../hooks/useStreak'
 
 type Subject = { id: number; name: string; color?: string }
-type FocusSession = { id: number; subject_name?: string; topic?: string; duration_minutes: number; date: string; mood?: string }
 type NoteLite = { id: number; title: string; content: string }
 
 type Phase = 'setup' | 'running' | 'paused' | 'break' | 'complete'
 
 type SoundId = 'none' | 'rain' | 'brown' | 'lofi'
+
+/**
+ * A focus session that is currently in progress is persisted to localStorage
+ * so a refresh / app reopen resumes exactly where the user left off. Timing
+ * is wall-clock based (sessionEndAt), never a decrementing counter, so the
+ * countdown stays accurate even when the tab is backgrounded.
+ */
+type ActiveSession = {
+  phase: 'running' | 'paused'
+  totalSeconds: number
+  secondsLeft: number
+  sessionEndAt: number
+  pauseCount: number
+  subjectId: string
+  topic: string
+  sound: SoundId
+}
 
 const DURATIONS = [
   { label: '25 min', seconds: 25 * 60 },
@@ -22,21 +38,22 @@ const DURATIONS = [
 ]
 
 const MOODS = [
-  { emoji: '😫', value: 'difficult', label: 'Difficult' },
-  { emoji: '😐', value: 'okay', label: 'Okay' },
-  { emoji: '🙂', value: 'good', label: 'Good' },
-  { emoji: '🔥', value: 'excellent', label: 'Excellent' },
+  { emoji: '\u{1F62B}', value: 'difficult', label: 'Difficult' },
+  { emoji: '\u{1F610}', value: 'okay', label: 'Okay' },
+  { emoji: '\u{1F642}', value: 'good', label: 'Good' },
+  { emoji: '\u{1F525}', value: 'excellent', label: 'Excellent' },
 ] as const
 
 const SOUNDS: Array<{ id: SoundId; label: string }> = [
   { id: 'none', label: 'Off' },
   { id: 'rain', label: 'Rain' },
-  { id: 'brown', label: 'Brown Noise' },
+  { id: 'brown', label: 'Brown' },
   { id: 'lofi', label: 'Lo-fi' },
 ]
 
 const PREFERENCES_KEY = 'FLOX.settings.v2'
 const SETTINGS_KEY = 'FLOX.focus.settings.v1'
+const ACTIVE_KEY = 'FLOX.focus.active.v1'
 
 type SharedPreferences = {
   sessionLength: number
@@ -118,6 +135,31 @@ function saveSharedPrefs(updates: Partial<SharedPreferences>) {
   } catch { /* ignore */ }
 }
 
+function loadActiveSession(): ActiveSession | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<ActiveSession>
+    if (parsed.phase !== 'running' && parsed.phase !== 'paused') return null
+    if (!parsed.totalSeconds || parsed.totalSeconds <= 0) return null
+    return {
+      phase: parsed.phase,
+      totalSeconds: parsed.totalSeconds,
+      secondsLeft: typeof parsed.secondsLeft === 'number' && parsed.secondsLeft > 0 ? parsed.secondsLeft : parsed.totalSeconds,
+      sessionEndAt: typeof parsed.sessionEndAt === 'number' ? parsed.sessionEndAt : 0,
+      pauseCount: parsed.pauseCount ?? 0,
+      subjectId: parsed.subjectId ?? '',
+      topic: parsed.topic ?? '',
+      sound: parsed.sound ?? 'none',
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+function durationSeconds(durationIdx: number, customMin: string): number {
+  return Number(customMin) > 0 ? Number(customMin) * 60 : DURATIONS[durationIdx].seconds
+}
+
 function pad2(n: number) { return n < 10 ? '0' + n : '' + n }
 
 function clock(s: number) {
@@ -131,28 +173,49 @@ function htmlStrip(html: string) {
 
 export default function FocusModePage() {
   const initial = useMemo(loadSettings, [])
+  const restored = useMemo(loadActiveSession, [])
 
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [sessions, setSessions] = useState<FocusSession[]>([])
 
-  const [phase, setPhase] = useState<Phase>('setup')
-  const [subjectId, setSubjectId] = useState('')
-  const [topic, setTopic] = useState('')
-  const [goal, setGoal] = useState('')
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (!restored) return 'setup'
+    if (restored.phase === 'paused') return 'paused'
+    if (restored.phase === 'running' && restored.sessionEndAt > Date.now()) return 'running'
+    // The running session elapsed while the app was closed: go straight to
+    // reflection so the user can still save the completed time.
+    return 'complete'
+  })
+
+  const defaultTotal = restored?.totalSeconds ?? durationSeconds(initial.durationIdx, initial.customMin)
+
+  const [subjectId, setSubjectId] = useState(restored?.subjectId ?? '')
+  const [topic, setTopic] = useState(restored?.topic ?? '')
   const [durationIdx, setDurationIdx] = useState(initial.durationIdx)
   const [customMin, setCustomMin] = useState(initial.customMin)
-  const [sound, setSound] = useState<SoundId>(initial.sound)
+  const [sound, setSound] = useState<SoundId>(restored?.sound ?? initial.sound)
   const [autoBreak, setAutoBreak] = useState(initial.autoBreak)
   const [confirmEnd, setConfirmEnd] = useState(initial.confirmEnd)
   const [breakMinutes, setBreakMinutes] = useState(initial.breakMinutes)
 
-  const [totalSeconds, setTotalSeconds] = useState(DURATIONS[initial.durationIdx]?.seconds ?? 50 * 60)
-  const [secondsLeft, setSecondsLeft] = useState(totalSeconds)
+  const [totalSeconds, setTotalSeconds] = useState(defaultTotal)
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    if (!restored) return defaultTotal
+    if (restored.phase === 'running') {
+      const left = Math.ceil((restored.sessionEndAt - Date.now()) / 1000)
+      return left > 0 ? left : 0
+    }
+    return Math.max(1, restored.secondsLeft)
+  })
   const [breakLeft, setBreakLeft] = useState(initial.breakMinutes * 60)
-  const [pauseCount, setPauseCount] = useState(0)
+  const [pauseCount, setPauseCount] = useState(restored?.pauseCount ?? 0)
 
   const secondsLeftRef = useRef(secondsLeft)
   useEffect(() => { secondsLeftRef.current = secondsLeft }, [secondsLeft])
+
+  // Wall-clock deadline for the current running segment (0 = not armed).
+  const endAtRef = useRef(restored?.phase === 'running' && restored.sessionEndAt > Date.now() ? restored.sessionEndAt : 0)
+  const breakEndRef = useRef(0)
+  const breakTotalRef = useRef(initial.breakMinutes * 60)
 
   const [mood, setMood] = useState('')
   const [reviewNote, setReviewNote] = useState('')
@@ -178,13 +241,8 @@ export default function FocusModePage() {
     let active = true
     async function load() {
       try {
-        const [subRes, sessRes] = await Promise.all([
-          api.get<Subject[]>('/study/subjects/'),
-          api.get<FocusSession[]>('/productivity/focus-sessions/').catch(() => ({ data: [] as FocusSession[] })),
-        ])
-        if (!active) return
-        setSubjects(subRes.data)
-        setSessions(sessRes.data)
+        const { data } = await api.get<Subject[]>('/study/subjects/')
+        if (active) setSubjects(data)
       } catch (err) { if (active) toast.error(getErrorMessage(err)) }
     }
     void load()
@@ -193,7 +251,7 @@ export default function FocusModePage() {
 
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({ durationIdx, customMin, sound, autoBreak, confirmEnd, breakMinutes }))
-    const durationMinutes = Number(customMin) > 0 ? Number(customMin) : DURATIONS[durationIdx].seconds / 60
+    const durationMinutes = Number(customMin) > 0 ? Number(customMin) : durationSeconds(durationIdx, customMin) / 60
     saveSharedPrefs({
       sessionLength: durationMinutes,
       autoStartBreak: autoBreak,
@@ -203,96 +261,63 @@ export default function FocusModePage() {
     })
   }, [durationIdx, customMin, sound, autoBreak, confirmEnd, breakMinutes])
 
-  const immersive = phase !== 'setup'
+  // Persist an in-progress session so a refresh resumes it. The record is only
+  // removed once the user finishes, discards, or leaves the setup screen.
+  useEffect(() => {
+    if (phase === 'setup') {
+      localStorage.removeItem(ACTIVE_KEY)
+      return
+    }
+    if (phase !== 'running' && phase !== 'paused') return
+    const rec: ActiveSession = {
+      phase,
+      totalSeconds,
+      secondsLeft: secondsLeftRef.current,
+      sessionEndAt: endAtRef.current,
+      pauseCount,
+      subjectId,
+      topic,
+      sound,
+    }
+    try { localStorage.setItem(ACTIVE_KEY, JSON.stringify(rec)) } catch { /* ignore */ }
+  }, [phase, totalSeconds, secondsLeft, pauseCount, subjectId, topic, sound])
+
+  const immersive = phase === 'running' || phase === 'paused' || phase === 'break'
 
   useEffect(() => {
     document.body.classList.toggle('fm-immersive', immersive)
     return () => { document.body.classList.remove('fm-immersive') }
   }, [immersive])
 
+  // Hide the global app chrome (bottom nav / floating bot) for the whole Focus
+  // route so it never occludes the primary Start button on the setup screen.
+  useEffect(() => {
+    document.body.classList.add('fm-focus-route')
+    return () => { document.body.classList.remove('fm-focus-route') }
+  }, [])
+
   const subject = useMemo(() => subjects.find((s) => String(s.id) === subjectId), [subjects, subjectId])
   const subjectName = subject?.name ?? ''
   const subjectColor = subject?.color ?? '#ff8a5c'
-  const progress = totalSeconds > 0 ? ((totalSeconds - secondsLeft) / totalSeconds) * 100 : 0
+  const progress = totalSeconds > 0 ? Math.min(100, ((totalSeconds - secondsLeft) / totalSeconds) * 100) : 0
 
-  const plannedSeconds = Number(customMin) > 0 ? Number(customMin) * 60 : DURATIONS[durationIdx].seconds
+  const plannedSeconds = durationSeconds(durationIdx, customMin)
 
-  // Streak + today's focus progress come from the shared backend source of
-  // truth (GET /study/dashboard/), never from a local session-only counter.
+  // Streak + today's focus come from the shared backend source of truth
+  // (GET /study/dashboard/ via useStreak), never from a local counter, so the
+  // Focus page always matches Dashboard / Profile / Progress.
   const { streak, loading: streakLoading, error: streakError, refresh: refreshStreak } = useStreak()
 
-  const todaySessions = useMemo(
-    () => sessions.filter((s) => s.date === new Date().toISOString().slice(0, 10)).length,
-    [sessions],
-  )
+  const DAILY_GOAL_MINUTES = 30
 
-  const streakLabel = streakLoading && !streak ? '\u2014 day streak' : `${streak?.current_streak ?? 0} day${(streak?.current_streak ?? 0) === 1 ? '' : 's'}`
+  const days = streakLoading && !streak ? null : (streak?.current_streak ?? 0)
+  const streakDayLabel = days === null
+    ? '\u2014 day'
+    : `${days} day${days === 1 ? '' : 's'}`
 
   const todayMinutes = streak?.today_minutes ?? 0
-  const DAILY_GOAL_MINUTES = 30
   const todayMinutesLabel = streakLoading && !streak ? '\u2014' : String(todayMinutes)
   const todayPct = Math.min(100, Math.round((todayMinutes / DAILY_GOAL_MINUTES) * 100))
-
-  useEffect(() => {
-    if (tickRef.current) clearInterval(tickRef.current)
-    if (phase !== 'running') return
-    tickRef.current = setInterval(() => {
-      setSecondsLeft((p) => {
-        if (p <= 1) {
-          playChime()
-          setPhase(autoBreak ? 'break' : 'complete')
-          setBreakLeft(breakMinutes * 60)
-          return 0
-        }
-        return p - 1
-      })
-    }, 1000)
-    return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [phase, autoBreak, breakMinutes])
-
-  useEffect(() => {
-    if (breakTickRef.current) clearInterval(breakTickRef.current)
-    if (phase !== 'break') return
-    breakTickRef.current = setInterval(() => {
-      setBreakLeft((p) => {
-        if (p <= 1) { setPhase('complete'); return 0 }
-        return p - 1
-      })
-    }, 1000)
-    return () => { if (breakTickRef.current) clearInterval(breakTickRef.current) }
-  }, [phase])
-
-  useEffect(() => {
-    if ((phase === 'running' || phase === 'paused') && sound !== 'none') startAmbience(sound)
-    else stopAmbience()
-    return stopAmbience
-  }, [phase, sound])
-
-  useEffect(() => {
-    if (phase !== 'running') { setUiVisible(true); return }
-    const t = setTimeout(() => setUiVisible(false), 3200)
-    return () => clearTimeout(t)
-  }, [phase, uiVisible])
-
-  useEffect(() => {
-    if (phase !== 'running' && phase !== 'paused') {
-      document.title = 'FLOX AI'
-      return
-    }
-    const base = 'FLOX AI — Focus'
-    const id = setInterval(() => {
-      document.title = clock(secondsLeftRef.current) + ' · ' + base
-    }, 1000)
-    document.title = clock(secondsLeft) + ' · ' + base
-    return () => clearInterval(id)
-  }, [phase])
-
-  useEffect(() => {
-    if (phase !== 'running' && phase !== 'paused') return
-    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', h)
-    return () => window.removeEventListener('beforeunload', h)
-  }, [phase])
 
   const playChime = useCallback(() => {
     try {
@@ -352,10 +377,86 @@ export default function FocusModePage() {
     } catch { /* no audio */ }
   }, [stopAmbience])
 
+  // Timestamp-based focus timer: a 250ms tick recomputes the remaining time
+  // from the wall clock, so background throttling / sleep never drifts it.
+  useEffect(() => {
+    if (tickRef.current) clearInterval(tickRef.current)
+    if (phase !== 'running') return
+    if (endAtRef.current <= 0) endAtRef.current = Date.now() + secondsLeftRef.current * 1000
+    tickRef.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+      setSecondsLeft((p) => (p === left ? p : left))
+      if (left <= 0) {
+        if (tickRef.current) clearInterval(tickRef.current)
+        endAtRef.current = 0
+        playChime()
+        setPhase(autoBreak ? 'break' : 'complete')
+        if (autoBreak) {
+          breakEndRef.current = 0
+          breakTotalRef.current = breakMinutes * 60
+          setBreakLeft(breakMinutes * 60)
+        }
+      }
+    }, 250)
+    return () => { if (tickRef.current) clearInterval(tickRef.current) }
+  }, [phase, autoBreak, breakMinutes, playChime])
+
+  // Timestamp-based break timer.
+  useEffect(() => {
+    if (breakTickRef.current) clearInterval(breakTickRef.current)
+    if (phase !== 'break') return
+    if (breakEndRef.current <= 0) breakEndRef.current = Date.now() + breakTotalRef.current * 1000
+    breakTickRef.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((breakEndRef.current - Date.now()) / 1000))
+      setBreakLeft((p) => (p === left ? p : left))
+      if (left <= 0) {
+        if (breakTickRef.current) clearInterval(breakTickRef.current)
+        breakEndRef.current = 0
+        setPhase('complete')
+      }
+    }, 250)
+    return () => { if (breakTickRef.current) clearInterval(breakTickRef.current) }
+  }, [phase])
+
+  useEffect(() => {
+    if ((phase === 'running' || phase === 'paused') && sound !== 'none') startAmbience(sound)
+    else stopAmbience()
+    return stopAmbience
+  }, [phase, sound, startAmbience, stopAmbience])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (phase !== 'running') { setUiVisible(true); return }
+    const t = setTimeout(() => setUiVisible(false), 3200)
+    return () => clearTimeout(t)
+  }, [phase, uiVisible])
+
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'paused') {
+      document.title = 'FLOX AI'
+      return
+    }
+    const base = 'FLOX AI \u2014 Focus'
+    const id = setInterval(() => {
+      document.title = clock(secondsLeftRef.current) + ' \u00B7 ' + base
+    }, 1000)
+    document.title = clock(secondsLeftRef.current) + ' \u00B7 ' + base
+    return () => clearInterval(id)
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'paused') return
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', h)
+    return () => window.removeEventListener('beforeunload', h)
+  }, [phase])
+
   function startSession() {
-    const secs = Number(customMin) > 0 ? Number(customMin) * 60 : DURATIONS[durationIdx].seconds
+    const secs = durationSeconds(durationIdx, customMin)
     setTotalSeconds(secs)
+    secondsLeftRef.current = secs
     setSecondsLeft(secs)
+    endAtRef.current = Date.now() + secs * 1000
     setPauseCount(0)
     setMood('')
     setReviewNote('')
@@ -365,11 +466,23 @@ export default function FocusModePage() {
     setPhase('running')
   }
 
-  function pauseSession() { setPauseCount((p) => p + 1); setPhase('paused'); setUiVisible(true) }
-  function resumeSession() { setPhase('running') }
+  function pauseSession() {
+    const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+    secondsLeftRef.current = remaining
+    setSecondsLeft(remaining)
+    endAtRef.current = 0
+    setPauseCount((p) => p + 1)
+    setUiVisible(true)
+    setPhase('paused')
+  }
+
+  function resumeSession() {
+    endAtRef.current = Date.now() + Math.max(1, secondsLeftRef.current) * 1000
+    setPhase('running')
+  }
 
   function requestEnd() {
-    const elapsed = totalSeconds - secondsLeft
+    const elapsed = totalSeconds - secondsLeftRef.current
     if (elapsed >= 60 && confirmEnd) { setConfirmOpen(true); return }
     if (elapsed >= 60) { setPhase('complete'); return }
     discardSession()
@@ -378,13 +491,18 @@ export default function FocusModePage() {
   function discardSession() {
     setConfirmOpen(false)
     stopAmbience()
+    endAtRef.current = 0
     setPhase('setup')
     setSecondsLeft(totalSeconds)
+    secondsLeftRef.current = totalSeconds
     setMood('')
     setReviewNote('')
   }
 
-  function skipBreak() { setPhase('complete') }
+  function skipBreak() {
+    breakEndRef.current = 0
+    setPhase('complete')
+  }
 
   const completedMinutes = Math.max(1, Math.round((totalSeconds - secondsLeft) / 60))
   const focusScore = Math.max(58, Math.min(99, Math.round(100 - pauseCount * 4)))
@@ -426,9 +544,9 @@ export default function FocusModePage() {
       })
       notifyStudyActivity()
       setAiMessages((prev) => [...prev, { role: 'ai', text: data.reply }])
-    } catch (err) {
-      setAiMessages((prev) => [...prev, { role: 'ai', text: 'I could not connect right now. Your timer is still running — try again in a moment.' }])
-      toast.error(getErrorMessage(err))
+    } catch {
+      setAiMessages((prev) => [...prev, { role: 'ai', text: "FLOX AI couldn't respond right now. Your timer is still running \u2014 try again in a moment." }])
+      toast.error("FLOX AI couldn't respond right now.")
     } finally {
       setAiBusy(false)
     }
@@ -447,16 +565,14 @@ export default function FocusModePage() {
         date: new Date().toISOString().slice(0, 10),
       })
       notifyStudyActivity()
-      const { data } = await api.get<FocusSession[]>('/productivity/focus-sessions/')
-      setSessions(data)
-      // Pull the freshly-recomputed streak (backend marks today's study day and
-      // counts it once, no matter how many activities happen today).
+      // Pull the freshly-recomputed streak: the backend marks today's study
+      // day and counts it once, no matter how many activities happen today.
       void refreshStreak()
-      toast.success('📊 Progress updated — great work!')
+      toast.success('Focus session saved \u2014 great work!')
       stopAmbience()
       setPhase('setup')
       setSecondsLeft(plannedSeconds)
-      setGoal('')
+      secondsLeftRef.current = plannedSeconds
       setMood('')
       setReviewNote('')
       setCelebrate(completedMinutes >= 30)
@@ -472,7 +588,15 @@ export default function FocusModePage() {
       <header className="fm-top">
         <Link to="/dashboard" className="fm-setup-back">{'\u2190'} Focus Mode</Link>
         <div className="fm-top-right">
-          <button className={'fm-kebab' + (settingsOpen ? ' open' : '')} onClick={() => setSettingsOpen((v) => !v)} type="button" aria-label="Focus settings"><IconSettings size={18} /></button>
+          <button
+            className={'fm-kebab' + (settingsOpen ? ' open' : '')}
+            onClick={() => setSettingsOpen((v) => !v)}
+            type="button"
+            aria-label="Focus settings"
+            aria-expanded={settingsOpen}
+          >
+            <IconSettings size={18} />
+          </button>
           {settingsOpen && (
             <div className="fm-settings">
               <span className="fm-set-label">Break</span>
@@ -499,57 +623,7 @@ export default function FocusModePage() {
       </header>
 
       <div className="fm-setup-body">
-        <section className="fm-streak-card">
-          <div className="fm-streak-head">
-            <span className="fm-streak-emoji">{'\uD83D\uDD25'}</span>
-            <div className="fm-streak-txt">
-              <b>{streakLabel}</b>
-              <span>{streakLoading && !streak ? 'Loading your streak…' : streakError ? 'Could not refresh — showing last known value' : 'From your study log'}</span>
-            </div>
-            {streakError && (
-              <button className="fm-streak-retry" onClick={() => void refreshStreak()} type="button" aria-label="Retry streak" title="Retry">{'\u21BB'}</button>
-            )}
-          </div>
-          <div className="fm-today-head">
-            <span>{'\uD83C\uDFAF'} Today&apos;s Focus</span>
-            <b>{todayMinutesLabel} / {DAILY_GOAL_MINUTES} min</b>
-          </div>
-          <div className="fm-today-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={todayPct}>
-            <i style={{ width: todayPct + '%' }} />
-          </div>
-          {celebrate && todayMinutes >= DAILY_GOAL_MINUTES && (
-            <div className="fm-celebrate">{'\uD83C\uDF89'} Focus goal completed! {DAILY_GOAL_MINUTES} minutes studied {'\u00B7'} {'\uD83D\uDD25'} {streakLabel}</div>
-          )}
-        </section>
-
-        <span className="fm-session-meta">Session {todaySessions + 1}</span>
-
-        <div className="fm-timer-ring">
-          <svg viewBox="0 0 200 200" className="fm-ring-svg">
-            <circle cx="100" cy="100" r="88" className="fm-ring-bg" />
-          </svg>
-          <div className="fm-timer-inner">
-            <div className="fm-hero-time">{clock(plannedSeconds)}</div>
-            <span className="fm-timer-label">{customMin ? customMin + ' min' : DURATIONS[durationIdx].label}</span>
-          </div>
-        </div>
-
-        <div className="fm-dur-row">
-          {DURATIONS.map((d, i) => (
-            <button key={d.label} type="button" className={'fm-set-dur' + (durationIdx === i && !customMin ? ' active' : '')} onClick={() => { setDurationIdx(i); setCustomMin('') }}>{d.label}</button>
-          ))}
-          <input
-            className={'fm-set-custom' + (customMin ? ' active' : '')}
-            type="number"
-            min={1}
-            max={480}
-            placeholder="Custom"
-            value={customMin}
-            onChange={(e) => setCustomMin(e.target.value)}
-          />
-        </div>
-
-        <div className="fm-id-block">
+        <div className="fm-task-block">
           <select className="fm-subject-select" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} aria-label="Subject">
             <option value="">Choose a subject</option>
             {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -557,21 +631,57 @@ export default function FocusModePage() {
           <input className="fm-topic-input" placeholder="What are you studying?" value={topic} onChange={(e) => setTopic(e.target.value)} aria-label="Topic" />
         </div>
 
-        <div className="fm-goal-card">
-          <span className="fm-goal-head">{'\uD83C\uDFAF'} Today's Goal</span>
-          <textarea
-            rows={2}
-            placeholder="Understand constructors and create 3 examples."
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-          />
+        <div className="fm-timer-hero">
+          <div className="fm-timer-ring">
+            <svg viewBox="0 0 200 200" className="fm-ring-svg" aria-hidden="true">
+              <circle cx="100" cy="100" r="88" className="fm-ring-bg" />
+            </svg>
+            <div className="fm-timer-inner">
+              <div className="fm-hero-time">{clock(plannedSeconds)}</div>
+              <span className="fm-timer-label">{customMin ? customMin + ' min' : DURATIONS[durationIdx].label}</span>
+            </div>
+          </div>
+
+          <div className="fm-dur-row">
+            {DURATIONS.map((d, i) => (
+              <button key={d.label} type="button" className={'fm-set-dur' + (durationIdx === i && !customMin ? ' active' : '')} onClick={() => { setDurationIdx(i); setCustomMin('') }}>{d.label}</button>
+            ))}
+            <input
+              className={'fm-set-custom' + (customMin ? ' active' : '')}
+              type="number"
+              min={1}
+              max={480}
+              placeholder="Custom"
+              aria-label="Custom duration in minutes"
+              value={customMin}
+              onChange={(e) => setCustomMin(e.target.value)}
+            />
+          </div>
         </div>
 
+        <div className="fm-goal-strip">
+          <span className="fm-goal-stat">{'\uD83D\uDD25'} {streakDayLabel}</span>
+          <span className="fm-goal-sep" aria-hidden="true">{'\u00B7'}</span>
+          <span className="fm-goal-stat">{'\uD83C\uDFAF'} {todayMinutesLabel} / {DAILY_GOAL_MINUTES} min</span>
+          {streakError && (
+            <button className="fm-streak-retry" onClick={() => void refreshStreak()} type="button" aria-label="Retry streak" title="Retry">{'\u21BB'}</button>
+          )}
+        </div>
+        <div className="fm-today-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={todayPct} aria-label="Today's focus progress">
+          <i style={{ width: todayPct + '%' }} />
+        </div>
+
+        {celebrate && todayMinutes >= DAILY_GOAL_MINUTES && (
+          <div className="fm-celebrate">{'\uD83C\uDF89'} Focus goal completed! {DAILY_GOAL_MINUTES} minutes studied {'\u00B7'} {'\uD83D\uDD25'} {streakDayLabel}</div>
+        )}
+
         <div className="fm-sound-row">
-          <span>{'\uD83D\uDD0A'} Sound</span>
-          {SOUNDS.map((s) => (
-            <button key={s.id} type="button" className={'fm-sound-chip' + (sound === s.id ? ' active' : '')} onClick={() => setSound(s.id)}>{s.label}</button>
-          ))}
+          <span className="fm-sound-label">{'\uD83D\uDD0A'} Sound</span>
+          <div className="fm-sound-chips">
+            {SOUNDS.map((s) => (
+              <button key={s.id} type="button" className={'fm-sound-chip' + (sound === s.id ? ' active' : '')} onClick={() => setSound(s.id)} aria-pressed={sound === s.id}>{s.label}</button>
+            ))}
+          </div>
         </div>
 
         <button className="fm-start-focus-btn" onClick={startSession} type="button">
@@ -598,41 +708,53 @@ export default function FocusModePage() {
         {'\u2715'}
       </button>
 
-      <div className="fm-run-center">
+      <div className="fm-run-brand-row">
         <span className="fm-run-brand">Focus Mode</span>
-        <div className="fm-hero-time xl" aria-label={clock(secondsLeft)}>{clock(secondsLeft)}</div>
+        <span className="fm-run-status">{phase === 'paused' ? 'Paused' : 'Session active'}</span>
+      </div>
+
+      <div className="fm-run-center">
+        <div className="fm-hero-time xl">
+          <span role="timer" aria-label={clock(secondsLeft)}>{clock(secondsLeft)}</span>
+        </div>
         <div className="fm-line"><i style={{ width: progress + '%' }} /></div>
         <div className="fm-run-subject">
-          {subjectName ? <b style={{ color: subjectColor }}>{subjectName}</b> : <b>Focus session</b>}
+          <b style={{ color: subjectColor }}>{subjectName ? subjectName : 'Focus session'}</b>
           {topic ? <span>{topic}</span> : null}
-          {goal ? <em>{'\uD83C\uDFAF'} {goal}</em> : null}
         </div>
-        <div className="fm-run-streak">{'\uD83D\uDD25'} {streakLoading ? '\u2014 day streak' : streakLabel}</div>
+        <div className="fm-run-streak">
+          <span>{'\uD83D\uDD25'} {streakDayLabel}</span>
+          <i className="fm-run-streak-sep" aria-hidden="true">{'\u00B7'}</i>
+          <span>{'\uD83C\uDFAF'} {todayMinutesLabel} / {DAILY_GOAL_MINUTES} min</span>
+        </div>
+      </div>
 
+      <div className="fm-run-actions">
         <button
           className="fm-pause-btn"
-          onClick={(e) => { e.stopPropagation(); phase === 'paused' ? resumeSession() : pauseSession() }}
+          onClick={(e) => { e.stopPropagation(); if (phase === 'paused') resumeSession(); else pauseSession() }}
           type="button"
-          aria-label={phase === 'paused' ? 'Resume' : 'Pause'}
+          aria-label={phase === 'paused' ? 'Resume focus' : 'Pause focus'}
         >
           {phase === 'paused' ? '\u25B6' : '\u275A\u275A'}
         </button>
 
-        <div className={'fm-run-controls' + (uiVisible ? ' show' : '')}>
-          {phase === 'paused'
-            ? <button className="fm-main-btn" onClick={(e) => { e.stopPropagation(); resumeSession() }} type="button">{'\u25B6'} Resume</button>
-            : <button className="fm-main-btn" onClick={(e) => { e.stopPropagation(); pauseSession() }} type="button">{'\u275A\u275A'} Pause</button>}
-          <button className="fm-ghost-btn" onClick={(e) => { e.stopPropagation(); requestEnd() }} type="button">{'\u2715'} End Session</button>
-        </div>
+        <button
+          className="fm-end-link"
+          onClick={(e) => { e.stopPropagation(); requestEnd() }}
+          type="button"
+        >
+          End Session
+        </button>
       </div>
-
-      <div className="fm-dfm-pill">{'\uD83D\uDD15'} Notifications paused {'\u00B7'} Focus session active</div>
 
       <div className={'fm-run-tools' + (uiVisible ? ' show' : '')}>
         <button onClick={(e) => { e.stopPropagation(); void openStudy() }} type="button">{'\uD83D\uDCD6'} Study Material</button>
         <button onClick={(e) => { e.stopPropagation(); setAiOpen(true) }} type="button">{'\u2726'} Ask AI</button>
         <button onClick={(e) => { e.stopPropagation(); setSound(sound === 'none' ? 'rain' : 'none') }} type="button">{sound === 'none' ? '\uD83D\uDD07' : '\uD83D\uDD0A'} {SOUNDS.find((s) => s.id === sound)?.label}</button>
       </div>
+
+      <div className="fm-dfm-pill">{'\uD83D\uDD15'} Notifications paused {'\u00B7'} Focus session active</div>
     </div>
   )
 
@@ -645,7 +767,7 @@ export default function FocusModePage() {
 
       <div className="fm-break-count">
         <span>BREAK</span>
-        <strong>{clock(breakLeft)}</strong>
+        <strong role="timer" aria-label={'Break time ' + clock(breakLeft)}>{clock(breakLeft)}</strong>
         <div className="fm-line mint"><i style={{ width: ((breakMinutes * 60 - breakLeft) / (breakMinutes * 60)) * 100 + '%' }} /></div>
       </div>
 
@@ -658,7 +780,7 @@ export default function FocusModePage() {
       <div className="fm-complete-inner">
         <span className="fm-complete-emoji">{'\uD83C\uDF89'}</span>
         <h1 className="fm-complete-heading">Session Complete</h1>
-        <div className="fm-complete-time">{completedMinutes} min</div>
+        <div className="fm-complete-time" aria-label={completedMinutes + ' minutes'}>{completedMinutes} min</div>
         <div className="fm-complete-sub">
           {subjectName ? <b>{subjectName}</b> : <b>Focus</b>}
           {topic ? <span>{topic}</span> : null}
@@ -668,14 +790,14 @@ export default function FocusModePage() {
           <div className="fm-chip">{'\u23F1'} {completedMinutes} min</div>
           <div className="fm-chip">{'\uD83C\uDFAF'} Focus {focusScore}%</div>
           {completedMinutes >= 30 && <div className="fm-chip goal">{'\uD83C\uDF89'} 30-min goal</div>}
-          <div className="fm-chip">{'\uD83D\uDD25'} {streakLabel}</div>
+          <div className="fm-chip">{'\uD83D\uDD25'} {streakDayLabel}</div>
         </div>
 
         <p className="fm-complete-question">How did it go?</p>
         <div className="fm-complete-moods">
           {MOODS.map((m) => (
-            <button key={m.value} className={'fm-complete-mood' + (mood === m.value ? ' active' : '')} onClick={() => setMood(m.value)} type="button">
-              <span>{m.emoji}</span>
+            <button key={m.value} className={'fm-complete-mood' + (mood === m.value ? ' active' : '')} onClick={() => setMood(m.value)} type="button" aria-pressed={mood === m.value}>
+              <span aria-hidden="true">{m.emoji}</span>
               <small>{m.label}</small>
             </button>
           ))}
@@ -689,7 +811,7 @@ export default function FocusModePage() {
         />
 
         <button className="fm-complete-save" onClick={finishSession} disabled={saving} type="button">
-          {saving ? 'Saving…' : 'Finish Session'}
+          {saving ? 'Saving\u2026' : 'Finish Session'}
         </button>
       </div>
     </div>
@@ -713,14 +835,14 @@ export default function FocusModePage() {
           <span>{'\uD83D\uDCD6'} Study Material</span>
           <button onClick={() => setStudyOpen(false)} type="button" aria-label="Close study material">{'\u00D7'}</button>
         </header>
-        {topic ? <h3>{subjectName ? subjectName + ' — ' : ''}{topic}</h3> : <h3>Your notes</h3>}
+        {topic ? <h3>{subjectName ? subjectName + ' \u2014 ' : ''}{topic}</h3> : <h3>Your notes</h3>}
         <div className="fm-study-list">
-          {notes === null && <p className="fm-empty">Loading notes…</p>}
-          {notes !== null && !studyMatches.length && <p className="fm-empty">No notes yet — create some on the Notes page.</p>}
+          {notes === null && <p className="fm-empty">Loading notes\u2026</p>}
+          {notes !== null && !studyMatches.length && <p className="fm-empty">No notes yet \u2014 create some on the Notes page.</p>}
           {studyMatches.map((n) => (
             <article key={n.id}>
               <b>{n.title || 'Untitled note'}</b>
-              <p>{htmlStrip(n.content).slice(0, 260)}{(htmlStrip(n.content).length > 260) ? '…' : ''}</p>
+              <p>{htmlStrip(n.content).slice(0, 260)}{(htmlStrip(n.content).length > 260) ? '\u2026' : ''}</p>
             </article>
           ))}
         </div>
@@ -737,7 +859,7 @@ export default function FocusModePage() {
           {aiMessages.map((m, i) => (
             <div key={i} className={'fm-ai-msg ' + m.role}>{m.text}</div>
           ))}
-          {aiBusy && <div className="fm-ai-msg ai">Thinking…</div>}
+          {aiBusy && <div className="fm-ai-msg ai">Thinking\u2026</div>}
         </div>
         <form
           className="fm-ai-compose"
@@ -768,7 +890,7 @@ export default function FocusModePage() {
           </div>
         }
       >
-        <p className="fm-confirm-copy">Your current session is {completedMinutes} minute{completedMinutes === 1 ? '' : 's'}. Ending now saves your progress{completedMinutes < 30 ? ' — it is under the 30-minute goal, so it will not count as a focus-goal day by itself.' : '.'}</p>
+        <p className="fm-confirm-copy">Your current session is {completedMinutes} minute{completedMinutes === 1 ? '' : 's'}. Ending now saves your progress{completedMinutes < 30 ? ' \u2014 it is under the 30-minute goal, so it will not count as a focus-goal day by itself.' : '.'}</p>
         <button className="fm-confirm-discard" onClick={discardSession} type="button">Discard without saving</button>
       </ResponsiveBottomSheet>
     </div>

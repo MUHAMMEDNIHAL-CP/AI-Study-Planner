@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import AuthLayout from '../components/AuthLayout'
 import { api, getErrorMessage } from '../lib/api'
 import { setAuthTokens } from '../lib/auth'

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
 
@@ -61,11 +61,11 @@ function moodLabel(mood: string) {
   }
 }
 
-const today = new Date().toISOString().slice(0, 10)
+const todayIso = () => new Date().toISOString().slice(0, 10)
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [date, setDate] = useState(today)
+  const [date, setDate] = useState(todayIso())
   const [minutes, setMinutes] = useState('90')
   const [focus, setFocus] = useState('82')
   const [completed, setCompleted] = useState('3')
@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
             <div className="analytics-log-fields">
               <label>
                 <span>Date</span>
-                <input type="date" value={date} max={today} onChange={(event) => setDate(event.target.value)} />
+                <input type="date" value={date} max={todayIso()} onChange={(event) => setDate(event.target.value)} />
               </label>
               <label>
                 <span>Minutes studied</span>

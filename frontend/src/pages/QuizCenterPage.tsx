@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
@@ -9,7 +9,7 @@ import { notifyStudyActivity } from '../lib/studyActivity'
 
 type Question = { id: number; question: string; options: string[]; answer_index: number; explanation: string }
 type Quiz = { id: number; topic: string; difficulty: string; questions: Question[]; score: number | null; total_questions: number; created_at: string }
-type QuizResult = { score: number; total: number; results: { id: number; correct: boolean; explanation: string; answer_index: number; selected?: number }[] }
+type QuizResult = { score: number; total: number; results: { id: number; correct: boolean | null; explanation: string; answer_index: number; selected?: number }[] }
 type Subject = { id: number; name: string; color: string; weak_topics?: string; total_topics: number; topics_completed: number }
 type Exam = { id: number; title: string; date: string; subject: number | null; subject_name?: string; preparation_pct?: number }
 type NoteLite = { id: number; title: string; content: string }
@@ -480,7 +480,11 @@ export default function QuizCenterPage() {
     setQuizResult({
       score: q.score ?? 0,
       total: q.total_questions,
-      results: q.questions.map((qq) => ({ id: qq.id, correct: false, explanation: qq.explanation, answer_index: qq.answer_index })),
+      // The backend does not store per-question results from a past attempt,
+      // so we cannot reconstruct correct/wrong per question. Mark each item
+      // `null` so the review renders a neutral "review" state instead of
+      // falsely showing every question as wrong.
+      results: q.questions.map((qq) => ({ id: qq.id, correct: null, explanation: qq.explanation, answer_index: qq.answer_index })),
     })
     setAnalysis(EMPTY_ANALYSIS)
     setShowReview(true)
@@ -672,12 +676,13 @@ export default function QuizCenterPage() {
         <div className="zr-review">
           {displayQuiz.questions.map((qq, i) => {
             const ans = quizResult.results.find((r) => r.id === qq.id)
-            const isCorrect = ans ? ans.correct : false
+            const isCorrect = ans ? ans.correct : null
+            const neutral = isCorrect === null
             return (
-              <div key={qq.id} className={'zr-item' + (isCorrect ? ' ok' : ' no')}>
+              <div key={qq.id} className={'zr-item' + (isCorrect ? ' ok' : neutral ? ' review' : ' no')}>
                 <div className="zri-head">
                   <span className="zri-num">{i + 1}</span>
-                  <span className={'zri-badge ' + (isCorrect ? 'ok' : 'no')}>{isCorrect ? '\u2713' : '\u2717'}</span>
+                  <span className={'zri-badge ' + (isCorrect ? 'ok' : neutral ? 'review' : 'no')}>{isCorrect ? '\u2713' : neutral ? '\u25CF' : '\u2717'}</span>
                   <p className="zri-q">{qq.question}</p>
                 </div>
                 <div className="zri-opts">
@@ -685,7 +690,7 @@ export default function QuizCenterPage() {
                     const isAnswer = oi === qq.answer_index
                     const wasPicked = ans?.selected === oi
                     return (
-                      <span key={oi} className={'zri-opt' + (isAnswer ? ' answer' : '') + (wasPicked && !isAnswer ? ' pickedwrong' : '')}>
+                      <span key={oi} className={'zri-opt' + (isAnswer ? ' answer' : '') + (!neutral && wasPicked && !isAnswer ? ' pickedwrong' : '')}>
                         {String.fromCharCode(65 + oi)}{'\u2002'}{opt}
                       </span>
                     )
@@ -695,6 +700,9 @@ export default function QuizCenterPage() {
               </div>
             )
           })}
+          {quizResult.results.every((r) => r.correct === null) && (
+            <p className="zri-note">Per-question marks aren't stored for past attempts — this review shows the correct answers for reference.</p>
+          )}
         </div>
       )}
     </div>

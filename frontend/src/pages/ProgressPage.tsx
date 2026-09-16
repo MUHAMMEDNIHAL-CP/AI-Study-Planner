@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { api, getErrorMessage } from '../lib/api'
 
@@ -44,6 +44,8 @@ type QuizItem = {
   total_questions: number
   created_at: string
 }
+
+type ExamLite = { id: number; title: string; date: string; subject_name?: string }
 
 type MeInfo = {
   username: string
@@ -133,6 +135,7 @@ export default function ProgressPage() {
   const [sessions, setSessions] = useState<FocusSession[]>([])
   const [subjects, setSubjects] = useState<SubjectSummary[]>([])
   const [quizzes, setQuizzes] = useState<QuizItem[]>([])
+  const [exams, setExams] = useState<ExamLite[]>([])
   const [me, setMe] = useState<MeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week')
@@ -167,6 +170,12 @@ export default function ProgressPage() {
         /* optional */
       }
       try {
+        const examRes = await api.get<ExamLite[]>('/study/exams/')
+        if (active) setExams(examRes.data ?? [])
+      } catch {
+        /* optional */
+      }
+      try {
         const meRes = await api.get<MeInfo>('/auth/me/')
         if (active) setMe(meRes.data)
       } catch {
@@ -180,10 +189,27 @@ export default function ProgressPage() {
 
   /* ── date windows ── */
 
-  const today = useMemo(() => {
+  const [today, setToday] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
+  })
+
+  useEffect(() => {
+    let id = 0
+    const rollToMidnight = () => {
+      const now = new Date()
+      const next = new Date(now)
+      next.setHours(24, 0, 0, 0)
+      id = window.setTimeout(() => {
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        setToday(d)
+        rollToMidnight()
+      }, next.getTime() - now.getTime())
+    }
+    rollToMidnight()
+    return () => window.clearTimeout(id)
   }, [])
 
   const windowFor = (filter: TimeFilter): { start: Date; end: Date } => {
@@ -443,13 +469,12 @@ export default function ProgressPage() {
 
   /* ── achievements ── */
 
-  const examCountRef = dashboard?.total_focus_sessions ?? 0
   const achievements = ACHIEVEMENT_DEFS.map((a) => {
     let current = 0
     if (a.type === 'streak') current = currentStreak
     else if (a.type === 'hours') current = dashboard?.total_study_hours ?? 0
     else if (a.type === 'accuracy') current = accuracyPct
-    else if (a.type === 'exams') current = examCountRef > 0 ? 1 : 0
+    else if (a.type === 'exams') current = exams.length > 0 ? 1 : 0
     return { ...a, unlocked: current >= a.target, current }
   })
   const recentAchievements = achievements.filter((a) => a.unlocked).slice(0, 4)

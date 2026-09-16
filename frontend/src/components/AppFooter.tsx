@@ -28,7 +28,7 @@ export default function AppFooter() {
         <div className="app-footer-brand">
           <Link className="app-footer-logo" to="/">
             <span className="app-footer-mark"><IconBot size={16} /></span>
-            <strong>FocusFlow AI</strong>
+            <strong>Flox AI</strong>
           </Link>
           <p>Your intelligent study workspace.</p>
         </div>
@@ -48,7 +48,7 @@ export default function AppFooter() {
       </div>
 
       <div className="app-footer-bottom">
-        <span>&copy; {new Date().getFullYear()} FocusFlow AI</span>
+        <span>&copy; {new Date().getFullYear()} Flox AI</span>
         <span>Made for learners</span>
       </div>
     </footer>

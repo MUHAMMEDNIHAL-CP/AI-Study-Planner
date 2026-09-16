@@ -390,3 +390,36 @@ export function IconActivity(props: IconProps) {
     </svg>
   )
 }
+
+export function IconUser(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c1.2-3.5 4.2-5 8-5s6.8 1.5 8 5" />
+    </svg>
+  )
+}
+
+export function IconGraduation(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+      <path d="M6 12.5V17c0 1.7 2.7 3.5 6 3.5s6-1.8 6-3.5v-4.5" />
+      <path d="M22 10v6" />
+    </svg>
+  )
+}
+
+export function IconMenu(props: IconProps) {
+  const p = base(props)
+  return (
+    <svg {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  )
+}

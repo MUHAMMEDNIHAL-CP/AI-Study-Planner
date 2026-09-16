@@ -67,15 +67,19 @@ export default function AdminReports() {
                 <h3>{type} report · last {days} days</h3>
               </div>
               <div className="ad-bars">
-                {Object.entries(report.data).map(([k, v]) => (
-                  <div className="ad-bar-row" key={k}>
-                    <span>{prettyKey(k)}</span>
-                    <div className="ad-bar-track">
-                      <i className="ad-bar-fill" style={{ width: `${Math.min(100, Math.max(3, Number(v) / 100))}%` }} />
+                {(() => {
+                  const entries = Object.entries(report.data)
+                  const max = Math.max(1, ...entries.map(([, v]) => Number(v)))
+                  return entries.map(([k, v]) => (
+                    <div className="ad-bar-row" key={k}>
+                      <span>{prettyKey(k)}</span>
+                      <div className="ad-bar-track">
+                        <i className="ad-bar-fill" style={{ width: `${Math.max(3, (Number(v) / max) * 100)}%` }} />
+                      </div>
+                      <span className="ad-bar-num">{formatNumber(Number(v))}</span>
                     </div>
-                    <span className="ad-bar-num">{formatNumber(Number(v))}</span>
-                  </div>
-                ))}
+                  ))
+                })()}
               </div>
             </div>
           </>

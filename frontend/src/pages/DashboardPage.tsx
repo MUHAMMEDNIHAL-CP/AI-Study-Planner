@@ -5,6 +5,7 @@ import SetupChecklist from '../components/SetupChecklist'
 import { api, getErrorMessage } from '../lib/api'
 import { notifyStudyActivity } from '../lib/studyActivity'
 import { markOnboardingComplete } from '../lib/tour'
+import { useStreak } from '../hooks/useStreak'
 
 type ApiSubject = { id: number; name: string; weak_topics: string; weekly_goal_hours: number }
 type ApiExam = {
@@ -106,6 +107,8 @@ export default function DashboardPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [dailyGoalHours, setDailyGoalHours] = useState(4)
 
+  const { streak: sharedStreak, refresh: refreshStreak } = useStreak()
+
   useEffect(() => {
     let active = true
     async function load() {
@@ -137,7 +140,10 @@ export default function DashboardPage() {
     return () => { active = false }
   }, [])
 
-  const streak = dashboard?.current_streak ?? 0
+  // Streak comes from the shared useStreak hook (single source of truth),
+  // not from this page's own API call.
+  const streak = sharedStreak?.current_streak ?? dashboard?.current_streak ?? 0
+  const streakLoading = sharedStreak === null
   const subjectsSummary = useMemo(() => dashboard?.subjects_summary ?? [], [dashboard])
   const recentLogs = useMemo(() => dashboard?.recent_logs ?? [], [dashboard])
   const todayMinutes = dashboard?.today_minutes ?? 0
@@ -246,7 +252,10 @@ export default function DashboardPage() {
     setTasks((c) => c.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
     try {
       await api.patch(`/study/tasks/${task.id}/`, { status: next })
-      if (next === 'done') notifyStudyActivity()
+      if (next === 'done') {
+        notifyStudyActivity()
+        void refreshStreak()
+      }
       const { data } = await api.get<DashboardSummary>('/study/dashboard/')
       setDashboard(data)
     } catch (err) {
@@ -264,6 +273,7 @@ export default function DashboardPage() {
     try {
       const { data: created } = await api.post<ApiTask>('/study/tasks/', { title, status: 'todo', priority: 'medium' })
       notifyStudyActivity()
+      void refreshStreak()
       setTasks((c) => [...c, created])
     } catch (err) {
       setError(getErrorMessage(err))
@@ -399,14 +409,16 @@ export default function DashboardPage() {
             <section className="dash-card dash-streak-card">
               <span className="dash-eyebrow flame">{'\uD83D\uDD25'} Study Streak</span>
               <div className="dash-streak-num">
-                {streak > 0 ? `${streak} day streak` : 'Start your streak'}
+                {streakLoading && !streak ? 'Loading…' : streak > 0 ? `${streak} day streak` : 'Start your streak'}
               </div>
               <p className="dash-streak-sub">
-                {streak > 0
-                  ? dashboard?.studied_today
-                    ? "You've studied today. Keep it going!"
-                    : 'Study 30 minutes today to continue your streak.'
-                  : 'Study for 30 minutes today to begin your streak.'}
+                {streakLoading && !streak
+                  ? 'Fetching your latest streak…'
+                  : streak > 0
+                    ? dashboard?.studied_today
+                      ? "You've studied today. Keep it going!"
+                      : 'Study 30 minutes today to continue your streak.'
+                    : 'Study for 30 minutes today to begin your streak.'}
               </p>
               {dashboard?.next_milestone ? (
                 <div className="dash-ms">

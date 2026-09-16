@@ -102,7 +102,7 @@ export default function HelpPage() {
     if (!message.trim()) return
     const subject = encodeURIComponent('Help & Support request')
     const body = encodeURIComponent(
-      (email ? `From: ${email}\n\n` : '') + message.trim() + '\n\n— Sent from FocusFlow AI Help & Support',
+      (email ? `From: ${email}\n\n` : '') + message.trim() + '\n\n— Sent from Flox AI Help & Support',
     )
     window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`
     setSent(true)

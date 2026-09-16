@@ -12,11 +12,11 @@ type LogItem = {
 }
 
 export default function AdminAuditLogs() {
-  const [rows, setRows] = useState<Array<{
+  const [data, setData] = useState<{
     results: LogItem[]
     total: number
     page: number
-  }> | null>(null)
+  } | null>(null)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
 
@@ -24,12 +24,11 @@ export default function AdminAuditLogs() {
     let active = true
     setError('')
     adminApi.auditLogs({ page, page_size: 40 })
-      .then((d) => { if (active) setRows([d]) })
+      .then((d) => { if (active) setData(d) })
       .catch((err) => { if (active) setError(getErrorMessage(err)) })
     return () => { active = false }
   }, [page])
 
-  const data = rows?.[0]
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 40)) : 1
 
   return (

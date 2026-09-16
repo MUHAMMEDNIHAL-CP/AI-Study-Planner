@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
 import { api, getErrorMessage } from '../lib/api'
@@ -36,8 +36,6 @@ function toLocalDateInput(date = new Date()) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10)
 }
 
-const today = toLocalDateInput()
-
 function shortDate(dateString?: string) {
   if (!dateString) return '—'
   return new Date(`${dateString}T00:00:00`).toLocaleDateString(undefined, {
@@ -57,19 +55,20 @@ function priorityStyles(priority: string) {
   return { bg: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.35)' }
 }
 
-function isToday(dateStr: string) {
+function isToday(dateStr: string, today: string) {
   return dateStr === today
 }
 
-function isFuture(dateStr: string) {
+function isFuture(dateStr: string, today: string) {
   return dateStr > today
 }
 
-function isPast(dateStr: string) {
+function isPast(dateStr: string, today: string) {
   return dateStr < today
 }
 
 export default function TasksPage() {
+  const [today, setToday] = useState(() => toLocalDateInput())
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,6 +109,14 @@ export default function TasksPage() {
     return () => { active = false }
   }, [loadAll])
 
+  // Keep filters/counts correct when the app stays open past midnight.
+  useEffect(() => {
+    const tick = () => setToday(toLocalDateInput())
+    const delay = Math.max(1000, new Date().setHours(24, 0, 5, 0) - Date.now())
+    const timer = window.setTimeout(tick, delay)
+    return () => window.clearTimeout(timer)
+  }, [today])
+
   const filteredTasks = useMemo(() => {
     const sorted = [...tasks].sort((a, b) => {
       const da = a.due_date || '9999-12-31'
@@ -121,25 +128,25 @@ export default function TasksPage() {
 
     switch (activeTab) {
       case 'today':
-        return sorted.filter((t) => isToday(t.due_date))
+        return sorted.filter((t) => isToday(t.due_date, today))
       case 'upcoming':
-        return sorted.filter((t) => isFuture(t.due_date) && t.status !== 'done')
+        return sorted.filter((t) => isFuture(t.due_date, today) && t.status !== 'done')
       case 'completed':
         return sorted.filter((t) => t.status === 'done')
       default:
         return sorted
     }
-  }, [tasks, activeTab])
+  }, [tasks, activeTab, today])
 
   const tabCounts = useMemo(() => {
     const count = (pred: (t: Task) => boolean) => tasks.filter(pred).length
     return {
-      today: count((t) => isToday(t.due_date)),
-      upcoming: count((t) => isFuture(t.due_date) && t.status !== 'done'),
+      today: count((t) => isToday(t.due_date, today)),
+      upcoming: count((t) => isFuture(t.due_date, today) && t.status !== 'done'),
       all: tasks.length,
       completed: count((t) => t.status === 'done'),
     }
-  }, [tasks])
+  }, [tasks, today])
 
   async function toggleTask(task: Task) {
     const next = task.status === 'done' ? 'todo' : 'done'
@@ -233,7 +240,7 @@ export default function TasksPage() {
               const done = task.status === 'done'
               const sub = subjects.find((s) => s.id === task.subject)
               const ps = priorityStyles(task.priority)
-              const overdue = isPast(task.due_date) && !done
+              const overdue = isPast(task.due_date, today) && !done
 
               return (
                 <div

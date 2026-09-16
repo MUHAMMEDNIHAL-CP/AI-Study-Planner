@@ -33,14 +33,17 @@ function AppFrame() {
       {authed && !isAdminRoute && <FloatingBot />}
       {authed && !isAdminRoute && <BottomNav />}
       <ToastContainer
-        position="top-right"
-        theme="dark"
-        autoClose={2500}
+        className="flox-toast-container"
+        position="bottom-center"
+        theme={getTheme() === 'dark' ? 'dark' : 'light'}
+        autoClose={2800}
         hideProgressBar
-        closeOnClick
+        closeOnClick={false}
         pauseOnHover={false}
         newestOnTop
         limit={3}
+        closeButton={false}
+        draggable={false}
       />
     </>
   )

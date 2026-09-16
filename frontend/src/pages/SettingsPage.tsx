@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import { api, getErrorMessage } from '../lib/api'
 import { applyTheme, getTheme, type ThemeMode } from '../lib/theme'
 import { clearAuthTokens } from '../lib/auth'
@@ -701,7 +701,7 @@ export default function SettingsPage() {
             <div className="st-rows">
               <button
                 className="st-row st-row-btn"
-                onClick={() => navigate('/productivity')}
+                onClick={() => navigate('/progress')}
                 type="button"
               >
                 <span className="st-row-text">
@@ -764,7 +764,7 @@ export default function SettingsPage() {
                 onClick={() => navigate('/help')}
                 type="button"
               >
-                <span className="st-row-text"><strong>Help &amp; Support</strong><small>Get help using FocusFlow AI</small></span>
+                <span className="st-row-text"><strong>Help &amp; Support</strong><small>Get help using Flox AI</small></span>
                 <span aria-hidden className="st-row-chevron">&rsaquo;</span>
               </button>
               <button

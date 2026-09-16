@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../lib/api'
 import { clearAuthTokens } from '../lib/auth'
+import { floxToast as toast } from '../components/FloxToast'
 import { notifyProfileUpdated } from '../hooks/useUserProfile'
 import PageShell from '../components/PageShell'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
@@ -186,8 +187,8 @@ export default function ProfilePage() {
       setProfile(data)
       notifyProfileUpdated()
       setModal(null)
-    } catch {
-      // keep the modal open so the user can retry
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setSavingProfile(false)
     }
@@ -215,8 +216,8 @@ export default function ProfilePage() {
       setProfile(data)
       notifyProfileUpdated()
       setModal(null)
-    } catch {
-      // keep the modal open so the user can retry
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -244,8 +245,8 @@ export default function ProfilePage() {
       setProfile(data)
       notifyProfileUpdated()
       setModal(null)
-    } catch {
-      // keep the modal open so the user can retry
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setSaving(false)
     }

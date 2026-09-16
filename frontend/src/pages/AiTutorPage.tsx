@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { IconAnalytics, IconBot } from '../components/icons'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
@@ -215,6 +215,22 @@ function htmlStrip(html: string) {
     .trim()
 }
 
+function formatChatTime(iso: string) {
+  try {
+    const d = new Date(iso)
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    if (diffMs < 0) return ''
+    if (diffMs < 60_000) return 'now'
+    if (diffMs < 3_600_000) return Math.floor(diffMs / 60_000) + 'm'
+    if (diffMs < 86_400_000) return Math.floor(diffMs / 3_600_000) + 'h'
+    if (diffMs < 172_800_000) return 'yesterday'
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  } catch {
+    return ''
+  }
+}
+
 
 /* ── In-chat quiz runner ───────────────────────────────────── */
 
@@ -373,8 +389,14 @@ export default function AiTutorPage() {
     return () => { alive = false }
   }, [])
 
+  const msgsRef = useRef<HTMLDivElement | null>(null)
+
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll ONLY the message column to the latest message. Never scroll the
+    // whole page/app shell.
+    const el = msgsRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    else endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [chats, activeId, sending])
 
   /* ── Derived ── */
@@ -441,16 +463,28 @@ export default function AiTutorPage() {
   }, [quizHist])
 
   const nextSession = useMemo(() => {
-    const nowIso = new Date().toISOString().slice(0, 16)
+    // scheduled_for is authored as naive local time ("YYYY-MM-DDTHH:MM:SS"),
+    // so compare it against a *local* clock string — never the UTC ISO now.
+    const now = new Date()
+    const nowLocal = `${keyOf(now)}T${pad2(now.getHours())}:${pad2(now.getMinutes())}`
     return (
       tasks
-        .filter((t) => t.status !== 'done' && t.scheduled_for && t.scheduled_for.slice(0, 16) >= nowIso)
+        .filter((t) => t.status !== 'done' && t.scheduled_for && t.scheduled_for.slice(0, 16) >= nowLocal)
         .sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? ''))[0] ?? null
     )
   }, [tasks])
 
-  const tasksDoneToday = dashboard?.total_completed_tasks ?? 0
-  const tasksTotalToday = (dashboard?.total_completed_tasks ?? 0) + (dashboard?.open_tasks ?? 0)
+  // "Today" panel must reflect TODAY's tasks (not lifetime totals). Mirror the
+  // dashboard's own "today" definition: due OR scheduled on the local date.
+  const tk = todayKey()
+  const tasksTotalToday = useMemo(
+    () => tasks.filter((t) => (t.scheduled_for ?? '').slice(0, 10) === tk || t.due_date === tk).length,
+    [tasks, tk],
+  )
+  const tasksDoneToday = useMemo(
+    () => tasks.filter((t) => t.status === 'done' && ((t.scheduled_for ?? '').slice(0, 10) === tk || t.due_date === tk)).length,
+    [tasks, tk],
+  )
 
   const groups = useMemo(() => chatGroups(chats), [chats])
 
@@ -550,20 +584,18 @@ export default function AiTutorPage() {
       notifyStudyActivity()
       appendMsgs([{ id: uid(), role: 'coach', text: data.reply, chips: data.suggestions?.slice(0, 3), mode: 'chat' }])
     } catch (err) {
-      const msg = getErrorMessage(err)
-      const limited = /limit|quota|capacity|402|429/i.test(msg)
+      // The result of maybeEmitFloxLimit(err) already opened the clean FLOX
+      // limit sheet if the backend returned a limit/quota error. All we do here
+      // is add a friendly inline retry message — never raw Gemini errors.
       appendMsgs([
         {
           id: uid(),
           role: 'coach',
           mode: 'chat',
-          text: limited
-            ? "FLOX AI can't respond to new requests right now. Your daily AI limit was reached."
-            : "FLOX AI couldn't respond right now. Please try again.",
+          text: "FLOX AI couldn't respond right now.",
           retry: student.text,
         },
       ])
-      if (!limited) toast.error('Couldn\u2019t reach FLOX AI. Check your connection and try again.')
     } finally {
       setSending(false)
     }
@@ -914,20 +946,27 @@ export default function AiTutorPage() {
         {groups.map((g) => (
           <section key={g.label} className="ac-group">
             <span className="ac-group-label">{g.label}</span>
-            {g.items.map((c) => (
-              <div key={c.id} className={'ac-chatitem' + (activeId === c.id ? ' active' : '')}>
-                <button className="ci-main" onClick={() => openChat(c)}>
-                  <span className="ci-title">{c.title}</span>
-                </button>
-                <details className="ci-more">
-                  <summary aria-label="Conversation options">{'\u22EE'}</summary>
-                  <div className="ci-menu">
-                    <button onClick={() => renameChat(c.id)}>Rename</button>
-                    <button className="danger" onClick={() => deleteChat(c.id)}>Delete</button>
+            {g.items.map((c) => {
+                const last = c.messages[c.messages.length - 1]
+                const preview = last ? htmlStrip(last.text).slice(0, 60) : ''
+                const ts = formatChatTime(c.updated_at)
+                return (
+                  <div key={c.id} className={'ac-chatitem' + (activeId === c.id ? ' active' : '')}>
+                    <button className="ci-main" onClick={() => openChat(c)}>
+                      <span className="ci-title">{c.title}</span>
+                      {preview && <span className="ci-preview">{preview}{preview.length === 60 ? '\u2026' : ''}</span>}
+                      {ts && <span className="ci-time">{ts}</span>}
+                    </button>
+                    <details className="ci-more">
+                      <summary aria-label="Conversation options">{'\u22EE'}</summary>
+                      <div className="ci-menu">
+                        <button onClick={() => renameChat(c.id)}>Rename</button>
+                        <button className="danger" onClick={() => deleteChat(c.id)}>Delete</button>
+                      </div>
+                    </details>
                   </div>
-                </details>
-              </div>
-            ))}
+                )
+              })}
           </section>
         ))}
 
@@ -1032,7 +1071,7 @@ export default function AiTutorPage() {
           </div>
         </div>
       ) : (
-        <div className="ac-msgs">
+        <div className="ac-msgs" ref={msgsRef}>
           {messages.map((m) =>
             m.role === 'student' ? (
               <div key={m.id} className="ac-row student">
@@ -1129,7 +1168,7 @@ export default function AiTutorPage() {
           {sending && (
             <div className="ac-row coach">
               <div className="ac-card">
-                <span className="ac-typing-label">{'\uD83E\uDD16'} FLOX AI is thinking</span>
+                <span className="ac-typing-label">{'\uD83E\uDD16'} FLOX AI is thinking...</span>
                 <div className="ac-typing" aria-label="FLOX AI is thinking"><span /><span /><span /></div>
               </div>
             </div>

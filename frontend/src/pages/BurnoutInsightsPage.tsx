@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { toast } from 'react-toastify'
+import { floxToast as toast } from '../components/FloxToast'
 import { api, getErrorMessage } from '../lib/api'
 
 type BurnoutReport = { score: number; risk_level: string; recommendations: string[] }

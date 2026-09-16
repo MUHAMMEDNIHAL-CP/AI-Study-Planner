@@ -21,13 +21,13 @@ export default function PrivacyPage() {
     <DocumentLayout
       eyebrow="Legal &middot; Data"
       title="Privacy Policy"
-      subtitle="FocusFlow AI respects your privacy and is committed to protecting your personal information."
+      subtitle="Flox AI respects your privacy and is committed to protecting your personal information."
     >
       <p className="legal-updated">Last updated: September 1, 2026</p>
 
       <p className="legal-intro">
-        This policy explains what information FocusFlow AI collects, how we use it, and the choices you
-        have. By using FocusFlow AI you agree to the practices described here.
+        This policy explains what information Flox AI collects, how we use it, and the choices you
+        have. By using Flox AI you agree to the practices described here.
       </p>
 
       <LegalToc items={TOC} />
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
 
       <LegalSection n={5} title="Cookies & Advertising" id="cookies">
         <p>
-          FocusFlow AI does not currently run third-party advertising and does not use advertising
+          Flox AI does not currently run third-party advertising and does not use advertising
           cookies or tracking identifiers for marketing.
         </p>
         <LegalList
@@ -144,7 +144,7 @@ export default function PrivacyPage() {
 
       <LegalSection n={10} title="Children's Privacy" id="children">
         <p>
-          FocusFlow AI is not directed at children under the age of 13, and we do not knowingly collect
+          Flox AI is not directed at children under the age of 13, and we do not knowingly collect
           personal information from children. If you believe a child has provided us with personal
           information, contact us and we will delete it.
         </p>
@@ -154,7 +154,7 @@ export default function PrivacyPage() {
         <p>
           We may update this policy from time to time. When we do, we will revise the
           &ldquo;Last updated&rdquo; date at the top of this page. Significant changes will be highlighted
-          in the app so you can review them before continuing to use FocusFlow AI.
+          in the app so you can review them before continuing to use Flox AI.
         </p>
       </LegalSection>
 
