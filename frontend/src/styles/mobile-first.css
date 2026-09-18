@@ -4536,14 +4536,18 @@ body.ai-coach-page-active .app-main-with-sidebar {
   }
 }
 
-/* ── Mobile / tablet bottom sheet (≤1200px) ── */
+/* ── Mobile / tablet nav side drawer (≤1200px) ── */
 .bn-sheet-backdrop {
   position: fixed;
   inset: 0;
+  left: 0;
+  right: 0;
   z-index: 240;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-end;
+  direction: ltr;
   background: rgba(0, 0, 0, 0.35);
   animation: bnSheetFade 0.2s ease-out both;
 }
@@ -4554,18 +4558,20 @@ body.ai-coach-page-active .app-main-with-sidebar {
 }
 
 .bn-sheet {
-  width: 100%;
-  max-width: 720px;
-  max-height: 92svh;
+  position: relative;
+  right: 0;
+  width: min(320px, 88vw);
+  max-width: 88vw;
+  height: 100%;
+  margin-left: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  border-bottom: none;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -16px 48px rgba(15, 23, 42, 0.18);
-  animation: bnSheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
-  transform: translateY(0);
+  border-left: 1px solid var(--line);
+  border-radius: 18px 0 0 18px;
+  box-shadow: -24px 0 48px rgba(15, 23, 42, 0.22);
+  animation: bnSheetSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  transform: translateX(0);
   transition: transform 0.2s ease;
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
@@ -4575,56 +4581,56 @@ body.ai-coach-page-active .app-main-with-sidebar {
   transition: none;
 }
 
-@keyframes bnSheetUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.bn-sheet-handle {
-  flex: 0 0 auto;
-  align-self: center;
-  width: 40px;
-  height: 4px;
-  margin: 10px 0 4px;
-  border-radius: 999px;
-  background: var(--line);
+@keyframes bnSheetSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 .bn-sheet-head {
+  flex: 0 0 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 20px 14px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--line);
 }
 
-.bn-sheet-head h3 {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: var(--text);
+.bn-sheet-brand {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
 }
 
-.bn-sheet-head p {
-  margin: 3px 0 0;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--muted);
+.bn-sheet-brand .sidebar-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+}
+
+.bn-sheet-brand .sidebar-brand-text strong {
+  font-size: 1.25rem;
+}
+
+.bn-sheet-brand .sidebar-brand-text small {
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
 }
 
 .bn-sheet-close {
   flex: 0 0 auto;
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 12px;
   background: var(--bg-soft);
   color: var(--text);
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -4638,7 +4644,7 @@ body.ai-coach-page-active .app-main-with-sidebar {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 8px 14px calc(24px + env(safe-area-inset-bottom));
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -4757,10 +4763,6 @@ body.ai-coach-page-active .app-main-with-sidebar {
 }
 
 @media (max-width: 400px) {
-  .bn-sheet-handle {
-    margin-top: 8px;
-  }
-
   .bn-sheet-head {
     padding-right: 14px;
     padding-left: 14px;

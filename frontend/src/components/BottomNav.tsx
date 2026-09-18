@@ -44,7 +44,7 @@ type MoreItem = {
   label: string
   to: string
   icon: typeof IconDashboard
-  section: 'study' | 'ai' | 'account' | 'support' | 'legal'
+  section: 'study' | 'account' | 'support' | 'legal'
 }
 
 const MORE_ITEMS: MoreItem[] = [
@@ -55,7 +55,6 @@ const MORE_ITEMS: MoreItem[] = [
   { label: 'Progress', to: '/progress', icon: IconProgress, section: 'study' },
   { label: 'Subjects', to: '/subjects', icon: IconSubject, section: 'study' },
   { label: 'Tasks', to: '/tasks', icon: IconTask, section: 'study' },
-  { label: 'AI Coach', to: '/ai-tutor', icon: IconTutor, section: 'ai' },
   { label: 'Profile', to: '/profile', icon: IconUser, section: 'account' },
   { label: 'Settings', to: '/settings', icon: IconSettings, section: 'account' },
   { label: 'Help & Support', to: '/help', icon: IconHelp, section: 'support' },
@@ -65,7 +64,6 @@ const MORE_ITEMS: MoreItem[] = [
 
 const SECTIONS: Array<{ key: MoreItem['section']; title: string }> = [
   { key: 'study', title: 'Study' },
-  { key: 'ai', title: 'AI' },
   { key: 'account', title: 'Account' },
   { key: 'support', title: 'Support' },
   { key: 'legal', title: 'Legal' },
@@ -83,7 +81,7 @@ export default function BottomNav() {
   const { streak } = useStreak()
 
   const drawerRef = useRef<HTMLDivElement>(null)
-  const dragStart = useRef<{ y: number } | null>(null)
+  const dragStart = useRef<{ x: number } | null>(null)
   const dragOffsetRef = useRef(0)
   const [dragOffset, setDragOffset] = useState(0)
 
@@ -112,21 +110,21 @@ export default function BottomNav() {
   }, [])
 
   function onDragStart(e: React.TouchEvent) {
-    dragStart.current = { y: e.touches[0].clientY }
+    dragStart.current = { x: e.touches[0].clientX }
   }
 
   function onDragMove(e: React.TouchEvent) {
     if (!dragStart.current) return
-    const dy = Math.max(0, e.touches[0].clientY - dragStart.current.y)
-    dragOffsetRef.current = dy
-    setDragOffset(dy)
+    const dx = Math.max(0, e.touches[0].clientX - dragStart.current.x)
+    dragOffsetRef.current = dx
+    setDragOffset(dx)
   }
 
   function onDragEnd() {
     dragStart.current = null
-    const dy = dragOffsetRef.current
+    const dx = dragOffsetRef.current
     dragOffsetRef.current = 0
-    if (dy > SWIPE_CLOSE_THRESHOLD) closeDrawer()
+    if (dx > SWIPE_CLOSE_THRESHOLD) closeDrawer()
     else setDragOffset(0)
   }
 
@@ -193,7 +191,7 @@ export default function BottomNav() {
           <div
             className={`bn-sheet${dragOffset > SWIPE_TAP_THRESHOLD ? ' bn-sheet-dragging' : ''}`}
             ref={drawerRef}
-            style={{ transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined }}
+            style={{ transform: dragOffset > 0 ? `translateX(${dragOffset}px)` : undefined }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -202,13 +200,14 @@ export default function BottomNav() {
             onTouchMove={onDragMove}
             onTouchEnd={onDragEnd}
           >
-            <div className="bn-sheet-handle" aria-hidden="true" />
-
             <div className="bn-sheet-head">
-              <div>
-                <h3>More</h3>
-                <p>Your study workspace</p>
-              </div>
+              <Link className="bn-sheet-brand" to="/dashboard" onClick={closeDrawer}>
+                <span className="sidebar-mark"><IconBot size={22} /></span>
+                <span className="sidebar-brand-text">
+                  <strong>Flox AI</strong>
+                  <small>Study Planner</small>
+                </span>
+              </Link>
               <button className="bn-sheet-close" onClick={closeDrawer} type="button" aria-label="Close navigation">
                 <span aria-hidden="true">&#10005;</span>
               </button>
