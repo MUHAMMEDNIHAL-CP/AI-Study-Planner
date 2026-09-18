@@ -5659,3 +5659,74 @@ body.fm-focus-route .floating-bot-panel {
 body.fm-focus-route .app-main {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Focus Mode: fixed (non-scrollable) on mobile ──
+   The whole Focus route fits the viewport: no page scrolling, every
+   phase (setup / running / break / complete) is a fixed full-screen
+   canvas. The setup column compacts so all controls stay on screen. */
+@media (max-width: 1200px) {
+  body.app-shell.fm-focus-route .app-main {
+    overflow: hidden;
+  }
+
+  .fm-setup {
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .fm-setup-body {
+    flex: 1;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .fm-task-block {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .fm-subject-select,
+  .fm-topic-input {
+    min-height: 46px;
+    padding: 10px 14px;
+  }
+
+  .fm-timer-hero {
+    padding: 10px 10px 8px;
+    gap: 8px;
+  }
+
+  .fm-timer-ring {
+    width: clamp(120px, 34vw, 180px);
+    height: clamp(120px, 34vw, 180px);
+  }
+
+  .fm-setup .fm-hero-time {
+    font-size: clamp(1.9rem, 11.5vw, 3.2rem);
+  }
+
+  .fm-set-dur,
+  .fm-set-custom {
+    min-height: 38px;
+    padding: 0 14px;
+  }
+
+  .fm-sound-chip {
+    min-height: 36px;
+    padding: 0 14px;
+  }
+
+  .fm-sound-row {
+    padding: 0 12px;
+  }
+
+  .fm-start-focus-btn {
+    min-height: 52px;
+  }
+
+  .fm-celebrate {
+    padding: 10px 12px;
+  }
+}
