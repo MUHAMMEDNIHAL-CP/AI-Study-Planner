@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { floxToast as toast } from '../components/FloxToast'
 import PageShell from '../components/PageShell'
 import { ResponsiveBottomSheet } from '../components/ResponsiveBottomSheet'
@@ -183,11 +184,21 @@ function subjectInitial(text: string, fallback = '•'): string {
 }
 
 /* Session card — one clean full-width row per study session. */
-function SessionCard({ task, subjects, onToggle }: { task: Task; subjects: Subject[]; onToggle: (t: Task) => void }) {
+function SessionCard({ task, subjects, onToggle, onEdit, onStartDelete, onDelete, onCancelDelete, confirming }: {
+  task: Task
+  subjects: Subject[]
+  onToggle: (t: Task) => void
+  onEdit: (t: Task) => void
+  onStartDelete: (t: Task) => void
+  onDelete: (t: Task) => void
+  onCancelDelete: () => void
+  confirming: boolean
+}) {
   const color = getSubjectColor(task.subject, subjects)
   const done = task.status === 'done'
+  const priority = task.priority || 'medium'
   return (
-    <div className={`pl-sess${done ? ' pl-sess-done' : ''}`} style={{ '--pl-color': color } as CSSProperties}>
+    <div className={`pl-sess${done ? ' pl-sess-done' : ''}${confirming ? ' pl-sess-confirming' : ''}`} style={{ '--pl-color': color } as CSSProperties}>
       <button className="pl-sess-check" onClick={() => onToggle(task)} type="button" aria-label={done ? 'Mark as not done' : 'Mark as done'}>
         {done && (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
@@ -200,6 +211,27 @@ function SessionCard({ task, subjects, onToggle }: { task: Task; subjects: Subje
         </div>
         <span className="pl-sess-title">{task.title}</span>
         {task.description ? <span className="pl-sess-desc">{task.description}</span> : null}
+        <div className="pl-sess-meta">
+          <span className={`pl-pri pl-pri-${priority}`}>
+            <i aria-hidden="true" />
+            {priority}
+          </span>
+          <span className="pl-sess-spacer" />
+          <button className="pl-sess-act" onClick={() => onEdit(task)} type="button" aria-label={`Edit ${task.title}`} title="Edit session">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+          </button>
+          {confirming ? (
+            <div className="pl-sess-ask" role="alertdialog" aria-label="Confirm delete">
+              <span className="pl-sess-ask-txt">Delete session?</span>
+              <button className="pl-sess-ask-yes" onClick={() => onDelete(task)} type="button">Delete</button>
+              <button className="pl-sess-ask-no" onClick={onCancelDelete} type="button">Keep</button>
+            </div>
+          ) : (
+            <button className="pl-sess-act pl-sess-del" onClick={() => onStartDelete(task)} type="button" aria-label={`Delete ${task.title}`} title="Delete session">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+            </button>
+          )}
+        </div>
       </div>
       <span className="pl-sess-dur">{minutesLabel(task.duration_minutes)}</span>
     </div>
@@ -207,11 +239,16 @@ function SessionCard({ task, subjects, onToggle }: { task: Task; subjects: Subje
 }
 
 /* Scheduled list for one day — compact hour groups (no empty-hour filler). */
-function DaySchedule({ tasks, subjects, onToggle, onCreate }: {
+function DaySchedule({ tasks, subjects, onToggle, onCreate, onEdit, onStartDelete, onDelete, onCancelDelete, confirmDelete }: {
   tasks: Task[]
   subjects: Subject[]
   onToggle: (t: Task) => void
   onCreate: () => void
+  onEdit: (t: Task) => void
+  onStartDelete: (t: Task) => void
+  onDelete: (t: Task) => void
+  onCancelDelete: () => void
+  confirmDelete: number | null
 }) {
   const slots = useMemo(
     () =>
@@ -225,9 +262,9 @@ function DaySchedule({ tasks, subjects, onToggle, onCreate }: {
     return (
       <div className="pl-empty-wrap">
         <span className="pl-empty-ico"><IconPlanner size={26} /></span>
-        <h3 className="pl-empty-title">No study sessions yet.</h3>
-        <p className="pl-empty-sub">Create your first study session and build your study plan.</p>
-        <button className="pl-empty-cta" onClick={onCreate} type="button">+ Create Study Session</button>
+        <h3 className="pl-empty-title">No study tasks for this day.</h3>
+        <p className="pl-empty-sub">Plan a session and it will show up right here in your timeline.</p>
+        <button className="pl-empty-cta" onClick={onCreate} type="button">+ Add Study Task</button>
       </div>
     )
   }
@@ -241,7 +278,7 @@ function DaySchedule({ tasks, subjects, onToggle, onCreate }: {
             <span className="pl-hour-line" />
           </div>
           <div className="pl-hour-tasks">
-            {slot.items.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} />)}
+            {slot.items.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} onEdit={onEdit} onStartDelete={onStartDelete} onDelete={onDelete} onCancelDelete={onCancelDelete} confirming={confirmDelete === t.id} />)}
           </div>
         </div>
       ))}
@@ -252,7 +289,7 @@ function DaySchedule({ tasks, subjects, onToggle, onCreate }: {
             <span className="pl-hour-line" />
           </div>
           <div className="pl-hour-tasks">
-            {other.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} />)}
+            {other.map((t) => <SessionCard key={t.id} task={t} subjects={subjects} onToggle={onToggle} onEdit={onEdit} onStartDelete={onStartDelete} onDelete={onDelete} onCancelDelete={onCancelDelete} confirming={confirmDelete === t.id} />)}
           </div>
         </div>
       )}
@@ -293,6 +330,9 @@ export default function PlannerPage() {
   const [loadError, setLoadError] = useState(false)
   const [planLoading, setPlanLoading] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [sessionSaving, setSessionSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
 
   const [sessionSubject, setSessionSubject] = useState('')
   const [sessionTopic, setSessionTopic] = useState('')
@@ -369,6 +409,9 @@ export default function PlannerPage() {
 
   const dayTaskCount = selectedDayTasks.length
   const dayHours = selectedDayTasks.reduce((sum, t) => sum + (t.duration_minutes || 0), 0) / 60
+  const dayDoneMinutes = selectedDayTasks.filter((t) => t.status === 'done').reduce((sum, t) => sum + (t.duration_minutes || 0), 0)
+  const dayTotalMinutes = selectedDayTasks.reduce((sum, t) => sum + (t.duration_minutes || 0), 0)
+  const dayDoneCount = selectedDayTasks.filter((t) => t.status === 'done').length
 
   const calendarInfo = useMemo(() => {
     const d = new Date(`${selectedDate}T12:00:00`)
@@ -440,15 +483,31 @@ export default function PlannerPage() {
     setSessionErrors({})
   }
 
-  function openSession(date = toLocalDateInput()) {
+  function openSession(date = toLocalDateInput(), task?: Task | null) {
     toast.dismiss()
-    resetSessionForm(date)
+    setConfirmDelete(null)
+    if (task) {
+      setEditingTask(task)
+      setSessionSubject(task.subject != null ? String(task.subject) : '')
+      setSessionTopic(task.title)
+      setSessionDate(task.scheduled_for?.slice(0, 10) ?? task.due_date ?? date)
+      setSessionTime(task.scheduled_for ? task.scheduled_for.slice(11, 16) : '09:00')
+      setSessionDuration(task.duration_minutes || 45)
+      setSessionPriority((task.priority as 'high' | 'medium' | 'low') || 'medium')
+      setSessionNotes(task.description || '')
+      setSessionErrors({})
+    } else {
+      resetSessionForm(date)
+      setEditingTask(null)
+    }
     setModal('session')
   }
 
   function closeSession() {
     setModal(null)
     resetSessionForm()
+    setEditingTask(null)
+    setConfirmDelete(null)
   }
 
   function resetAiForm() {
@@ -458,7 +517,7 @@ export default function PlannerPage() {
     setAiStrongSubject('')
   }
 
-  async function handleCreateSession(e: FormEvent) {
+  async function handleSubmitSession(e: FormEvent) {
     e.preventDefault()
     const errors: { subject?: string; topic?: string } = {}
     if (!sessionSubject) errors.subject = 'Please select a subject.'
@@ -470,12 +529,13 @@ export default function PlannerPage() {
       return
     }
     setSessionErrors({})
+    setSessionSaving(true)
     try {
       const subjectId = Number(sessionSubject)
       const subjectObj = subjects.find((s) => s.id === subjectId)
       const title = sessionTopic.trim() || (subjectObj ? `${subjectObj.name} session` : 'Study session')
       const scheduledFor = `${sessionDate}T${sessionTime}:00`
-      await api.post('/study/tasks/', {
+      const payload = {
         title,
         description: sessionNotes.trim(),
         subject: subjectId,
@@ -483,15 +543,24 @@ export default function PlannerPage() {
         scheduled_for: scheduledFor,
         duration_minutes: sessionDuration,
         priority: sessionPriority,
-        status: 'todo',
-      })
-      notifyStudyActivity()
-      toast.success('Study session created')
+      }
+      if (editingTask) {
+        await api.patch(`/study/tasks/${editingTask.id}/`, payload)
+        setTasks((prev) => prev.map((t) => (t.id === editingTask.id ? { ...t, ...payload, status: t.status } : t)))
+        toast.success('Study session updated')
+      } else {
+        await api.post('/study/tasks/', { ...payload, status: 'todo' })
+        notifyStudyActivity()
+        toast.success('Study session created')
+        await loadPlanner()
+      }
       setModal(null)
       resetSessionForm()
-      await loadPlanner()
+      setEditingTask(null)
     } catch (err) {
       toast.error(getErrorMessage(err))
+    } finally {
+      setSessionSaving(false)
     }
   }
 
@@ -503,6 +572,23 @@ export default function PlannerPage() {
     } catch (err) {
       toast.error(getErrorMessage(err))
       await loadPlanner().catch(() => undefined)
+    }
+  }
+
+  function handleEditTask(task: Task) {
+    openSession(selectedDate, task)
+  }
+
+  async function handleDeleteTask(id: number) {
+    setConfirmDelete(null)
+    const previous = tasks
+    setTasks((prev) => prev.filter((t) => t.id !== id))
+    try {
+      await api.delete(`/study/tasks/${id}/`)
+      toast.success('Study session deleted')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+      setTasks(previous)
     }
   }
 
@@ -560,7 +646,7 @@ export default function PlannerPage() {
       actions={
         <>
           <button className="pl-action-btn" onClick={() => openSession(selectedDate)} type="button">
-            <IconPlanner size={16} /> Create Session
+            <IconPlanner size={16} /> Add Study Task
           </button>
           <button className="pl-action-btn pl-action-ghost" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
             <IconSpark size={16} /> AI Generate
@@ -572,8 +658,8 @@ export default function PlannerPage() {
           className="pl-hadd"
           onClick={() => openSession(selectedDate)}
           type="button"
-          aria-label="Create study session"
-          title="Create study session"
+          aria-label="Add study task"
+          title="Add study task"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
@@ -607,7 +693,7 @@ export default function PlannerPage() {
             <button className="cal-nav-btn" onClick={() => setSelectedDate(navigateDate(selectedDate, -1, viewMode))} type="button" aria-label="Previous">&#8249;</button>
             <div className="cal-nav-center">
               <span className="cal-nav-title">
-                {viewMode === 'day' && shortDate(selectedDate)}
+                {viewMode === 'day' && (selectedDate === today ? `Today, ${shortDate(selectedDate)}` : shortDate(selectedDate))}
                 {viewMode === 'week' && `${shortDate(weekStart)} – ${shortDate(weekEnd)}`}
                 {viewMode === 'month' && calendarInfo.label}
               </span>
@@ -643,16 +729,41 @@ export default function PlannerPage() {
         <div className="pl-day-layout">
           <div className="pl-card pl-timeline">
             <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
-            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
+            {dayTotalMinutes > 0 && (
+              <div className="pl-progress" role="group" aria-label={selectedDate === today ? "Today's progress" : `Progress for ${shortDate(selectedDate)}`}>
+                <div className="pl-progress-head">
+                  <span className="pl-progress-title">{selectedDate === today ? "Today's Progress" : 'Day Progress'}</span>
+                  <span className="pl-progress-val">{minutesLabel(dayDoneMinutes)} / {minutesLabel(dayTotalMinutes)}</span>
+                </div>
+                <div className="pl-progress-track" role="progressbar" aria-valuenow={Math.round((dayDoneMinutes / dayTotalMinutes) * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Tasks completed">
+                  <span className="pl-progress-fill" style={{ width: `${Math.round((dayDoneMinutes / dayTotalMinutes) * 100)}%` }} />
+                </div>
+                <span className="pl-progress-sub">{dayDoneCount} of {dayTaskCount} tasks done</span>
+              </div>
+            )}
+            <DaySchedule
+              tasks={selectedDayTasks}
+              subjects={subjects}
+              onToggle={handleToggleTask}
+              onCreate={() => openSession(selectedDate)}
+              onEdit={handleEditTask}
+              onStartDelete={(t) => setConfirmDelete(t.id)}
+              onDelete={(t) => void handleDeleteTask(t.id)}
+              onCancelDelete={() => setConfirmDelete(null)}
+              confirmDelete={confirmDelete}
+            />
             <div className="pl-day-summary">
-              <span className="pl-chip">{dayTaskCount} session{dayTaskCount !== 1 ? 's' : ''}</span>
+              <span className="pl-chip">{dayTaskCount} task{dayTaskCount !== 1 ? 's' : ''}</span>
               <span className="pl-chip">{dayHours.toFixed(1)} hours planned</span>
             </div>
           </div>
 
           <div className="pl-sidebar">
             <div className="pl-card pl-exam-card">
-              <h3 className="pl-card-title">Exam Countdown</h3>
+              <div className="pl-exam-head">
+                <h3 className="pl-card-title">Upcoming Exams</h3>
+                <Link className="pl-exam-view" to="/exams">View all</Link>
+              </div>
               {upcomingExams.length === 0 ? (
                 <p className="pl-empty-text">No upcoming exams.</p>
               ) : (
@@ -743,7 +854,17 @@ export default function PlannerPage() {
           </div>
           <div className="pl-week-detail">
             <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
-            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
+            <DaySchedule
+              tasks={selectedDayTasks}
+              subjects={subjects}
+              onToggle={handleToggleTask}
+              onCreate={() => openSession(selectedDate)}
+              onEdit={handleEditTask}
+              onStartDelete={(t) => setConfirmDelete(t.id)}
+              onDelete={(t) => void handleDeleteTask(t.id)}
+              onCancelDelete={() => setConfirmDelete(null)}
+              confirmDelete={confirmDelete}
+            />
           </div>
         </div>
       )}
@@ -781,23 +902,46 @@ export default function PlannerPage() {
               <h3 className="pl-card-title">{formatFullDate(selectedDate)}</h3>
               <button className="pl-month-open-day" onClick={() => setViewMode('day')} type="button">Day view &#8250;</button>
             </div>
-            <DaySchedule tasks={selectedDayTasks} subjects={subjects} onToggle={handleToggleTask} onCreate={() => openSession(selectedDate)} />
+            <DaySchedule
+              tasks={selectedDayTasks}
+              subjects={subjects}
+              onToggle={handleToggleTask}
+              onCreate={() => openSession(selectedDate)}
+              onEdit={handleEditTask}
+              onStartDelete={(t) => setConfirmDelete(t.id)}
+              onDelete={(t) => void handleDeleteTask(t.id)}
+              onCancelDelete={() => setConfirmDelete(null)}
+              confirmDelete={confirmDelete}
+            />
           </div>
         </>
       )}
 
+      <div className="pl-card pl-ai-card">
+        <span className="pl-ai-tile"><IconSpark size={20} /></span>
+        <div className="pl-ai-body">
+          <h3 className="pl-ai-title">FLOX AI Planner</h3>
+          <p className="pl-ai-sub">A smart weekly schedule tuned to your weak topics and upcoming exams.</p>
+        </div>
+        <button className="pl-ai-gen" onClick={() => { resetAiForm(); setModal('ai') }} type="button">
+          {plan ? 'Regenerate' : 'Generate'}
+        </button>
+      </div>
+
       <ResponsiveBottomSheet
         open={modal === 'session'}
         onClose={closeSession}
-        title="Create Study Task"
+        title={editingTask ? 'Edit Study Task' : 'Add Study Task'}
         footer={
           <div className="cal-modal-actions rbs-actions">
             <button type="button" className="cal-modal-cancel" onClick={closeSession}>Cancel</button>
-            <button type="submit" className="cal-modal-create" form="pl-session-form">Create Study Task</button>
+            <button type="submit" className="cal-modal-create" form="pl-session-form" disabled={sessionSaving}>
+              {sessionSaving ? 'Saving...' : editingTask ? 'Save Changes' : 'Save Task'}
+            </button>
           </div>
         }
       >
-        <form id="pl-session-form" className="rbs-form" onSubmit={handleCreateSession} noValidate>
+        <form id="pl-session-form" className="rbs-form" onSubmit={handleSubmitSession} noValidate>
           <div className="cal-modal-field">
             <label htmlFor="pl-session-subject">Subject</label>
             <select

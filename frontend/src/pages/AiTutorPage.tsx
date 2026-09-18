@@ -343,6 +343,13 @@ export default function AiTutorPage() {
   const [chats, setChats] = useState<Conversation[]>(() => loadChats())
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  // Mirrors of chats/activeId that are always up to date even inside async
+  // continuations (after `await` in send()). Without these, the coach reply
+  // built after an API call would see the pre-chat state and create a second
+  // conversation, hiding the student's own message.
+  const chatsRef = useRef<Conversation[]>(chats)
+  const activeIdRef = useRef<string | null>(activeId)
+
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [topicMode, setTopicMode] = useState(false)
@@ -489,18 +496,20 @@ export default function AiTutorPage() {
   const groups = useMemo(() => chatGroups(chats), [chats])
 
   function commitChats(next: Conversation[]) {
+    chatsRef.current = next
     setChats(next)
     saveChats(next)
   }
 
   function patchActive(fn: (c: Conversation) => Conversation) {
-    if (!activeChat) return
-    commitChats(chats.map((c) => (c.id === activeChat.id ? fn(c) : c)))
+    const active = chatsRef.current.find((c) => c.id === activeIdRef.current)
+    if (!active) return
+    commitChats(chatsRef.current.map((c) => (c.id === active.id ? fn(c) : c)))
   }
 
   function appendMsgs(msgs: ChatMessage[]) {
     if (!msgs.length) return
-    if (activeChat) {
+    if (chatsRef.current.some((c) => c.id === activeIdRef.current)) {
       patchActive((c) => ({
         ...c,
         updated_at: new Date().toISOString(),
@@ -514,7 +523,11 @@ export default function AiTutorPage() {
         updated_at: new Date().toISOString(),
         messages: msgs,
       }
-      commitChats([conv, ...chats])
+      const next = [conv, ...chatsRef.current]
+      chatsRef.current = next
+      setChats(next)
+      saveChats(next)
+      activeIdRef.current = conv.id
       setActiveId(conv.id)
     }
   }
@@ -532,6 +545,7 @@ export default function AiTutorPage() {
   }
 
   function newChat() {
+    activeIdRef.current = null
     setActiveId(null)
     setInput('')
     setTopicMode(false)
@@ -539,21 +553,25 @@ export default function AiTutorPage() {
   }
 
   function openChat(c: Conversation) {
+    activeIdRef.current = c.id
     setActiveId(c.id)
     setSidebarOpen(false)
   }
 
   function deleteChat(id: string) {
-    const next = chats.filter((c) => c.id !== id)
+    const next = chatsRef.current.filter((c) => c.id !== id)
     commitChats(next)
-    if (activeId === id) setActiveId(null)
+    if (activeIdRef.current === id) {
+      activeIdRef.current = null
+      setActiveId(null)
+    }
   }
 
   function renameChat(id: string) {
     const c = chats.find((x) => x.id === id)
     if (!c) return
     const name = window.prompt('Rename conversation', c.title)
-    if (name && name.trim()) commitChats(chats.map((x) => (x.id === id ? { ...x, title: name.trim() } : x)))
+    if (name && name.trim()) commitChats(chatsRef.current.map((x) => (x.id === id ? { ...x, title: name.trim() } : x)))
   }
 
   /* ── Send ── */
@@ -583,7 +601,7 @@ export default function AiTutorPage() {
       })
       notifyStudyActivity()
       appendMsgs([{ id: uid(), role: 'coach', text: data.reply, chips: data.suggestions?.slice(0, 3), mode: 'chat' }])
-    } catch (err) {
+    } catch {
       // The result of maybeEmitFloxLimit(err) already opened the clean FLOX
       // limit sheet if the backend returned a limit/quota error. All we do here
       // is add a friendly inline retry message — never raw Gemini errors.
@@ -632,10 +650,12 @@ export default function AiTutorPage() {
 
   function runQuick(key: QuickKey) {
     setSidebarOpen(false)
+    const srcLabel = QUICK_CARDS.find((c) => c.key === key)?.label ?? ''
+    const reply = (msgs: ChatMessage[]) => appendMsgs([{ id: uid(), role: 'student', text: srcLabel, mode: 'chat' }, ...msgs])
     if (key === 'plan') {
       const rows = buildPlanRows()
       const totalMin = rows.reduce((s, r) => s + r.minutes, 0)
-      appendMsgs([
+      reply([
         {
           id: uid(),
           role: 'coach',
@@ -653,7 +673,7 @@ export default function AiTutorPage() {
     if (key === 'exam') {
       const ex = nextExam
       if (!ex) {
-        appendMsgs([{ id: uid(), role: 'coach', mode: 'exam', text: 'I don\u2019t see any upcoming exams. Add one on the Exams page and I\u2019ll build you a preparation plan.' }])
+        reply([{ id: uid(), role: 'coach', mode: 'exam', text: 'I don\u2019t see any upcoming exams. Add one on the Exams page and I\u2019ll build you a preparation plan.' }])
         return
       }
       const daysLeft = ex.days_left ?? daysUntil(ex.date)
@@ -671,7 +691,7 @@ export default function AiTutorPage() {
           focus: k === n ? 'Mock Exam \u0026 Review' : k % 3 === 0 ? subjName + ' practice problems' : (weakish[k % Math.max(weakish.length, 1)] ?? subjName + ' revision'),
         })
       }
-      appendMsgs([
+      reply([
         {
           id: uid(),
           role: 'coach',
@@ -684,7 +704,7 @@ export default function AiTutorPage() {
       return
     }
     if (key === 'learn') {
-      appendMsgs([
+      reply([
         {
           id: uid(),
           role: 'coach',
@@ -696,7 +716,7 @@ export default function AiTutorPage() {
       return
     }
     if (key === 'practice') {
-      appendMsgs([{ id: uid(), role: 'coach', mode: 'practice', text: 'What should I quiz you on?', chips: QUIZ_SOURCES.map((s) => s.label) }])
+      reply([{ id: uid(), role: 'coach', mode: 'practice', text: 'What should I quiz you on?', chips: QUIZ_SOURCES.map((s) => s.label) }])
       return
     }
     if (key === 'analyze') {
@@ -715,10 +735,10 @@ export default function AiTutorPage() {
       } else {
         lines.push('Loading your data\u2026 give me a moment.')
       }
-      appendMsgs([{ id: uid(), role: 'coach', mode: 'analyze', text: lines.join('\n'), actions: [{ label: 'Revise Weak Topic', kind: 'start-focus', route: '/focus' }] }])
+      reply([{ id: uid(), role: 'coach', mode: 'analyze', text: lines.join('\n'), actions: [{ label: 'Revise Weak Topic', kind: 'start-focus', route: '/focus' }] }])
       return
     }
-    appendMsgs([
+    reply([
       {
         id: uid(),
         role: 'coach',
@@ -769,8 +789,8 @@ export default function AiTutorPage() {
         },
       ])
       setQuizBank((prev) => ({ ...prev, [topic]: data }))
-    } catch (err) {
-      toast.error(getErrorMessage(err))
+    } catch {
+      toast.error("FLOX AI couldn't generate a quiz right now. Please try again.")
     } finally {
       setGenBusy(false)
     }
@@ -921,7 +941,8 @@ export default function AiTutorPage() {
         { id: uid(), role: 'coach', text: coachText, mode },
       ],
     }
-    commitChats([conv, ...chats])
+    commitChats([conv, ...chatsRef.current])
+    activeIdRef.current = conv.id
     setActiveId(conv.id)
     setSidebarOpen(false)
   }
@@ -1209,7 +1230,7 @@ export default function AiTutorPage() {
           ref={taRef}
           rows={1}
           value={input}
-          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX AI\u2026'}
+          placeholder={topicMode ? 'Type a topic to be quizzed on...' : 'Ask FLOX AI...'}
           onChange={(e) => { setInput(e.target.value); autoResize() }}
           onKeyDown={onComposerKeyDown}
           disabled={sending}

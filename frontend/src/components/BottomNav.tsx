@@ -160,10 +160,10 @@ export default function BottomNav() {
           <Link
             key={item.to}
             to={item.to}
-            className={`bn-item${item.highlight ? ' bn-focus' : ''}${isActive(item.to) ? ' active' : ''}`}
+            className={`bn-item${item.highlight && isActive(item.to) ? ' bn-focus' : ''}${isActive(item.to) ? ' active' : ''}`}
           >
             <span className="bn-icon">
-              <item.icon size={item.highlight ? 24 : 20} />
+              <item.icon size={item.highlight && isActive(item.to) ? 24 : 20} />
             </span>
             <span className="bn-label">{item.label}</span>
           </Link>
